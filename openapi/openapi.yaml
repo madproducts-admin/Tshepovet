@@ -1,0 +1,535 @@
+openapi: 3.1.0
+info:
+  title: TshepoVet Verification API
+  version: '2026-11-01'
+  summary: Low-cost KYB, tax-compliance and driver checks for South African vendor onboarding.
+  description: |
+    ## Authentication
+    `Authorization: Bearer tv_live_xxxxxxxx.<secret>` (production) or `tv_test_...` (sandbox: free,
+    deterministic mock data, never reaches a bureau).
+
+    ## Billing
+    Prices are VAT-exclusive ZAR, deducted from the prepaid wallet:
+    `COMPANY_CHECK` R3.00, `COMPANY_CHECK_LIVE` (forces a bureau refresh) R6.00, `DRIVER_LICENCE_CHECK` R2.50.
+    Funds are **reserved** before any bureau call and **captured** only when a definitive answer is delivered
+    (including "no such company"). If every data provider is unavailable the reservation is released and
+    nothing is charged.
+
+    ## Idempotency
+    Send `Idempotency-Key` on every POST. Retrying with the same key and body returns the original response
+    (`Idempotent-Replayed: true`) and never charges twice. Keys are kept for 24 hours.
+
+    ## Sync vs async
+    `mode: sync` (default) waits up to ~8s. If checks are still running you get `202` with
+    `status: processing`; the final result arrives by webhook and at `GET /v1/verifications/{id}`.
+
+    ## Personal information (POPIA)
+    Responses are minimised: director ID numbers are returned as the last four digits, TCS PINs are never
+    echoed or logged, and webhooks carry identifiers and statuses only.
+
+    ## Sandbox magic values (tv_test_ keys)
+    | Input | Result |
+    |---|---|
+    | enterprise number sequence `000404` | not found |
+    | sequence `000500` | provider error (failover) |
+    | sequence `000777` | AR Deregistration Process |
+    | sequence `000888` | director appointed 10 days ago |
+    | VAT `4000000404` | not registered |
+    | TCS PIN starting `NC` / `EX` / `RV` / `SOON` | non-compliant / expired / revoked / expires in 10 days |
+    | licence number ending `0404` / `0410` / `0420` / `0430` | not found / expired / PrDP expired / suspended |
+  license:
+    name: Proprietary
+    identifier: LicenseRef-TshepoVet-Proprietary
+  contact:
+    name: TshepoVet Developer Support
+    url: https://docs.tshepovet.co.za
+servers:
+  - url: https://api.tshepovet.co.za/v1
+    description: Production (af-south-1)
+  - url: http://localhost:8080/v1
+    description: Local development
+security:
+  - apiKey: []
+tags:
+  - name: Verifications
+  - name: Webhooks
+paths:
+  /verify/company:
+    post:
+      tags: [Verifications]
+      operationId: verifyCompany
+      summary: Verify a South African company (CIPC, directors, VAT, SARS TCS)
+      description: |
+        Runs the requested checks through the provider waterfall (cache -> cheapest healthy bureau -> failover
+        -> stale-if-error). Registration and director data is public-register data and may be served from
+        TshepoVet's cross-buyer cache (see `checks.*.source` and `data_as_of`); use `freshness: live` or
+        `max_age_seconds` to force fresher data.
+
+        `checks: ["tcs"]` requires consent (`consent_id` or an inline `consent` attestation) covering
+        `tax_compliance_verification`; `monitor: true` additionally requires `continuous_monitoring` and
+        enrols the vendor in expiry monitoring (R15/vendor/month).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompanyVerificationRequest'
+            examples:
+              full:
+                summary: Full onboarding check with TCS and monitoring
+                value:
+                  registration_number: 2019/123456/07
+                  vat_number: '4123456789'
+                  tax_reference_number: '9123456789'
+                  tcs_pin: AB12CD34EF
+                  checks: [registration, directors, vat, tcs]
+                  external_ref: SUP-0001
+                  monitor: true
+                  consent:
+                    notice_code: company_verification
+                    subject_display: ACME TRADING (PTY) LTD
+                    subject_role: authorised_representative
+                    purposes: [tax_compliance_verification, continuous_monitoring]
+                    captured_at: '2026-11-14T08:00:00+02:00'
+                    evidence_reference: onboarding-form-8812
+                    attested_by: procurement@buyer.example
+              minimal:
+                summary: Registration + directors only (no consent needed)
+                value:
+                  registration_number: CK2001/012345/23
+      responses:
+        '200':
+          description: Completed within the sync deadline.
+          headers:
+            Location: { $ref: '#/components/headers/Location' }
+            X-Request-Id: { $ref: '#/components/headers/RequestId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Verification' }
+              examples:
+                verified: { $ref: '#/components/examples/CompanyVerified' }
+        '202':
+          description: Accepted and still processing. Poll `Location` or wait for the webhook.
+          headers:
+            Location: { $ref: '#/components/headers/Location' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Verification' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/InsufficientFunds' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/IdempotencyInProgress' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /verify/driver-license:
+    post:
+      tags: [Verifications]
+      operationId: verifyDriverLicense
+      summary: Verify a driving licence and Professional Driving Permit (PrDP)
+      description: |
+        Checks licence validity, vehicle codes (with code hierarchy, e.g. EC covers C1) and PrDP categories
+        against the national traffic register via a licensed provider. Gazetted validity extensions
+        (card backlog grace periods) are applied from reference data.
+
+        The driver is a natural person who is not party to your contract, so **consent is always required**:
+        either a `consent_id` captured by TshepoVet (WhatsApp/web) or an attestation by the employer
+        (`on_behalf_of_subject: true`) with an evidence reference you can produce on request.
+        `/verify/driver-licence` is accepted as an alias.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DriverLicenceVerificationRequest' }
+            example:
+              id_number: '8001015009087'
+              licence_number: '400100001234'
+              surname: Mokoena
+              required_codes: [C1]
+              required_prdp: [G]
+              vendor_id: 01a1dc4f-3f43-7a5d-8b21-0fd5fadd8d77
+              consent:
+                notice_code: driver_verification
+                subject_display: T. Mokoena
+                subject_role: driver
+                on_behalf_of_subject: true
+                purposes: [driver_licence_verification]
+                captured_at: '2026-11-14T08:00:00+02:00'
+                evidence_reference: driver-consent-form-77
+                attested_by: fleet@logistics.example
+      responses:
+        '200':
+          description: Completed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Verification' }
+              examples:
+                verified: { $ref: '#/components/examples/DriverVerified' }
+        '202':
+          description: Accepted and still processing.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Verification' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/InsufficientFunds' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/IdempotencyInProgress' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /verifications/{id}:
+    get:
+      tags: [Verifications]
+      operationId: getVerification
+      summary: Retrieve a verification
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: The verification.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Verification' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+webhooks:
+  verification.completed:
+    post:
+      operationId: onVerificationCompleted
+      tags: [Webhooks]
+      summary: A verification finished
+      description: |
+        Signed with `TshepoVet-Signature: t=<unix>,v1=<hex HMAC-SHA256(secret, "<t>.<raw body>")>`.
+        Verify against the raw body and reject timestamps older than 5 minutes. Deliveries are retried with
+        exponential backoff for ~36 hours; treat `id` as an idempotency key (at-least-once delivery).
+      parameters:
+        - { name: TshepoVet-Signature, in: header, required: true, schema: { type: string } }
+        - { name: TshepoVet-Event-Id, in: header, required: true, schema: { type: string, format: uuid } }
+        - { name: TshepoVet-Event-Type, in: header, required: true, schema: { type: string } }
+        - { name: TshepoVet-Delivery-Attempt, in: header, required: true, schema: { type: integer } }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WebhookEvent' }
+      responses:
+        '2XX': { description: Acknowledged }
+  wallet.low_balance:
+    post:
+      operationId: onWalletLowBalance
+      tags: [Webhooks]
+      summary: Available wallet balance fell below your threshold (at most once per 24h)
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WebhookEvent' }
+      responses:
+        '2XX': { description: Acknowledged }
+  vendor.payment_locked:
+    post:
+      operationId: onVendorPaymentLocked
+      tags: [Webhooks]
+      summary: A monitored vendor's compliance lapsed past its grace period and the accounting lock was applied
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WebhookEvent' }
+      responses:
+        '2XX': { description: Acknowledged }
+components:
+  securitySchemes:
+    apiKey:
+      type: http
+      scheme: bearer
+      bearerFormat: tv_{live|test}_{prefix}.{secret}
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: 8-255 characters, unique per logical request. Strongly recommended.
+      schema: { type: string, minLength: 8, maxLength: 255 }
+  headers:
+    Location:
+      description: URL of the verification resource.
+      schema: { type: string }
+    RequestId:
+      description: Correlation id; quote it to support.
+      schema: { type: string }
+  schemas:
+    ConsentAttestation:
+      type: object
+      additionalProperties: false
+      description: |
+        Records consent you captured yourself. TshepoVet stores it with a hash of the exact privacy notice
+        (`notice_code`) and your evidence reference. You must be able to produce the underlying evidence
+        (POPIA s11(2)(a) places the burden of proof on the responsible party).
+      required: [notice_code, subject_display, subject_role, purposes, captured_at, evidence_reference, attested_by]
+      properties:
+        notice_code: { type: string, enum: [company_verification, driver_verification] }
+        subject_display: { type: string, maxLength: 120, description: Masked/display name of the data subject. }
+        subject_role: { type: string, enum: [vendor_entity, authorised_representative, director, driver, sole_proprietor] }
+        on_behalf_of_subject: { type: boolean, default: false, description: True when an employer attests a driver's consent. }
+        purposes:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            enum: [kyb_company_verification, director_identity_verification, tax_compliance_verification, driver_licence_verification, continuous_monitoring]
+        captured_at: { type: string, format: date-time }
+        evidence_reference: { type: string, maxLength: 200 }
+        attested_by: { type: string, maxLength: 200 }
+    CompanyVerificationRequest:
+      type: object
+      additionalProperties: false
+      required: [registration_number]
+      properties:
+        registration_number:
+          type: string
+          description: CIPC enterprise number. Accepts `2019/123456/07`, `2019-123456-07`, `201912345607`, `CK2001/012345/23`, `K2019/123456/07`.
+          examples: [2019/123456/07]
+        vat_number: { type: string, pattern: '^4\d{9}$', description: Required when checks includes vat. }
+        tax_reference_number: { type: string, pattern: '^[0-39]\d{9}$', description: Income tax reference. Required for tcs. }
+        tcs_pin: { type: string, minLength: 6, maxLength: 20, writeOnly: true, description: SARS Tax Compliance Status PIN. Never returned or logged; stored encrypted only when monitor=true, until the PIN expires. }
+        checks:
+          type: array
+          minItems: 1
+          default: [registration, directors]
+          items: { type: string, enum: [registration, directors, vat, tcs] }
+        external_ref: { type: string, maxLength: 100, description: Your ERP supplier code. }
+        consent_id: { type: string, format: uuid }
+        consent: { $ref: '#/components/schemas/ConsentAttestation' }
+        freshness: { type: string, enum: [cached_ok, live], default: cached_ok, description: '`live` bypasses cache and is billed as COMPANY_CHECK_LIVE.' }
+        max_age_seconds: { type: integer, minimum: 60, maximum: 2592000, description: Accept cached data only if younger than this. }
+        mode: { type: string, enum: [sync, async], default: sync }
+        monitor: { type: boolean, default: false, description: Enrol in continuous expiry monitoring (R15/vendor/month). }
+    DriverLicenceVerificationRequest:
+      type: object
+      additionalProperties: false
+      required: [id_number]
+      properties:
+        id_number: { type: string, pattern: '^\d{13}$', description: SA ID number (Luhn-validated). }
+        licence_number: { type: string, pattern: '^[A-Za-z0-9]{6,20}$' }
+        surname: { type: string, maxLength: 80 }
+        required_codes:
+          type: array
+          items: { type: string, enum: [A1, A, B, EB, C1, C, EC1, EC] }
+          description: Codes the driver must hold; hierarchy applies (EC covers EC1, C, C1, EB, B).
+        required_prdp:
+          type: array
+          items: { type: string, enum: [G, P, D] }
+        vendor_id: { type: string, format: uuid, description: The employer/fleet vendor already linked to your account. }
+        external_ref: { type: string, maxLength: 100 }
+        consent_id: { type: string, format: uuid }
+        consent: { $ref: '#/components/schemas/ConsentAttestation' }
+        freshness: { type: string, enum: [cached_ok, live], default: cached_ok }
+        mode: { type: string, enum: [sync, async], default: sync }
+        monitor: { type: boolean, default: false }
+    CheckResult:
+      type: object
+      required: [status, source, stale]
+      properties:
+        status: { type: string, enum: [passed, failed, warning, not_found, pending, error, skipped] }
+        source:
+          type: string
+          description: '`cache:redis`, `cache:pg`, `provider:<code>`, `stale_cache:*` (served because all providers failed), `coalesced`.'
+        data_as_of: { type: [string, 'null'], format: date-time }
+        stale: { type: boolean }
+        warnings: { type: array, items: { type: string } }
+        error_code: { type: [string, 'null'] }
+        result: { type: [object, 'null'], additionalProperties: true }
+    Verification:
+      type: object
+      required: [id, object, type, status, checks, risk_flags, billing, requested_at]
+      properties:
+        id: { type: string, format: uuid }
+        object: { type: string, const: verification }
+        type: { type: string, enum: [company, driver_licence] }
+        status: { type: string, enum: [processing, completed, failed] }
+        outcome:
+          type: [string, 'null']
+          enum: [verified, verified_with_warnings, failed_checks, not_found, unable_to_verify, null]
+        vendor_id: { type: [string, 'null'], format: uuid }
+        external_ref: { type: [string, 'null'] }
+        subject: { type: string, description: Normalised enterprise number, or a masked driver identifier. }
+        checks:
+          type: object
+          properties:
+            registration: { $ref: '#/components/schemas/CheckResult' }
+            directors: { $ref: '#/components/schemas/CheckResult' }
+            vat: { $ref: '#/components/schemas/CheckResult' }
+            tcs: { $ref: '#/components/schemas/CheckResult' }
+            licence: { $ref: '#/components/schemas/CheckResult' }
+            prdp: { $ref: '#/components/schemas/CheckResult' }
+        risk_flags:
+          type: array
+          items: { type: string }
+          description: |
+            Stable codes, e.g. `cipc_status_deregistration_process`, `company_younger_than_6_months`,
+            `director_appointed_within_30_days`, `no_active_directors`, `vat_number_registered_to_different_name`,
+            `sars_non_compliant`, `tcs_pin_expired`, `tcs_taxpayer_name_mismatch`, `close_corporation_after_2011`,
+            `not_found_in_cached_registry_copy`, `licence_expired`, `licence_code_insufficient`,
+            `licence_in_gazetted_grace_period`, `prdp_expired`, `prdp_d_holder_under_25`.
+        billing:
+          type: object
+          required: [sku, price_cents, currency, vat_exclusive, charged]
+          properties:
+            sku: { type: string }
+            price_cents: { type: integer }
+            currency: { type: string, const: ZAR }
+            vat_exclusive: { type: boolean }
+            charged: { type: boolean }
+            wallet_balance_cents: { type: integer, description: Posted balance after this charge (completed responses only). }
+        requested_at: { type: string, format: date-time }
+        completed_at: { type: [string, 'null'], format: date-time }
+    WebhookEvent:
+      type: object
+      required: [id, type, created_at, api_version, data]
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: string, enum: [verification.completed, verification.failed, vendor.compliance_changed, document.expiring, document.expired, vendor.payment_locked, wallet.low_balance] }
+        created_at: { type: string, format: date-time }
+        api_version: { type: string }
+        data:
+          type: object
+          additionalProperties: true
+          example:
+            verification_id: 01a1dc4f-3f47-7698-af4f-d9da4cd13b16
+            type: company
+            status: completed
+            outcome: verified
+            risk_flags: []
+            charged: true
+            vendor_id: 01a1dc4f-3f43-7a5d-8b21-0fd5fadd8d77
+            external_ref: SUP-0001
+    Problem:
+      type: object
+      description: RFC 9457 problem details.
+      required: [type, title, status, code]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        code:
+          type: string
+          examples: [validation_error, invalid_registration_number, invalid_id_number, invalid_tcs_pin, insufficient_funds, consent_required, consent_expired, consent_subject_mismatch, idempotency_key_reused, idempotency_in_progress, rate_limited]
+        request_id: { type: string }
+        details: { type: object, additionalProperties: true }
+  responses:
+    BadRequest:
+      description: Validation failed.
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    Unauthorized:
+      description: Missing or invalid API key.
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    Forbidden:
+      description: Key lacks the scope, or the account is suspended.
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    InsufficientFunds:
+      description: Wallet cannot cover the check. Nothing was created or charged.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+          example: { type: 'https://docs.tshepovet.co.za/errors/insufficient_funds', title: Wallet balance is insufficient for this check, status: 402, code: insufficient_funds, details: { required_cents: 300, available_cents: 120 } }
+    NotFound:
+      description: Not found (or belongs to another account).
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    IdempotencyInProgress:
+      description: A request with this Idempotency-Key is still running.
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+    Unprocessable:
+      description: Consent missing/invalid, or Idempotency-Key reused with a different body.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+          example: { type: 'https://docs.tshepovet.co.za/errors/consent_required', title: A valid consent covering the requested purposes is required, status: 422, code: consent_required, details: { missing_purposes: [tax_compliance_verification] } }
+    RateLimited:
+      description: Too many requests (default 50 rps per key for /verify).
+      headers:
+        Retry-After: { schema: { type: integer } }
+      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+  examples:
+    CompanyVerified:
+      value:
+        id: 01a1dc4f-3f47-7698-af4f-d9da4cd13b16
+        object: verification
+        type: company
+        status: completed
+        outcome: verified
+        vendor_id: 01a1dc4f-3f43-7a5d-8b21-0fd5fadd8d77
+        external_ref: SUP-0001
+        subject: 2019/123456/07
+        checks:
+          registration:
+            status: passed
+            source: provider:cpb
+            data_as_of: '2026-11-14T08:01:12Z'
+            stale: false
+            warnings: []
+            error_code: null
+            result: { legal_name: ACME TRADING (PTY) LTD, cipc_status: in_business, cipc_status_raw: In Business, incorporation_date: '2019-03-15', entity_type: Private Company }
+          directors:
+            status: passed
+            source: provider:cpb
+            data_as_of: '2026-11-14T08:01:12Z'
+            stale: false
+            warnings: []
+            error_code: null
+            result: { active: [{ full_name: THANDI MOKOENA, role: director, appointed_on: '2019-03-15', id_number_last4: '9087' }], resigned_count: 1 }
+          vat:
+            status: passed
+            source: cache:redis
+            data_as_of: '2026-11-12T10:22:03Z'
+            stale: false
+            warnings: []
+            error_code: null
+            result: { registered: true, vendor_name: ACME TRADING (PTY) LTD, trading_name: null, name_matches_cipc: true, effective_date: '2019-06-01' }
+          tcs:
+            status: passed
+            source: provider:searchworks
+            data_as_of: '2026-11-14T08:01:13Z'
+            stale: false
+            warnings: []
+            error_code: null
+            result: { tcs_status: compliant, pin_status: active, pin_expires_on: '2027-06-02', checked_at: '2026-11-14T08:01:13Z' }
+        risk_flags: []
+        billing: { sku: COMPANY_CHECK, price_cents: 300, currency: ZAR, vat_exclusive: true, charged: true, wallet_balance_cents: 99700 }
+        requested_at: '2026-11-14T08:01:11Z'
+        completed_at: '2026-11-14T08:01:13Z'
+    DriverVerified:
+      value:
+        id: 01a1dc50-0a11-7c1e-9a3e-5b7f0c7f1e22
+        object: verification
+        type: driver_licence
+        status: completed
+        outcome: verified
+        vendor_id: 01a1dc4f-3f43-7a5d-8b21-0fd5fadd8d77
+        external_ref: null
+        subject: M. (*********9087)
+        checks:
+          licence:
+            status: passed
+            source: provider:verifyid
+            data_as_of: '2026-11-14T08:05:00Z'
+            stale: false
+            warnings: []
+            error_code: null
+            result: { codes: [EC1], required_codes: [C1], missing_codes: [], status: valid, expires_on: '2029-12-13', days_remaining: 1125, grace_reference: null, restrictions: [], licence_number_last4: '1234' }
+          prdp:
+            status: passed
+            source: provider:verifyid
+            data_as_of: '2026-11-14T08:05:00Z'
+            stale: false
+            warnings: []
+            error_code: null
+            result: { categories: [G, P], required_categories: [G], missing_categories: [], expires_on: '2027-12-19', days_remaining: 400 }
+        risk_flags: []
+        billing: { sku: DRIVER_LICENCE_CHECK, price_cents: 250, currency: ZAR, vat_exclusive: true, charged: true, wallet_balance_cents: 99450 }
+        requested_at: '2026-11-14T08:04:59Z'
+        completed_at: '2026-11-14T08:05:00Z'
