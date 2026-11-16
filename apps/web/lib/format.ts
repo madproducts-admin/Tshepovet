@@ -1,11 +1,14 @@
 /**
- * How numbers, money and dates read in TshepoVet: South African English, rand with a space
- * as the thousands separator (R1 250,00 is how SA writes it; en-ZA formats that way).
+ * How numbers, money and dates read in TshepoVet: South African style, a space between
+ * thousands and a decimal comma (R1 250,00).
+ *
+ * Money and counts are formatted by hand, not with Intl: browsers and Node ship different
+ * locale data (one writes "R1 250,00", another "R 1 250,00"), and a page rendered on the
+ * server must read the same once the browser takes over. The space is a no-break space, so
+ * an amount never wraps.
  */
-const rand = new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR', minimumFractionDigits: 2 });
-const randWhole = new Intl.NumberFormat('en-ZA', { style: 'currency', currency: 'ZAR', maximumFractionDigits: 0 });
-const count = new Intl.NumberFormat('en-ZA');
-const pct = new Intl.NumberFormat('en-ZA', { style: 'percent', maximumFractionDigits: 1 });
+const NBSP = '\u00a0';
+const group = (n: number) => Math.trunc(Math.abs(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, NBSP);
 const day = new Intl.DateTimeFormat('en-ZA', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Johannesburg' });
 const dayShort = new Intl.DateTimeFormat('en-ZA', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Africa/Johannesburg' });
 const stamp = new Intl.DateTimeFormat('en-ZA', {
@@ -18,9 +21,17 @@ const stamp = new Intl.DateTimeFormat('en-ZA', {
 });
 const relative = new Intl.RelativeTimeFormat('en-ZA', { numeric: 'auto' });
 
-export const formatMoney = (cents: number, whole = false) => (whole && cents % 100 === 0 ? randWhole : rand).format(cents / 100);
-export const formatCount = (n: number) => count.format(n);
-export const formatPercent = (fraction: number) => pct.format(fraction);
+export function formatMoney(cents: number, whole = false): string {
+  const sign = cents < 0 ? '-' : '';
+  const abs = Math.abs(Math.round(cents));
+  const rands = group(Math.floor(abs / 100));
+  return whole && abs % 100 === 0 ? `${sign}R${rands}` : `${sign}R${rands},${String(abs % 100).padStart(2, '0')}`;
+}
+export const formatCount = (n: number) => `${n < 0 ? '-' : ''}${group(n)}`;
+export function formatPercent(fraction: number): string {
+  const v = Math.round(fraction * 1000) / 10;
+  return `${Number.isInteger(v) ? v : v.toFixed(1).replace('.', ',')}%`;
+}
 
 /** A calendar day ('YYYY-MM-DD' or an instant) as "16 November 2026". */
 export function formatDay(value: string | Date, short = false): string {

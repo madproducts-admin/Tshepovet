@@ -11,6 +11,8 @@ const baseURL = process.env.TSV_WEB_URL ?? `http://127.0.0.1:${port}`;
 export default defineConfig({
   testDir: './tests',
   fullyParallel: true,
+  // A shared, busy box: axe on a large page needs the CPU; more workers only make it time out.
+  workers: 2,
   timeout: 120_000,
   reporter: [['list']],
   use: { baseURL, trace: 'retain-on-failure' },

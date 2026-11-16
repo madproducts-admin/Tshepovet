@@ -30,7 +30,8 @@ export function When({ value, day, showExact }: { value: string | Date; day?: bo
   const exact = day ? formatDay(value) : formatInstant(value);
   if (day) return <time dateTime={typeof value === 'string' ? value : value.toISOString()}>{exact}</time>;
   return (
-    <time dateTime={new Date(value).toISOString()} title={exact}>
+    // "3 days ago" is computed again in the browser and may differ by a moment from the server's.
+    <time dateTime={new Date(value).toISOString()} title={exact} suppressHydrationWarning>
       {formatRelative(value)}
       {showExact ? <span className="text-ink-2"> ({exact})</span> : <span className="sr-only"> ({exact})</span>}
     </time>

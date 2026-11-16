@@ -3,6 +3,7 @@ import { Atkinson_Hyperlegible_Mono, Atkinson_Hyperlegible_Next } from 'next/fon
 import { cookies } from 'next/headers';
 import type { ReactNode } from 'react';
 import { Toaster } from '@/components/ui/toast';
+import { Providers } from '@/lib/queries';
 import { THEME_COOKIE, type ThemeChoice } from '@/lib/theme';
 import './globals.css';
 
@@ -46,7 +47,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html lang="en-ZA" data-theme={theme === 'system' ? undefined : theme} className={`${sans.variable} ${mono.variable}`}>
       <body>
-        {children}
+        <Providers>{children}</Providers>
         <Toaster />
       </body>
     </html>
