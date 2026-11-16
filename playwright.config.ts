@@ -24,7 +24,9 @@ export default defineConfig({
   webServer: local
     ? {
         command: `npx --yes wrangler@4 dev --config deploy/site/wrangler.toml --ip 127.0.0.1 --port ${port} --log-level warn`,
-        url: baseURL,
+        // Ready once the docs answer: "/" is the API's (a 404 here), and Playwright waits
+        // for a status below 400.
+        url: `${baseURL.replace(/\/$/, '')}/docs/`,
         reuseExistingServer: false,
         timeout: 180_000,
       }

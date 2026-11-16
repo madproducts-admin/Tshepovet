@@ -15,7 +15,8 @@ if (!existsSync(join(ROOT, 'deploy/dist/_headers'))) {
   console.error('deploy/dist is not assembled: run npm run site:build first');
   process.exit(1);
 }
-const env = { ...process.env, TSV_E2E_BASE_URL: process.env.TSV_E2E_BASE_URL ?? 'http://127.0.0.1:8787' };
+// Not wrangler's default 8787: other projects on this shared box run previews there.
+const env = { ...process.env, TSV_E2E_BASE_URL: process.env.TSV_E2E_BASE_URL ?? 'http://127.0.0.1:8794' };
 // The docs suite only: wrangler dev serves deploy/dist, not the API (tests/smoke/api.smoke.ts).
 const res = spawnSync('npx playwright test tests/smoke/site.smoke.ts', { cwd: ROOT, shell: true, stdio: 'inherit', env });
 process.exit(res.status ?? 1);
