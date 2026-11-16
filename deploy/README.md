@@ -150,6 +150,10 @@ Until then the docs Worker held the host as a **custom domain**, which takes the
 |---|---|---|---|---|
 | 2026-11-16 16:06 | docs | `cacb9cd` | `040de47a-5148-4c86-bdf2-7c08541c4c73` | First deploy, on a custom domain covering the whole host. A person checked DNS: only the `*.madproducts.ai` wildcard, no `tshepovet` record. The smoke gate failed: the CSP blocked the zone's Web Analytics beacon. |
 | 2026-11-16 16:17 | docs | `19e6049` | `fdc86957-11c3-4513-a34a-319dc02476ad` | The CSP allows Web Analytics. 12/12 smoke tests passed live. |
+| 2026-11-16 16:56 | API | `f25f659` | release `20261116-185605-f25f659` | First API deploy on the box (`-SeedSandbox -SkipEdgeCheck`). The full suite passed on the box, 82/82, on PostgreSQL 18 and Redis 8. The sandbox tenant was seeded, and a sandbox company check at the origin completed. |
+| 2026-11-16 16:59 | cutover | | | The Worker's custom domain was detached, so the host fell back to the `*.madproducts.ai` wildcard and reached IIS. |
+| 2026-11-16 17:01 | docs | `c491448` | `2c8ec653-48b4-4e85-b542-d9515a5d48fc` | Docs on the `/docs*` and `/robots.txt` routes. `/docs` was unreachable for under 2 minutes. The gate passed: 10 tests at once, 2 only on retry. Their first attempts, both on `/docs/database-schema` just after the switch, saw a policy blocking the page's own scripts. A re-run with no retries passed 24/24, and 12 fetches all carried the right CSP. |
+| 2026-11-16 17:06 | API (IIS) | | | `web.config` blanks ARR's `X-Powered-By: ARR/3.0`. The API smoke suite passed 5/5 through Cloudflare, including the sandbox company check. The purge task ran once by hand and exited 0. |
 
 ## What the docs build does (tools/build-site.mjs)
 

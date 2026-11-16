@@ -29,7 +29,9 @@ test('/healthz answers, with the security headers and no server banner', async (
   expect(h['x-content-type-options']).toBe('nosniff');
   expect(h['x-frame-options']).toBe('DENY');
   expect(h['x-robots-tag']).toBe('noindex, nofollow');
-  expect(h['x-powered-by']).toBeUndefined();
+  // Express sends none; IIS ARR adds "ARR/3.0", which web.config blanks (ARR cannot be
+  // made to drop the header itself). Absent or empty both reveal nothing.
+  expect(h['x-powered-by'] ?? '').toBe('');
 });
 
 test('the API refuses a call without a key', async ({ request }) => {
