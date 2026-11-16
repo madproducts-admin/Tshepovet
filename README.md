@@ -47,7 +47,7 @@ With `ENABLED_PROVIDERS=mock` (the default outside production), live keys hit th
 ## Tests
 
 ```bash
-npm test            # 81 tests: unit + integration
+npm test            # 82 tests: unit + integration
 npm run typecheck
 ```
 
