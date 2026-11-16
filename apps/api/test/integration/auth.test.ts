@@ -278,7 +278,7 @@ describe('team: invitations and roles', () => {
 
     const token = await tokenFrom('buyer@team.example', 'invite');
     const anon = await new Browser().init();
-    const peek = await anon.get(`/api/auth/invitations/${token}`);
+    const peek = await anon.post(`/api/auth/invitations/lookup`, { token });
     expect(peek.body).toMatchObject({ organisation: 'Team (Pty) Ltd', email: 'buyer@team.example', role: 'procurement' });
 
     const member = await new Browser().init();

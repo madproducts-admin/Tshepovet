@@ -307,7 +307,7 @@ export function AcceptInvite() {
       setInvite('gone');
       return;
     }
-    api<{ organisation: string; email: string; role: string }>(`/api/auth/invitations/${token}`)
+    api<{ organisation: string; email: string; role: string }>('/api/auth/invitations/lookup', { method: 'POST', body: { token } })
       .then(setInvite)
       .catch(() => setInvite('gone'));
   }, [token]);

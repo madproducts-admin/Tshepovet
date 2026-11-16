@@ -130,7 +130,7 @@ export const API_ROUTES: ApiRoute[] = [
   r({ method: 'GET', path: '/api/auth/sessions', tag: 'Accounts', summary: 'My signed-in sessions', access: 'session', status: 200 }),
   r({ method: 'DELETE', path: '/api/auth/sessions/{id}', tag: 'Accounts', summary: 'End one of my sessions', access: 'session', status: 204 }),
   r({ method: 'POST', path: '/api/auth/sessions/revoke-others', tag: 'Accounts', summary: 'Sign out everywhere else', access: 'session', status: 200 }),
-  r({ method: 'GET', path: '/api/auth/invitations/{token}', tag: 'Accounts', summary: 'Look at an invitation before accepting it', access: 'public', status: 200 }),
+  r({ method: 'POST', path: '/api/auth/invitations/lookup', tag: 'Accounts', summary: 'Look at an invitation before accepting it', access: 'public', body: TokenSchema, status: 200 }),
   r({ method: 'POST', path: '/api/auth/invitations/accept', tag: 'Accounts', summary: 'Accept an invitation', access: 'public', body: AcceptInviteSchema, status: 201 }),
 
   // --- Team (M2) ------------------------------------------------------------------------

@@ -163,10 +163,16 @@ export class AuthController {
     return { ended: await this.auth.c.sessions.destroyAll('user', req.portal!.session.subjectId, req.portal!.token) };
   }
 
-  @Get('invitations/:token')
-  async invitation(@Param('token') token: string) {
-    if (!/^[A-Za-z0-9_-]{43}$/.test(token)) throw new ApiError(404, 'not_found', 'This invitation has expired or was already used.');
-    const peek = await this.auth.c.accounts.peekInvite(tokenHash(token));
+  /**
+   * Who sent an invitation, before accepting it. The token travels in the body, never in the
+   * path: paths end up in proxy and server logs, and the token is a credential.
+   */
+  @Post('invitations/lookup')
+  @HttpCode(200)
+  async invitation(@Req() req: Request) {
+    const parsed = TokenSchema.safeParse(req.body);
+    if (!parsed.success) throw new ApiError(404, 'not_found', 'This invitation has expired or was already used.');
+    const peek = await this.auth.c.accounts.peekInvite(tokenHash(parsed.data.token));
     if (!peek) throw new ApiError(404, 'not_found', 'This invitation has expired or was already used.');
     return { organisation: peek.legal_name, email: peek.email, role: peek.role, expires_at: peek.expires_at };
   }
