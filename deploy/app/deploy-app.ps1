@@ -18,7 +18,8 @@
        C:\ProgramData\MADProducts\tshepovet\sandbox-tenant.json (never printed)
     6. switch both services to the new release; if the API is not healthy in 60 s, both go
        back to the previous release
-    7. check https://tshepovet.madproducts.ai/healthz through Cloudflare
+    7. check https://tshepovet.madproducts.ai/healthz through Cloudflare, then run the API
+       smoke suite there (with the sandbox key, so a real sandbox company check runs)
     8. keep the newest three releases
 
   -Rollback switches both services to the release before the live one. Migrations are
@@ -237,6 +238,16 @@ try {
         $edge = Test-Native 'curl.exe' @('-s', '--max-time', '20', "https://$($p.Host)/healthz?cb=$(Get-Random)")
         if ($edge.Out -notmatch '"ok":\s*true') { throw "https://$($p.Host)/healthz answered: $($edge.Out)" }
         Ok "https://$($p.Host)/healthz -> $($edge.Out)"
+
+        Step 'API smoke suite through Cloudflare (tests/smoke/api.smoke.ts)'
+        # The sandbox key reaches the suite through the environment only; it is never printed.
+        if (Test-Path -LiteralPath $p.SandboxFile) {
+            $env:TSV_SANDBOX_API_KEY = ((Get-Content -LiteralPath $p.SandboxFile -Raw) | ConvertFrom-Json).api_keys.test
+        }
+        $env:TSV_E2E_BASE_URL = "https://$($p.Host)"
+        try { Invoke-Step 'API smoke suite' { & npx playwright test tests/smoke/api.smoke.ts --reporter=line } }
+        catch { throw "$_ - the new release is live; roll back with deploy\app\deploy-app.ps1 -Rollback if it is the cause" }
+        finally { Remove-Item Env:\TSV_SANDBOX_API_KEY, Env:\TSV_E2E_BASE_URL -ErrorAction SilentlyContinue }
     }
 
     # -- 8. Prune --------------------------------------------------------------------------

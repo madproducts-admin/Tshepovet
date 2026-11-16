@@ -22,7 +22,8 @@
     "test:unit:no-services": "vitest run tests/unit --exclude tests/unit/waterfall.test.ts",
     "db:seed": "tsx scripts/seed-dev.ts",
     "site:build": "node tools/build-site.mjs && node tools/assemble-deploy.mjs",
-    "site:smoke": "playwright test",
+    "site:smoke": "playwright test tests/smoke/site.smoke.ts",
+    "app:smoke": "playwright test tests/smoke/api.smoke.ts",
     "site:smoke:local": "node tools/smoke-local.mjs",
     "deploy": "node tools/deploy.mjs",
     "deploy:dry": "node tools/deploy.mjs --dry-run"

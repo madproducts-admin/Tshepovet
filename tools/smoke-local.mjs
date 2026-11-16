@@ -16,5 +16,6 @@ if (!existsSync(join(ROOT, 'deploy/dist/_headers'))) {
   process.exit(1);
 }
 const env = { ...process.env, TSV_E2E_BASE_URL: process.env.TSV_E2E_BASE_URL ?? 'http://127.0.0.1:8787' };
-const res = spawnSync('npx playwright test', { cwd: ROOT, shell: true, stdio: 'inherit', env });
+// The docs suite only: wrangler dev serves deploy/dist, not the API (tests/smoke/api.smoke.ts).
+const res = spawnSync('npx playwright test tests/smoke/site.smoke.ts', { cwd: ROOT, shell: true, stdio: 'inherit', env });
 process.exit(res.status ?? 1);
