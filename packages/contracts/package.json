@@ -6,9 +6,10 @@
   "license": "UNLICENSED",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "dependencies": {
-    "@tshepovet/core": "0.2.0",
     "zod": "^4.6.7"
   }
 }

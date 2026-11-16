@@ -31,7 +31,11 @@
     "app:smoke": "playwright test tests/smoke/api.smoke.ts",
     "site:smoke:local": "node tools/smoke-local.mjs",
     "deploy": "node tools/deploy.mjs",
-    "deploy:dry": "node tools/deploy.mjs --dry-run"
+    "deploy:dry": "node tools/deploy.mjs --dry-run",
+    "web:dev": "npm run dev --workspace @tshepovet/web",
+    "web:build": "npm run build --workspace @tshepovet/web",
+    "web:typecheck": "npm run typecheck --workspace @tshepovet/web",
+    "web:test": "playwright test -c apps/web/playwright.config.ts"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",

@@ -1,4 +1,4 @@
-import { LICENCE_CODES, PRDP_CATEGORIES } from '@tshepovet/core';
+import { LICENCE_CODES, PRDP_CATEGORIES } from '../domain';
 import { z } from 'zod';
 import { ActorSchema, Cents, ListQuerySchema, pageSchema, PortalConsentSchema, Timestamp, Uuid } from './common';
 
