@@ -37,6 +37,16 @@ $jobsAcct = "NT SERVICE\$($p.JobsService)"
 if (-not (Test-Path -LiteralPath $p.SecretsFile)) { throw "no $($p.SecretsFile): run deploy\app\install-box.ps1 first" }
 $S = Read-SecretsFile $p.SecretsFile
 
+# This script stages the single-package layout (dist/server.js). The workspace layout
+# (apps/api, packages/*, later apps/web) needs a new staging step, new service entry points
+# (apps/api/dist/main.js, apps/api/dist/worker.js) and the worker replacing tshepovet-webhooks
+# and the purge task: all part of docs/PLAN.md M10, built and tested together with the web
+# service. Until then, refuse rather than ship a release that cannot start. -Rollback only
+# switches between releases already on disk, so it still works.
+if (-not $Rollback -and (Test-Path -LiteralPath (Join-Path $repo 'apps\api\package.json'))) {
+    throw 'deploy-app.ps1 is not updated for the workspace layout yet (docs/PLAN.md M10). The live sandbox deploys from branch deploy/app.'
+}
+
 function Get-Releases {
     @(Get-ChildItem -LiteralPath $p.ReleaseRoot -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^\d{8}-\d{6}-[0-9a-f]{7}$' } | Sort-Object Name)
 }

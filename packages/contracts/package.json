@@ -1,0 +1,14 @@
+{
+  "name": "@tshepovet/contracts",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Request and response schemas shared by the TshepoVet API and web app (zod); the OpenAPI documents follow them.",
+  "license": "UNLICENSED",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "dependencies": {
+    "@tshepovet/core": "0.2.0",
+    "zod": "^4.6.7"
+  }
+}

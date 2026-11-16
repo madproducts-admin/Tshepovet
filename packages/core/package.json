@@ -1,0 +1,17 @@
+{
+  "name": "@tshepovet/core",
+  "version": "0.2.0",
+  "private": true,
+  "description": "TshepoVet domain: SA rules, waterfall, providers, cache, billing, consent, crypto, OCR, WhatsApp state machine. Framework-free.",
+  "license": "UNLICENSED",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
+    "ioredis": "^6.0.0",
+    "pg": "^8.23.1",
+    "pino": "^10.4.0",
+    "zod": "^4.6.7"
+  }
+}

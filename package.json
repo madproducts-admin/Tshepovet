@@ -1,6 +1,6 @@
 {
   "name": "tshepovet",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "TshepoVet - low-cost B2B vendor onboarding, KYB and continuous compliance for South Africa",
   "license": "UNLICENSED",
@@ -8,19 +8,24 @@
   "engines": {
     "node": ">=20"
   },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "start": "node dist/server.js",
-    "dev": "tsx watch src/server.ts",
-    "worker:webhooks": "tsx src/workers/webhookDispatcher.ts",
-    "worker:purge": "tsx src/workers/retentionPurge.ts",
+    "build": "tsc -b packages/core packages/contracts apps/api",
+    "typecheck": "tsc -b packages/core packages/contracts apps/api",
+    "clean": "tsc -b --clean packages/core packages/contracts apps/api",
+    "start": "node apps/api/dist/main.js",
+    "start:worker": "node apps/api/dist/worker.js",
+    "dev": "tsx watch apps/api/src/main.ts",
+    "dev:worker": "tsx watch apps/api/src/worker.ts",
     "db:migrate": "tsx scripts/migrate.ts",
-    "test": "vitest run",
-    "test:unit": "vitest run tests/unit",
-    "test:integration": "vitest run tests/integration",
-    "test:unit:no-services": "vitest run tests/unit --exclude tests/unit/waterfall.test.ts",
     "db:seed": "tsx scripts/seed-dev.ts",
+    "test": "vitest run",
+    "test:unit": "vitest run packages",
+    "test:integration": "vitest run apps/api/test/integration",
+    "test:unit:no-services": "vitest run packages --exclude packages/core/test/waterfall.test.ts",
     "site:build": "node tools/build-site.mjs && node tools/assemble-deploy.mjs",
     "site:smoke": "playwright test tests/smoke/site.smoke.ts",
     "app:smoke": "playwright test tests/smoke/api.smoke.ts",
@@ -28,17 +33,9 @@
     "deploy": "node tools/deploy.mjs",
     "deploy:dry": "node tools/deploy.mjs --dry-run"
   },
-  "dependencies": {
-    "@anthropic-ai/sdk": "^1.8.0",
-    "express": "^4.22.3",
-    "ioredis": "^6.0.0",
-    "pg": "^8.23.1",
-    "pino": "^10.4.0",
-    "zod": "^4.6.7"
-  },
   "devDependencies": {
     "@playwright/test": "1.63.0",
-    "@types/express": "^4.17.25",
+    "@types/express": "^5.0.3",
     "@types/node": "^22.20.5",
     "@types/pg": "^8.23.1",
     "@types/supertest": "^7.2.1",

@@ -165,6 +165,11 @@ db/migrations/ 0001, 0002 unchanged; 0003+ add what the new features need (§5)
 | M9 | Hardening | security review (auth, CSRF, CSP, RLS, IDOR, injection, upload handling), accessibility audit, performance budgets, load test of the check path, docs updated |
 | M10 | Ship | box: Redis AOF, the `tshepovet-web` and `tshepovet-worker` services, IIS routing, deploy script for all three with rollback. Live: all smoke suites pass, Lighthouse and axe pass, and the owner looks at it |
 
+**Carried into M10 from M1.** `deploy/app/deploy-app.ps1` still stages the single-package layout, so it refuses to run on this branch. It needs:
+- **Staging:** copy each workspace's `package.json` and `dist/` and run `npm ci --omit=dev`. When reusing the previous release's `node_modules`, skip the `@tshepovet/*` junctions (`robocopy /XJD`) and re-link them to the new release, or the old release's code would ship.
+- **Services:** `tshepovet-api` runs `apps\api\dist\main.js`. A new `tshepovet-worker` runs `apps\api\dist\worker.js` and replaces both `tshepovet-webhooks` (stop, then uninstall) and the hourly purge task (unregister; `run-purge.ps1` goes).
+- **Gates:** `deploy\app\run-tests.ps1` (the full suite on the box) instead of the inline test environment.
+
 ## 8. Blocked on the owner (none of it stops the build)
 
 - **Bureau and payment contracts:** bureau contracts and credentials (XDS, CPB, SearchWorks, VerifyID), and confirmation of which bureaus offer TCS and eNaTIS; a payment provider for top-ups (the fleet default is Paddle via Cloud).
