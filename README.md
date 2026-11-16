@@ -73,7 +73,14 @@ src/
   ocr/                Claude structured extraction, deterministic post-validation
   workers/            webhook dispatcher, retention purge
 tests/unit, tests/integration
+docs/pages/           the design pages (HTML); also the docs site's source
+deploy/site/          docs site: wrangler.toml + site-only files (404, robots.txt)
+tools/                docs site: build, assemble, deploy; tests/smoke is its Playwright suite
 ```
+
+## Docs site
+
+The design pages in `docs/pages/` are published at https://tshepovet.madproducts.ai, a static Cloudflare Worker (`tshepovet-site`) kept out of search engines. The API is not deployed there. `npm run deploy:dry` runs everything short of the upload, and `npm run deploy` publishes and verifies. Rollback, credentials and quirks are in [deploy/README.md](deploy/README.md).
 
 ## Known gaps before production
 

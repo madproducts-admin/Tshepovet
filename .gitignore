@@ -5,3 +5,10 @@ dist/
 !.env.example
 coverage/
 *.log
+
+# docs site (tools/build-site.mjs, tools/assemble-deploy.mjs, Playwright, wrangler)
+build/
+deploy/dist/
+test-results/
+playwright-report/
+.wrangler/

@@ -1,0 +1,23 @@
+{
+  "$comment": "The docs site at tshepovet.madproducts.ai. One source for the build, assemble, deploy and smoke steps. 'artifact' is the private claude.ai page each source file was first published as; links to it are rewritten to 'path' at build time.",
+  "worker": "tshepovet-site",
+  "host": "tshepovet.madproducts.ai",
+  "zone": "madproducts.ai",
+  "liveUrl": "https://tshepovet.madproducts.ai",
+  "buildIdMeta": "build-id",
+  "pages": [
+    { "source": "docs/pages/readme.html", "out": "index.html", "path": "/", "artifact": "TffwU1tZSYPskHMrim4vMt" },
+    { "source": "docs/pages/architecture-compliance.html", "out": "architecture-compliance.html", "path": "/architecture-compliance", "artifact": "MP58H22t29JpVKY7b9vtPW" },
+    { "source": "docs/pages/whatsapp-onboarding.html", "out": "whatsapp-onboarding.html", "path": "/whatsapp-onboarding", "artifact": "1ZUwVgHKksnCriUEyjua3o" },
+    { "source": "docs/pages/database-schema.html", "out": "database-schema.html", "path": "/database-schema", "artifact": "FiCj3NRZZ1YG5DTcPG3Abb" },
+    { "source": "docs/pages/verification-api.html", "out": "verification-api.html", "path": "/verification-api", "artifact": "9zS9q39GCCbB5F8ysAVU9R" }
+  ],
+  "notFound": { "source": "deploy/site/static/404.html", "out": "404.html" },
+  "staticFiles": ["favicon.svg", "robots.txt"],
+  "siteCss": "deploy/site/static/site.css",
+  "csp": {
+    "styleOrigins": ["https://fonts.googleapis.com"],
+    "fontOrigins": ["https://fonts.gstatic.com"]
+  },
+  "fonts": ["IBM Plex Sans"]
+}

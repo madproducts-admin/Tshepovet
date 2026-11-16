@@ -1,0 +1,38 @@
+# TshepoVet docs site: the five design pages from docs/pages/, served as static
+# files at https://tshepovet.madproducts.ai. Same deploy pattern as Mia's
+# Crowns (D:\applications\MiasCrowns.com\deploy\site\wrangler.toml), minus
+# everything only the shop needs: there is no Worker code at all (no `main`),
+# no KV, R2, Hyperdrive, Durable Objects or crons. The API is not deployed here.
+#
+# Deploy:    npm run deploy        (npm run deploy:dry stops before wrangler)
+# Rollback:  npx wrangler rollback --name tshepovet-site
+# Runbook:   deploy/README.md
+#
+# Static assets: deploy/dist, assembled by tools/assemble-deploy.mjs from
+# build/site (tools/build-site.mjs). Security and caching headers come from the
+# _headers file the assemble step writes there.
+
+name = "tshepovet-site"
+compatibility_date = "2026-11-01"
+
+# The custom domain is the only public address: no *.workers.dev URL and no
+# per-version preview URLs, so the noindex site has exactly one host.
+workers_dev = false
+preview_urls = false
+
+[assets]
+directory = "../dist"
+# A multi-page site, not an SPA: an unknown path gets 404.html with status 404.
+not_found_handling = "404-page"
+# /database-schema serves database-schema.html, and /database-schema.html
+# redirects to it. index.html is served at /.
+html_handling = "auto-trailing-slash"
+
+# Cloudflare creates the DNS record and the certificate for a custom domain
+# itself. A record of the same name would be REPLACED: wrangler only asks on a
+# terminal, and tools/deploy.mjs runs it without one, so the deploy script
+# checks first and refuses (see deploy/README.md). The zone's proxied
+# *.madproducts.ai wildcard is a different name and is left alone.
+[[routes]]
+pattern = "tshepovet.madproducts.ai"
+custom_domain = true
