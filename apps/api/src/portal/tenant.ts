@@ -117,3 +117,17 @@ export async function canViewSpecialPi(client: PoolClient, userId: string): Prom
   const r = await client.query<{ v: boolean }>(`SELECT can_view_special_pi AS v FROM tenant_users WHERE id = $1`, [userId]);
   return r.rows[0]?.v ?? false;
 }
+
+const OFFSET_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?([+-]\d{2}(:?\d{2})?|Z)$/;
+/**
+ * JSON built in the database (jsonb) writes instants with the session's time-zone offset;
+ * the API speaks UTC ("...Z"). Rewrites every instant in a value, leaving calendar days alone.
+ */
+export function utcInstants<T>(value: T): T {
+  if (typeof value === 'string') return (OFFSET_INSTANT.test(value) ? new Date(value).toISOString() : value) as T;
+  if (Array.isArray(value)) return value.map(utcInstants) as T;
+  if (value && typeof value === 'object' && !(value instanceof Date)) {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, utcInstants(v)])) as T;
+  }
+  return value;
+}

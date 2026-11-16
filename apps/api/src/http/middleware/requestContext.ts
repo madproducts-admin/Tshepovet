@@ -15,6 +15,8 @@ declare global {
       portal?: { token: string; session: import('@tshepovet/core').SessionData };
       /** The staff-console session, when the staff cookie is valid. */
       staff?: { token: string; session: import('@tshepovet/core').SessionData };
+      /** A supplier contact's self-service session (/api/vendor), with the supplier it speaks for. */
+      vendor?: { token: string; session: import('@tshepovet/core').SessionData; vendorId: string };
     }
   }
 }

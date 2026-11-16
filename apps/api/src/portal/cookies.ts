@@ -9,13 +9,22 @@ import type { Response } from 'express';
 export interface CookieNames {
   userSession: string;
   staffSession: string;
+  vendorSession: string;
   userCsrf: string;
   staffCsrf: string;
+  vendorCsrf: string;
 }
 
 export function cookieNames(secure: boolean): CookieNames {
   const p = secure ? '__Host-' : '';
-  return { userSession: `${p}tv_session`, staffSession: `${p}tv_staff_session`, userCsrf: `${p}tv_csrf`, staffCsrf: `${p}tv_staff_csrf` };
+  return {
+    userSession: `${p}tv_session`,
+    staffSession: `${p}tv_staff_session`,
+    vendorSession: `${p}tv_vendor_session`,
+    userCsrf: `${p}tv_csrf`,
+    staffCsrf: `${p}tv_staff_csrf`,
+    vendorCsrf: `${p}tv_vendor_csrf`,
+  };
 }
 
 export function parseCookies(header: string | undefined): Record<string, string> {

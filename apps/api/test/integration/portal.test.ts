@@ -92,7 +92,8 @@ describe('the route table', () => {
     for (const C of controllers) {
       const base = Reflect.getMetadata('path', C) as string;
       for (const name of Object.getOwnPropertyNames(C.prototype)) {
-        const fn = (C.prototype as Record<string, unknown>)[name];
+        // Read the descriptor, never the property: a getter would run against the prototype.
+        const fn = Object.getOwnPropertyDescriptor(C.prototype, name)?.value as unknown;
         if (name === 'constructor' || typeof fn !== 'function') continue;
         const p = Reflect.getMetadata('path', fn) as string | string[] | undefined;
         const m = Reflect.getMetadata('method', fn) as RequestMethod | undefined;

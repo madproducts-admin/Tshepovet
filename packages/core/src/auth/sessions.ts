@@ -8,7 +8,8 @@ import { newOpaqueToken, tokenHash } from './tokens';
  * (refreshed on use) and an absolute lifetime. A per-subject index lets a user list and end
  * their sessions, and lets a password change end all of them.
  */
-export type SessionKind = 'user' | 'staff';
+/** user: a buyer's team member; staff: TshepoVet staff; vendor: a supplier's contact (self-service). */
+export type SessionKind = 'user' | 'staff' | 'vendor';
 
 /** 'full': normal access. 'mfa_setup': a role that must use MFA has not enrolled yet - only
  * the enrolment endpoints and sign-out are allowed until it does. */

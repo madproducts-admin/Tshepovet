@@ -106,14 +106,23 @@ export class AuthService {
     return `${this.c.config.APP_URL}${path}#token=${token}`; // fragment: never sent to a server or logged
   }
 
+  /** The session and csrf cookie names for a kind of session. */
+  cookiesFor(kind: SessionKind) {
+    return kind === 'staff'
+      ? { session: this.names.staffSession, csrf: this.names.staffCsrf }
+      : kind === 'vendor'
+        ? { session: this.names.vendorSession, csrf: this.names.vendorCsrf }
+        : { session: this.names.userSession, csrf: this.names.userCsrf };
+  }
+
   /** A fresh csrf cookie for a visitor without a session (sign-in, sign-up forms). */
   issueCsrf(res: Response, kind: SessionKind): string {
     const csrf = crypto.randomBytes(32).toString('base64url');
-    setCookie(res, kind === 'staff' ? this.names.staffCsrf : this.names.userCsrf, csrf, { secure: this.c.cookieSecure, httpOnly: false });
+    setCookie(res, this.cookiesFor(kind).csrf, csrf, { secure: this.c.cookieSecure, httpOnly: false });
     return csrf;
   }
 
-  private async startSession(req: Request, res: Response, kind: SessionKind, subjectId: string, tenantId: string | null, role: string, stage: 'full' | 'mfa_setup') {
+  async startSession(req: Request, res: Response, kind: SessionKind, subjectId: string, tenantId: string | null, role: string, stage: 'full' | 'mfa_setup') {
     const { token, data } = await this.c.sessions.create({
       kind,
       subjectId,
@@ -124,8 +133,8 @@ export class AuthService {
       userAgent: req.header('user-agent')?.slice(0, 200) ?? null,
     });
     const secure = this.c.cookieSecure;
-    setCookie(res, kind === 'staff' ? this.names.staffSession : this.names.userSession, token, { secure, httpOnly: true });
-    setCookie(res, kind === 'staff' ? this.names.staffCsrf : this.names.userCsrf, data.csrf, { secure, httpOnly: false });
+    setCookie(res, this.cookiesFor(kind).session, token, { secure, httpOnly: true });
+    setCookie(res, this.cookiesFor(kind).csrf, data.csrf, { secure, httpOnly: false });
     return { token, data };
   }
 

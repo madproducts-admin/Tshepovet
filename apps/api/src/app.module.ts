@@ -16,6 +16,9 @@ import { StaffAuthController } from './portal/staff-auth.controller';
 import { SuppliersController } from './portal/suppliers.controller';
 import { TeamController } from './portal/team.controller';
 import { WalletController } from './portal/wallet.controller';
+import { OnboardingController } from './supplier/onboarding.controller';
+import { PassportController } from './supplier/passport.controller';
+import { VendorController, VendorGuard } from './supplier/vendor.controller';
 
 /**
  * The HTTP application. The domain services come in pre-built (CONTAINER) instead of being
@@ -33,6 +36,7 @@ export class AppModule {
         { provide: AuthService, useFactory: (c: Container) => new AuthService(c), inject: [CONTAINER] },
         PortalGuard,
         StaffGuard,
+        VendorGuard,
       ],
       controllers: [
         HealthController,
@@ -50,6 +54,9 @@ export class AppModule {
         ModulesController,
         DevelopersController,
         ComplianceController,
+        OnboardingController,
+        VendorController,
+        PassportController,
       ],
     };
   }

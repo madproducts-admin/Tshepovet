@@ -57,6 +57,25 @@ import {
   SupplierStatusChangeSchema,
   UpdateSupplierSchema,
 } from './suppliers';
+import {
+  InviteSupplierSchema,
+  OnboardingBankSchema,
+  OnboardingCompanySchema,
+  OnboardingSampleSchema,
+  OnboardingSkipSchema,
+  OnboardingStartSchema,
+  OnboardingStateSchema,
+  OnboardingSubmitSchema,
+  OnboardingTaxSchema,
+  PassportVerifyRequestSchema,
+  PassportVerifyResultSchema,
+  PublicPassportSchema,
+  SupplierInviteSchema,
+  VendorPassportUpdateSchema,
+  VendorPortalSchema,
+  VendorRequestSchema,
+  VendorWithdrawSchema,
+} from './supplier-side';
 import { HoldSchema, LedgerPageSchema, LedgerQuerySchema, TopupPageSchema, TopupRequestSchema, TopupResultSchema, UpdateWalletSchema, WalletSchema } from './wallet';
 
 /**
@@ -65,14 +84,15 @@ import { HoldSchema, LedgerPageSchema, LedgerQuerySchema, TopupPageSchema, Topup
  * NestJS controllers actually register, both ways, so neither can drift from the other.
  *
  * access: 'public' needs nothing; 'session' a signed-in portal user (plus `permission`);
- * 'staff' a signed-in staff member. POST/PATCH/PUT/DELETE also need the X-CSRF-Token header.
+ * 'staff' a signed-in staff member; 'vendor' a signed-in supplier contact; 'onboarding' the
+ * invitation token in the X-Onboarding-Token header. POST/PATCH/PUT/DELETE also need the X-CSRF-Token header.
  */
 export interface ApiRoute {
   method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
   path: string;
   tag: string;
   summary: string;
-  access: 'public' | 'session' | 'staff';
+  access: 'public' | 'session' | 'staff' | 'vendor' | 'onboarding';
   permission?: Permission;
   /** Reachable while the session must still enrol in two-step verification. */
   mfaSetupAllowed?: boolean;
@@ -157,6 +177,10 @@ export const API_ROUTES: ApiRoute[] = [
   r({ method: 'POST', path: '/api/saved-views', tag: 'Suppliers', summary: 'Save a list view', access: 'session', permission: 'suppliers:read', body: CreateSavedViewSchema, response: SavedViewSchema, status: 201 }),
   r({ method: 'DELETE', path: '/api/saved-views/{id}', tag: 'Suppliers', summary: 'Delete a saved view', access: 'session', permission: 'suppliers:read', status: 204 }),
 
+  r({ method: 'GET', path: '/api/suppliers/{id}/invitations', tag: 'Suppliers', summary: 'Onboarding invitations sent to the supplier', access: 'session', permission: 'suppliers:read', response: z.array(SupplierInviteSchema), status: 200 }),
+  r({ method: 'POST', path: '/api/suppliers/{id}/invitations', tag: 'Suppliers', summary: 'Invite the supplier to onboard itself', access: 'session', permission: 'suppliers:write', body: InviteSupplierSchema, response: SupplierInviteSchema, status: 201 }),
+  r({ method: 'DELETE', path: '/api/suppliers/{id}/invitations/{inviteId}', tag: 'Suppliers', summary: 'Withdraw an invitation', access: 'session', permission: 'suppliers:write', status: 204 }),
+
   // --- Checks ---------------------------------------------------------------------------
   r({ method: 'GET', path: '/api/checks/prices', tag: 'Checks', summary: 'What each check costs, and the balance', access: 'session', permission: 'checks:run', response: CheckPricesSchema, status: 200 }),
   r({ method: 'POST', path: '/api/checks/company', tag: 'Checks', summary: 'Run a company check (200 done, 202 still running)', access: 'session', permission: 'checks:run', body: PortalCompanyCheckSchema, response: PortalVerificationSchema, status: 200 }),
@@ -212,6 +236,30 @@ export const API_ROUTES: ApiRoute[] = [
   r({ method: 'PATCH', path: '/api/compliance/requests/{id}', tag: 'Compliance', summary: 'Update a data-subject request', access: 'session', permission: 'compliance:manage', body: UpdateDsrSchema, response: DsrSchema, status: 200 }),
   r({ method: 'GET', path: '/api/audit', tag: 'Compliance', summary: 'Audit log (newest first)', access: 'session', permission: 'audit:read', query: AuditQuerySchema, response: AuditListSchema, status: 200 }),
   r({ method: 'POST', path: '/api/audit/verify', tag: 'Compliance', summary: 'Check the audit log’s hash chain', access: 'session', permission: 'audit:read', response: ChainVerificationSchema, status: 200 }),
+
+  // --- Supplier onboarding (the invitation token in X-Onboarding-Token) --------------------
+  r({ method: 'GET', path: '/api/onboarding', tag: 'Onboarding', summary: 'Where the supplier is in onboarding', access: 'onboarding', response: OnboardingStateSchema, status: 200 }),
+  r({ method: 'POST', path: '/api/onboarding/start', tag: 'Onboarding', summary: 'Agree to the notice; look the company up', access: 'onboarding', body: OnboardingStartSchema, response: OnboardingStateSchema, status: 200 }),
+  r({ method: 'POST', path: '/api/onboarding/company', tag: 'Onboarding', summary: 'Confirm or dispute the company details', access: 'onboarding', body: OnboardingCompanySchema, response: OnboardingStateSchema, status: 200 }),
+  r({ method: 'POST', path: '/api/onboarding/documents', tag: 'Onboarding', summary: 'Add an identity document or B-BBEE evidence', access: 'onboarding', body: OnboardingSampleSchema, response: OnboardingStateSchema, status: 200 }),
+  r({ method: 'POST', path: '/api/onboarding/bank', tag: 'Onboarding', summary: 'Add bank details', access: 'onboarding', body: OnboardingBankSchema, response: OnboardingStateSchema, status: 200 }),
+  r({ method: 'POST', path: '/api/onboarding/tax', tag: 'Onboarding', summary: 'Check tax compliance with a SARS PIN', access: 'onboarding', body: OnboardingTaxSchema, response: OnboardingStateSchema, status: 200 }),
+  r({ method: 'POST', path: '/api/onboarding/skip', tag: 'Onboarding', summary: 'Skip an optional step', access: 'onboarding', body: OnboardingSkipSchema, response: OnboardingStateSchema, status: 200 }),
+  r({ method: 'POST', path: '/api/onboarding/submit', tag: 'Onboarding', summary: 'Submit for the customer review', access: 'onboarding', body: OnboardingSubmitSchema, response: OnboardingStateSchema, status: 200 }),
+
+  // --- Supplier self-service -----------------------------------------------------------------
+  r({ method: 'GET', path: '/api/vendor/auth/csrf', tag: 'Supplier', summary: 'Issue the supplier CSRF cookie and token', access: 'public', response: CsrfView, status: 200 }),
+  r({ method: 'POST', path: '/api/vendor/auth/magic-link', tag: 'Supplier', summary: 'Email a sign-in link to a supplier contact', access: 'public', body: EmailOnlySchema, status: 202 }),
+  r({ method: 'POST', path: '/api/vendor/auth/exchange', tag: 'Supplier', summary: 'Sign in with the emailed link', access: 'public', body: TokenSchema, response: CsrfView, status: 200 }),
+  r({ method: 'POST', path: '/api/vendor/auth/logout', tag: 'Supplier', summary: 'Sign out', access: 'public', status: 204 }),
+  r({ method: 'GET', path: '/api/vendor/me', tag: 'Supplier', summary: 'The supplier passport, customers, consents and requests', access: 'vendor', response: VendorPortalSchema, status: 200 }),
+  r({ method: 'POST', path: '/api/vendor/passport', tag: 'Supplier', summary: 'Publish or withdraw the passport', access: 'vendor', body: VendorPassportUpdateSchema, status: 204 }),
+  r({ method: 'POST', path: '/api/vendor/consents/{id}/withdraw', tag: 'Supplier', summary: 'Withdraw consent', access: 'vendor', body: VendorWithdrawSchema, status: 200 }),
+  r({ method: 'POST', path: '/api/vendor/requests', tag: 'Supplier', summary: 'Ask a customer to show, correct or delete information', access: 'vendor', body: VendorRequestSchema, status: 201 }),
+
+  // --- The public passport ---------------------------------------------------------------------
+  r({ method: 'GET', path: '/api/passport/{publicId}', tag: 'Passport', summary: 'A published Verified Vendor Passport', access: 'public', response: PublicPassportSchema, status: 200 }),
+  r({ method: 'GET', path: '/api/passport/verify', tag: 'Passport', summary: 'Check a printed passport code', access: 'public', query: PassportVerifyRequestSchema, response: PassportVerifyResultSchema, status: 200 }),
 
   // --- Staff (M2; the console comes in M8) ----------------------------------------------
   r({ method: 'GET', path: '/api/staff/auth/csrf', tag: 'Staff', summary: 'Issue the staff CSRF cookie and token', access: 'public', response: CsrfView, status: 200 }),

@@ -76,6 +76,8 @@ export function portalOpenApi(version = '0.3.0'): Json {
       securitySchemes: {
         session: { type: 'apiKey', in: 'cookie', name: '__Host-tv_session', description: 'Set by sign-in. tv_session over plain http in development.' },
         staff: { type: 'apiKey', in: 'cookie', name: '__Host-tv_staff_session' },
+        vendor: { type: 'apiKey', in: 'cookie', name: '__Host-tv_vendor_session', description: 'A supplier contact, signed in with an emailed link.' },
+        onboarding: { type: 'apiKey', in: 'header', name: 'X-Onboarding-Token', description: 'The token from the supplier invitation link.' },
         csrf: { type: 'apiKey', in: 'header', name: 'X-CSRF-Token', description: 'Equal to the csrf cookie and, once signed in, to the session’s token.' },
       },
       responses: {

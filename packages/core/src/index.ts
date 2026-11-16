@@ -26,6 +26,7 @@ export * from './lib/redis';
 export * from './mail/outbox';
 export * from './ocr/extractor';
 export * from './ocr/postValidate';
+export * from './ocr/sandboxExtractor';
 export * from './ocr/schemas';
 export * from './providers/adapters/httpBureau';
 export * from './providers/adapters/mockProvider';

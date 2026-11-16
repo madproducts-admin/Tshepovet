@@ -13,7 +13,10 @@ export type MailTemplate =
   | 'password_changed'
   | 'account_locked'
   | 'invite'
-  | 'mfa_changed';
+  | 'mfa_changed'
+  | 'vendor_invite'
+  | 'vendor_login'
+  | 'supplier_onboarded';
 
 export interface MailVars {
   appUrl: string;
@@ -24,6 +27,7 @@ export interface MailVars {
   inviter?: string | null;
   minutes?: number | null;
   change?: string | null;
+  supplier?: string | null;
 }
 
 const SIGN_OFF = '\n\nTshepoVet\nThis is an automated message; replies are not read.';
@@ -65,6 +69,39 @@ export function renderMail(template: MailTemplate, v: MailVars): { subject: stri
       return {
         subject: `${v.inviter ?? 'A colleague'} invited you to ${v.org ?? 'their organisation'} on TshepoVet`,
         text: `Hi,\n\n${v.inviter ?? 'A colleague'} invited you to join ${v.org ?? 'their organisation'} on TshepoVet as ${v.role ?? 'a team member'}.\n\nAccept the invitation here:\n\n${v.link}\n\nThe link works once and expires in 7 days.${SIGN_OFF}`,
+      };
+    case 'vendor_invite':
+      return {
+        subject: `${v.org ?? 'A customer'} asked you to complete supplier onboarding`,
+        text: `${hi}
+
+${v.org ?? 'One of your customers'} uses TshepoVet to check its suppliers, and asked ${v.supplier ?? 'your company'} to complete onboarding. It takes about ten minutes: your company details, an ID document, and, where they need them, B-BBEE evidence, bank details and a SARS tax compliance PIN.
+
+Start here:
+
+${v.link}
+
+The link works for 14 days. If you did not expect this, ask ${v.org ?? 'your customer'} before you continue.${SIGN_OFF}`,
+      };
+    case 'vendor_login':
+      return {
+        subject: `Sign in to TshepoVet for ${v.supplier ?? 'your company'}`,
+        text: `${hi}
+
+Use this link to see and control ${v.supplier ?? 'your company'}'s information on TshepoVet: your passport, who you share it with, and your consents.
+
+${v.link}
+
+The link works once and expires in 15 minutes. If you did not ask for it, ignore this email.${SIGN_OFF}`,
+      };
+    case 'supplier_onboarded':
+      return {
+        subject: `${v.supplier ?? 'A supplier'} finished onboarding`,
+        text: `${hi}
+
+${v.supplier ?? 'A supplier'} finished onboarding on TshepoVet and is waiting for your review.
+
+Open it here: ${v.link}${SIGN_OFF}`,
       };
     case 'mfa_changed':
       return {

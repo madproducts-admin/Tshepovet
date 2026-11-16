@@ -2,11 +2,12 @@ import { Controller, Delete, Get, HttpCode, Inject, Param, Patch, Post, Req, Res
 import type { Request, Response } from 'express';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import { ApiError, parseEnterpriseNumber } from '@tshepovet/core';
+import { ApiError, enqueueMail, newOpaqueToken, parseEnterpriseNumber } from '@tshepovet/core';
 import {
   AddSupplierSchema,
   AuditQuerySchema,
   CreateSavedViewSchema,
+  InviteSupplierSchema,
   SUPPLIER_SORTS,
   type SupplierListQuery,
   SupplierListQuerySchema,
@@ -341,6 +342,72 @@ export class SuppliersController {
         [id, id, q.before_id ?? null, q.limit + 1],
       );
       return auditPage(rows.rows, q.limit);
+    });
+  }
+
+  // --- Onboarding invitations ---------------------------------------------------------------
+  @Get('suppliers/:id/invitations')
+  @RequirePermission('suppliers:read')
+  async invitations(@Req() req: Request, @Param('id') rawId: string) {
+    const id = uuidParam(rawId, 'That supplier');
+    return inTenant(this.c, req, async (client) => {
+      const r = await client.query(
+        `SELECT id, email::text AS email, contact_name, created_at, expires_at, opened_at, completed_at, revoked_at
+           FROM vendor_invites WHERE tenant_vendor_id = $1 ORDER BY created_at DESC`,
+        [id],
+      );
+      return r.rows;
+    });
+  }
+
+  /** Sends the supplier a link to onboard themselves (14 days; only its hash is stored). */
+  @Post('suppliers/:id/invitations')
+  @HttpCode(201)
+  @RequirePermission('suppliers:write')
+  async invite(@Req() req: Request, @Param('id') rawId: string) {
+    const id = uuidParam(rawId, 'That supplier');
+    const b = InviteSupplierSchema.parse(req.body);
+    const u = me(req);
+    const { token, hash } = newOpaqueToken();
+    return inTenant(this.c, req, async (client) => {
+      const tv = (
+        await client.query<{ status: string; legal_name: string; buyer: string }>(
+          `SELECT tv.status, v.legal_name, t.legal_name AS buyer FROM tenant_vendors tv JOIN vendors v ON v.id = tv.vendor_id JOIN tenants t ON t.id = tv.tenant_id WHERE tv.id = $1`,
+          [id],
+        )
+      ).rows[0];
+      if (!tv) throw notFound('That supplier');
+      if (['rejected', 'offboarded'].includes(tv.status)) throw new ApiError(409, 'supplier_inactive', 'This supplier is rejected or offboarded. Change its status first.');
+      // Only the newest link works.
+      await client.query(`UPDATE vendor_invites SET revoked_at = now() WHERE tenant_vendor_id = $1 AND completed_at IS NULL AND revoked_at IS NULL`, [id]);
+      const r = await client.query(
+        `INSERT INTO vendor_invites (tenant_id, tenant_vendor_id, email, contact_name, token_hash, created_by, expires_at)
+         VALUES ($1, $2, $3, $4, $5, $6, now() + interval '14 days')
+         RETURNING id, email::text AS email, contact_name, created_at, expires_at, opened_at, completed_at, revoked_at`,
+        [u.tenantId, id, b.email, b.contact_name ?? null, hash, u.userId],
+      );
+      await client.query(`UPDATE tenant_vendors SET status = 'invited' WHERE id = $1 AND status = 'onboarding'`, [id]);
+      await enqueueMail(client, {
+        tenantId: u.tenantId,
+        to: b.email,
+        template: 'vendor_invite',
+        vars: { appUrl: this.c.config.APP_URL, name: b.contact_name ?? null, org: tv.buyer, supplier: tv.legal_name, link: `${this.c.config.APP_URL}/onboard#token=${token}` },
+      });
+      await auditBy(client, req, { action: 'supplier.invited', entityType: 'tenant_vendor', entityId: id, details: { invite_id: r.rows[0].id } });
+      return r.rows[0];
+    });
+  }
+
+  @Delete('suppliers/:id/invitations/:inviteId')
+  @HttpCode(204)
+  @RequirePermission('suppliers:write')
+  async revokeInvite(@Req() req: Request, @Param('id') rawId: string, @Param('inviteId') rawInvite: string) {
+    const id = uuidParam(rawId, 'That supplier');
+    const inviteId = uuidParam(rawInvite, 'That invitation');
+    await inTenant(this.c, req, async (client) => {
+      const r = await client.query(`UPDATE vendor_invites SET revoked_at = now() WHERE id = $1 AND tenant_vendor_id = $2 AND completed_at IS NULL AND revoked_at IS NULL`, [inviteId, id]);
+      if (!r.rowCount) throw notFound('An open invitation with that id');
+      await auditBy(client, req, { action: 'supplier.invitation_withdrawn', entityType: 'tenant_vendor', entityId: id, details: { invite_id: inviteId } });
     });
   }
 

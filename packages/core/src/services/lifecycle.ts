@@ -79,8 +79,9 @@ export async function createVerification(client: PoolClient, a: CreateArgs): Pro
   if (hold) await client.query(`UPDATE verifications SET wallet_hold_id = $2 WHERE id = $1`, [verificationId, hold.id]);
   await audit(client, {
     tenantId: a.auth.tenantId,
-    actorType: a.auth.userId ? 'user' : 'api_key',
-    actorId: a.auth.userId ?? a.auth.apiKeyId,
+    // A user (portal), an API key (/v1), or TshepoVet itself (a check started by onboarding).
+    actorType: a.auth.userId ? 'user' : a.auth.apiKeyId ? 'api_key' : 'system',
+    actorId: a.auth.userId ?? a.auth.apiKeyId ?? 'onboarding',
     action: 'verification.created',
     entityType: 'verification',
     entityId: verificationId,
