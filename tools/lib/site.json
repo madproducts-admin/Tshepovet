@@ -16,6 +16,9 @@
   "staticFiles": ["favicon.svg", "robots.txt"],
   "siteCss": "deploy/site/static/site.css",
   "csp": {
+    "$comment": "scriptOrigins/connectOrigins: Cloudflare Web Analytics, which the madproducts.ai zone injects into every HTML page (owner decision 2026-11-16 to allow it, as Mia's Crowns does).",
+    "scriptOrigins": ["https://static.cloudflareinsights.com"],
+    "connectOrigins": ["https://cloudflareinsights.com"],
     "styleOrigins": ["https://fonts.googleapis.com"],
     "fontOrigins": ["https://fonts.gstatic.com"]
   },

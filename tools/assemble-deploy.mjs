@@ -21,19 +21,23 @@ if (!existsSync(join(BUILD, 'build-id.txt'))) {
 }
 
 /**
- * The CSP for this site's own origins. Scripts: 'self' only. Every page script
- * is a file under /assets/ (the build moves them out and fails on any inline
- * script or on* handler), so there is no 'unsafe-inline' and no hash list to
- * keep in step. 'report-sample' puts the first 40 characters of anything
- * blocked into the violation, which is how the smoke suite tells Cloudflare's
- * own injected bot-detection snippet apart from a real regression.
+ * The CSP for this site's own origins. Scripts: 'self', plus Cloudflare Web
+ * Analytics, whose beacon the madproducts.ai zone injects into every HTML page
+ * (static.cloudflareinsights.com) and which reports to cloudflareinsights.com.
+ * Every page script of our own is a file under /assets/ (the build moves them
+ * out and fails on any inline script or on* handler), so there is no
+ * 'unsafe-inline' and no hash list to keep in step. 'report-sample' puts the
+ * first 40 characters of anything blocked into the violation, which is how the
+ * smoke suite tells the zone's inline bot-detection snippet (still blocked)
+ * apart from a real regression.
  * Styles keep 'unsafe-inline': each page carries its CSS in <style>, and the
  * rendered diagrams use style attributes.
  */
 function contentSecurityPolicy(site = SITE) {
   return [
     "default-src 'self'",
-    "script-src 'self' 'report-sample'",
+    `script-src 'self' 'report-sample' ${site.csp.scriptOrigins.join(' ')}`,
+    `connect-src 'self' ${site.csp.connectOrigins.join(' ')}`,
     `style-src 'self' 'unsafe-inline' ${site.csp.styleOrigins.join(' ')}`,
     `font-src 'self' ${site.csp.fontOrigins.join(' ')}`,
     "object-src 'none'",

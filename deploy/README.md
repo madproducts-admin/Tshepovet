@@ -85,6 +85,17 @@ its custom domain. Ask the owner first.
   - The zone's proxied `*.madproducts.ai` wildcard is a different record and is
     not touched. Through that wildcard the host answered Cloudflare 526 before
     the first deploy.
+- **The zone injects Cloudflare Web Analytics.** `madproducts.ai` has Web
+  Analytics on, so every HTML page gets the beacon
+  `https://static.cloudflareinsights.com/beacon.min.js/…`, which reports to
+  `https://cloudflareinsights.com`.
+  - The CSP allows both origins (`script-src` and `connect-src`), as Mia's
+    Crowns' CSP does. The owner chose this on 2026-11-16 after the first
+    deploy's smoke gate failed on the blocked beacon.
+  - The origins live in `tools/lib/site.json` under `csp`. The smoke suite
+    checks the live header against that file.
+  - The beacon is injected at the edge, so it never appears in `build/site`
+    or under `wrangler dev`.
 - **The zone injects Cloudflare's bot "JavaScript detections".** They arrive
   as an inline `<script>` with a per-request ray id, so no CSP hash can allow
   them, and `script-src 'self'` blocks them. The site loses a bot signal and
@@ -97,6 +108,12 @@ its custom domain. Ask the owner first.
   `@playwright/test` is pinned to 1.63.0 because its Chromium (build 1243) is
   already in `%LOCALAPPDATA%\ms-playwright`, shared with Mia's Crowns. A newer
   version would download another browser.
+
+## Deploy history
+
+| Date (UTC) | Build | Worker version | Notes |
+|---|---|---|---|
+| 2026-11-16 16:06 | `cacb9cd` | `040de47a-5148-4c86-bdf2-7c08541c4c73` | First deploy. A person checked DNS (`TSV_DNS_CHECKED`): only the `*.madproducts.ai` wildcard, no `tshepovet` record. The live site, headers and TLS checked out, but the smoke gate failed: the CSP blocked the zone-injected Web Analytics beacon. |
 
 ## What the build does (tools/build-site.mjs)
 
@@ -120,8 +137,8 @@ of each page:
     their frame.
   - The SVGs use one light palette and sit on a light canvas in dark mode too.
 - **Scripts.** Inline scripts move to content-hashed `/assets/*.js` files, so
-  the CSP is `script-src 'self' 'report-sample'`, with no `'unsafe-inline'`
-  and no hashes. Styles keep `'unsafe-inline'`: the pages carry their CSS in
+  the CSP is `script-src 'self' 'report-sample'` plus Cloudflare Web Analytics
+  (see the quirks), with no `'unsafe-inline'` and no hashes. Styles keep `'unsafe-inline'`: the pages carry their CSS in
   `<style>`, and the SVGs use style attributes.
 - **Stamps.** Each page gets `<meta name="build-id">` (the git SHA, with
   `-dirty` if the tree is not clean) and a robots meta tag.

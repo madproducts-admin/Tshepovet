@@ -16,7 +16,12 @@ import { join } from 'node:path';
 import * as tls from 'node:tls';
 
 type SitePage = { source: string; out: string; path: string; artifact: string };
-type Site = { pages: SitePage[]; buildIdMeta: string; fonts: string[] };
+type Site = {
+  pages: SitePage[];
+  buildIdMeta: string;
+  fonts: string[];
+  csp: { scriptOrigins: string[]; connectOrigins: string[] };
+};
 
 const ROOT = join(__dirname, '..', '..');
 const SITE = JSON.parse(readFileSync(join(ROOT, 'tools/lib/site.json'), 'utf8')) as Site;
@@ -150,7 +155,9 @@ test('security, robots and caching headers', async ({ request, baseURL }) => {
   const expected = assembledCsp();
   if (expected) expect(csp).toBe(expected);
   const directives = new Map(csp.split(';').map((d) => d.trim().split(/\s+/)).map(([k, ...v]) => [k, v]));
-  expect(directives.get('script-src')).toEqual(["'self'", "'report-sample'"]);
+  // 'self' plus Cloudflare Web Analytics only: never 'unsafe-inline'.
+  expect(directives.get('script-src')).toEqual(["'self'", "'report-sample'", ...SITE.csp.scriptOrigins]);
+  expect(directives.get('connect-src')).toEqual(["'self'", ...SITE.csp.connectOrigins]);
   expect(directives.get('frame-ancestors')).toEqual(["'none'"]);
   expect(directives.get('object-src')).toEqual(["'none'"]);
 
