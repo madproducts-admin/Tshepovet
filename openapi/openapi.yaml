@@ -52,7 +52,9 @@ security:
   - apiKey: []
 tags:
   - name: Verifications
+    description: Run company and driver checks and retrieve their results.
   - name: Webhooks
+    description: Events TshepoVet sends to your configured HTTPS endpoints.
 paths:
   /verify/company:
     post:
@@ -296,7 +298,7 @@ components:
           examples: [2019/123456/07]
         vat_number: { type: string, pattern: '^4\d{9}$', description: Required when checks includes vat. }
         tax_reference_number: { type: string, pattern: '^[0-39]\d{9}$', description: Income tax reference. Required for tcs. }
-        tcs_pin: { type: string, minLength: 6, maxLength: 20, writeOnly: true, description: SARS Tax Compliance Status PIN. Never returned or logged; stored encrypted only when monitor=true, until the PIN expires. }
+        tcs_pin: { type: string, minLength: 6, maxLength: 20, writeOnly: true, description: 'SARS Tax Compliance Status PIN. Never returned or logged; stored encrypted only when monitor=true, until the PIN expires.' }
         checks:
           type: array
           minItems: 1
@@ -357,7 +359,7 @@ components:
           enum: [verified, verified_with_warnings, failed_checks, not_found, unable_to_verify, null]
         vendor_id: { type: [string, 'null'], format: uuid }
         external_ref: { type: [string, 'null'] }
-        subject: { type: string, description: Normalised enterprise number, or a masked driver identifier. }
+        subject: { type: string, description: 'Normalised enterprise number, or a masked driver identifier.' }
         checks:
           type: object
           properties:

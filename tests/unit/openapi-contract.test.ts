@@ -33,6 +33,21 @@ describe('OpenAPI contract', () => {
     for (const r of refs) expect(resolve(r), r).toBeDefined();
   });
 
+  it('has no text truncated by an unquoted comma in a { } mapping', () => {
+    // `{ description: A, B }` parses as description "A" plus a stray key "B" with a null value.
+    const stray: string[] = [];
+    (function walk(node: unknown, path: string) {
+      if (Array.isArray(node)) node.forEach((v, i) => walk(v, `${path}[${i}]`));
+      else if (node && typeof node === 'object') {
+        for (const [k, v] of Object.entries(node)) {
+          if (/\s/.test(k) && v === null) stray.push(`${path} -> "${k}"`);
+          walk(v, `${path}.${k}`);
+        }
+      }
+    })(spec, '');
+    expect(stray).toEqual([]);
+  });
+
   it('company request examples pass the route validator', () => {
     const examples = spec.paths['/verify/company'].post.requestBody.content['application/json'].examples;
     for (const [name, ex] of Object.entries<{ value: unknown }>(examples)) {
