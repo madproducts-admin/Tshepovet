@@ -360,6 +360,52 @@ describe('staff sign-in', () => {
   });
 });
 
+describe('sessions follow the account (security review fixes)', () => {
+  it('holds a member promoted to admin at MFA setup until they enrol', async () => {
+    const { b: own } = await ownerWithMfa('boss@promote.example', 'Promote (Pty) Ltd');
+    await own.post('/api/team/invitations', { email: 'clerk@promote.example', role: 'ap_clerk' });
+    const member = await new Browser().init();
+    member.adopt(await member.post('/api/auth/invitations/accept', { token: await tokenFrom('clerk@promote.example', 'invite'), full_name: 'Naledi Khumalo', password: PW }));
+    expect((await member.get('/api/team')).status).toBe(200);
+
+    const list = await own.get('/api/team');
+    const m = list.body.members.find((x: { email: string }) => x.email === 'clerk@promote.example');
+    expect((await own.patch(`/api/team/members/${m.id}`, { role: 'admin' })).status).toBe(200);
+
+    const held = await member.get('/api/team');
+    expect(held.status).toBe(403);
+    expect(held.body.code).toBe('mfa_setup_required');
+    expect((await member.get('/api/auth/session')).body.stage).toBe('mfa_setup');
+  });
+
+  it('caps concurrent second-factor guesses and counts them toward the lockout', async () => {
+    const email = 'guess@mfa-cap.example';
+    const { secret } = await ownerWithMfa(email, 'Guess (Pty) Ltd');
+    const b = await new Browser().init();
+    const c = await b.post('/api/auth/login', { email, password: PW });
+    const results = await Promise.all(Array.from({ length: 8 }, () => b.post('/api/auth/mfa', { challenge: c.body.challenge, code: '000000' })));
+    const codes = results.map((r) => r.body.code);
+    expect(codes.filter((x) => x === 'invalid_code').length).toBeLessThanOrEqual(5);
+    expect(results.every((r) => r.status === 401)).toBe(true);
+    // Five wrong codes locked the account: even the right password and a fresh code fail now.
+    const again = await b.post('/api/auth/login', { email, password: PW });
+    expect(again.status).toBe(401);
+    expect(again.body.code).toBe('invalid_credentials');
+    expect(secret).toBeTruthy();
+  });
+
+  it('ends the sessions of a suspended organisation on their next request', async () => {
+    const email = 'member@suspend.example';
+    const b = await signUpVerified(email, 'Suspend (Pty) Ltd');
+    await owner.query(`UPDATE tenant_users SET role = 'viewer' WHERE email = $1`, [email]);
+    b.adopt(await b.post('/api/auth/login', { email, password: PW }));
+    expect((await b.get('/api/auth/session')).status).toBe(200);
+    await owner.query(`UPDATE tenants SET status = 'suspended' WHERE id = (SELECT tenant_id FROM tenant_users WHERE email = $1)`, [email]);
+    expect((await b.get('/api/auth/session')).status).toBe(401);
+    expect((await b.get('/api/team')).status).toBe(401);
+  });
+});
+
 describe('audit trail', () => {
   it('records staff events on the platform chain and keeps every chain intact', async () => {
     const staff = await owner.query(`SELECT count(*)::int AS n FROM audit_log WHERE tenant_id IS NULL AND actor_type = 'tshepovet_staff'`);

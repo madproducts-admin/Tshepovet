@@ -218,13 +218,24 @@ export class AuthService {
   }
 
   async completeMfa(req: Request, res: Response, b: { challenge: string; code?: string; recovery_code?: string }): Promise<SessionView> {
+    await this.limit(req, 'mfa', 30);
+    const expired = () => new ApiError(401, 'challenge_expired', 'This sign-in has expired. Start again.');
     const ch = await this.c.mfa.get(b.challenge);
-    if (!ch || ch.kind !== 'user') throw new ApiError(401, 'challenge_expired', 'This sign-in has expired. Start again.');
+    if (!ch || ch.kind !== 'user') throw expired();
+    // Counted before the check: concurrent guesses cannot exceed the limit.
+    if (!(await this.c.mfa.attempt(b.challenge))) throw expired();
     const u = await this.c.accounts.userById(ch.subjectId);
-    if (!u || u.disabled_at) throw new ApiError(401, 'challenge_expired', 'This sign-in has expired. Start again.');
+    if (!u || u.disabled_at) throw expired();
     if (!(await this.secondFactor('user', u.user_id, u.mfa_secret_enc, b))) {
-      await this.c.mfa.fail(b.challenge);
+      // A wrong second factor also counts toward the account lockout.
+      const { AUTH_MAX_FAILURES: max, AUTH_LOCK_MINUTES: lockMin } = this.c.config;
+      const r = await this.c.accounts.recordLogin(u.user_id, false, max, lockMin);
       await this.audit({ tenantId: u.tenant_id, actorType: 'user', actorId: u.user_id, action: 'account.mfa_failed', entityType: 'user', entityId: u.user_id }, req);
+      if (r?.locked_until) {
+        await this.c.mfa.consume(b.challenge);
+        await this.mail(u.tenant_id, u.email, 'account_locked', { name: u.full_name, minutes: lockMin });
+        await this.audit({ tenantId: u.tenant_id, actorType: 'system', actorId: null, action: 'account.locked', entityType: 'user', entityId: u.user_id }, req);
+      }
       throw new ApiError(401, 'invalid_code', 'That code is not right. Check your authenticator app and try again.');
     }
     await this.c.mfa.consume(b.challenge);
@@ -420,12 +431,18 @@ export class AuthService {
   }
 
   async staffCompleteMfa(req: Request, res: Response, b: { challenge: string; code?: string; recovery_code?: string }): Promise<StaffSessionView> {
+    await this.limit(req, 'staff_mfa', 20);
+    const expired = () => new ApiError(401, 'challenge_expired', 'This sign-in has expired. Start again.');
     const ch = await this.c.mfa.get(b.challenge);
-    if (!ch || ch.kind !== 'staff') throw new ApiError(401, 'challenge_expired', 'This sign-in has expired. Start again.');
+    if (!ch || ch.kind !== 'staff') throw expired();
+    if (!(await this.c.mfa.attempt(b.challenge))) throw expired();
     const st = await this.c.accounts.staffById(ch.subjectId);
-    if (!st || st.disabled_at) throw new ApiError(401, 'challenge_expired', 'This sign-in has expired. Start again.');
+    if (!st || st.disabled_at) throw expired();
     if (!(await this.secondFactor('staff', st.staff_id, st.mfa_secret_enc, b))) {
-      await this.c.mfa.fail(b.challenge);
+      const { AUTH_MAX_FAILURES: max, AUTH_LOCK_MINUTES: lockMin } = this.c.config;
+      const r = await this.c.accounts.staffRecordLogin(st.staff_id, false, max, lockMin);
+      if (r?.locked_until) await this.c.mfa.consume(b.challenge);
+      await this.audit({ tenantId: null, actorType: 'tshepovet_staff', actorId: st.staff_id, action: 'staff.mfa_failed', entityType: 'staff', entityId: st.staff_id }, req);
       throw new ApiError(401, 'invalid_code', 'That code is not right.');
     }
     await this.c.mfa.consume(b.challenge);

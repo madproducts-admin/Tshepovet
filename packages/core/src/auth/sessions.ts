@@ -154,12 +154,11 @@ export class SessionStore {
 
 /**
  * A pending second factor: password accepted, TOTP or recovery code still to come. Lives five
- * minutes, allows five attempts, and is single-use.
+ * minutes, allows MAX_ATTEMPTS guesses (counted atomically in Redis), and is single-use.
  */
 export interface MfaChallenge {
   kind: SessionKind;
   subjectId: string;
-  attempts: number;
 }
 
 export class MfaChallengeStore {
@@ -167,7 +166,7 @@ export class MfaChallengeStore {
 
   async create(kind: SessionKind, subjectId: string): Promise<string> {
     const { token, hash } = newOpaqueToken();
-    const data: MfaChallenge = { kind, subjectId, attempts: 0 };
+    const data: MfaChallenge = { kind, subjectId };
     await this.redis.set(`tv:mfa:challenge:${hash.toString('hex')}`, JSON.stringify(data), 'EX', 300);
     return token;
   }
@@ -177,19 +176,27 @@ export class MfaChallengeStore {
     return raw ? (JSON.parse(raw) as MfaChallenge) : null;
   }
 
-  /** Counts a wrong code; the challenge is gone after the fifth. */
-  async fail(token: string): Promise<void> {
-    const k = `tv:mfa:challenge:${tokenHash(token).toString('hex')}`;
-    const raw = await this.redis.get(k);
-    if (!raw) return;
-    const data = JSON.parse(raw) as MfaChallenge;
-    data.attempts++;
-    if (data.attempts >= 5) await this.redis.del(k);
-    else await this.redis.set(k, JSON.stringify(data), 'KEEPTTL');
+  /**
+   * Counts an attempt atomically (INCR) BEFORE the code is checked, so concurrent requests
+   * cannot get more than MAX_ATTEMPTS guesses at one challenge. Returns false - and ends the
+   * challenge - once the limit is passed.
+   */
+  async attempt(token: string): Promise<boolean> {
+    const h = tokenHash(token).toString('hex');
+    const n = await this.redis.incr(`tv:mfa:attempts:${h}`);
+    if (n === 1) await this.redis.expire(`tv:mfa:attempts:${h}`, 300);
+    if (n > MfaChallengeStore.MAX_ATTEMPTS) {
+      await this.redis.del(`tv:mfa:challenge:${h}`);
+      return false;
+    }
+    return true;
   }
 
+  static readonly MAX_ATTEMPTS = 5;
+
   async consume(token: string): Promise<void> {
-    await this.redis.del(`tv:mfa:challenge:${tokenHash(token).toString('hex')}`);
+    const h = tokenHash(token).toString('hex');
+    await this.redis.del(`tv:mfa:challenge:${h}`, `tv:mfa:attempts:${h}`);
   }
 
   /** Remembers the last TOTP step accepted for a subject, so a code cannot be replayed. */

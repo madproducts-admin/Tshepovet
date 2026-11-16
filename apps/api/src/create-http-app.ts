@@ -57,7 +57,7 @@ export async function createHttpApp(c: Container): Promise<INestApplication> {
     res.setHeader('cache-control', 'no-store');
     next();
   });
-  app.use('/api', portalContext(c.sessions, cookieNames(c.cookieSecure)));
+  app.use('/api', portalContext(c.sessions, c.accounts, cookieNames(c.cookieSecure)));
   // Errors the middleware above passes to next() - a malformed JSON body, a bad API key, a rate
   // limit - are answered here, by the pre-port errorHandler. Left to Nest, a body-parser error
   // would arrive wrapped as a generic 400 instead of invalid_json.
