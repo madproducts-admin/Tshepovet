@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>TshepoVet Verification API</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: member of the TshepoVet design set (same tokens and type). A developer guide:
+   each request sits beside a copy button, and the response it returns is shown in full. */
+:root {
+  --bg: #f4f5f8;
+  --surface: #ffffff;
+  --ink: #151922;
+  --muted: #586174;
+  --rule: #d9dce3;
+  --accent: #2b3796;
+  --accent-soft: #e5e7f6;
+  --accent-ink: #ffffff;
+  --code-bg: #eceef3;
+  --ok: #1d7448;
+  --ok-soft: #e0f1e7;
+  --warn: #9a5800;
+  --warn-soft: #f8ecd9;
+  --crit: #b22a1d;
+  --crit-soft: #f9e3e0;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --measure: 70ch;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1117; --surface: #151922; --ink: #e5e8ee; --muted: #9aa3b5; --rule: #2a303c;
+    --accent: #a3adff; --accent-soft: #1d2340; --accent-ink: #0e1117; --code-bg: #1c212c;
+    --ok: #63c891; --ok-soft: #14291e; --warn: #e4a74c; --warn-soft: #2e2313; --crit: #f07a6c; --crit-soft: #33191a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1117; --surface: #151922; --ink: #e5e8ee; --muted: #9aa3b5; --rule: #2a303c;
+  --accent: #a3adff; --accent-soft: #1d2340; --accent-ink: #0e1117; --code-bg: #1c212c;
+  --ok: #63c891; --ok-soft: #14291e; --warn: #e4a74c; --warn-soft: #2e2313; --crit: #f07a6c; --crit-soft: #33191a;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 24px); }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+.page {
+  max-width: 1080px; margin: 0 auto; padding-block: 40px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.masthead { display: grid; gap: 20px; padding-bottom: 32px; border-bottom: 2px solid var(--ink); margin-bottom: 12px; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.eyebrow span:first-child { color: var(--accent); font-weight: 500; }
+.eyebrow a { color: inherit; }
+h1 { font-family: var(--font-display); font-stretch: 115%; font-weight: 800; font-size: clamp(2.1rem, 5.4vw, 3.6rem); line-height: 1.02; letter-spacing: -0.015em; margin: 0; text-wrap: balance; }
+.lede { max-width: 64ch; margin: 0; color: var(--muted); font-size: 1.08rem; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); border-top: 1px solid var(--rule); margin-top: 4px; }
+.fact { padding: 14px 16px 2px 0; display: grid; gap: 2px; align-content: start; }
+.fact b { font-family: var(--font-display); font-stretch: 110%; font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.fact small { color: var(--muted); font-size: 0.82rem; line-height: 1.35; }
+
+.index { display: flex; flex-wrap: wrap; gap: 6px 22px; padding: 14px 0 0; margin: 0 0 8px; list-style: none; font-size: 0.88rem; }
+.index a { color: var(--muted); text-decoration: none; display: inline-flex; gap: 8px; align-items: baseline; }
+.index a span { font-family: var(--font-mono); font-size: 0.78rem; color: var(--accent); }
+.index a:hover { color: var(--ink); }
+
+main { min-width: 0; }
+section { scroll-margin-top: 24px; }
+section > h2 { font-family: var(--font-display); font-stretch: 108%; font-weight: 700; font-size: 1.55rem; line-height: 1.2; margin: 64px 0 14px; display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; text-wrap: balance; }
+section > h2 .num { font-family: var(--font-mono); font-weight: 500; font-size: 0.85rem; color: var(--accent); flex: none; }
+h3 { font-family: var(--font-display); font-stretch: 105%; font-weight: 650; font-size: 1.05rem; margin: 26px 0 8px; }
+p, ul { max-width: var(--measure); }
+p { margin: 0 0 14px; }
+ul { padding-left: 1.25em; margin: 0 0 16px; display: grid; gap: 8px; }
+li::marker { color: var(--muted); }
+strong { font-weight: 600; }
+a { color: var(--accent); text-underline-offset: 2px; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+code { font-family: var(--font-mono); font-size: 0.86em; background: var(--code-bg); padding: 0.08em 0.36em; border-radius: 3px; overflow-wrap: anywhere; }
+.cite { font-family: var(--font-mono); font-size: 0.82em; font-weight: 500; color: var(--accent); white-space: nowrap; }
+
+.verb { font-family: var(--font-mono); font-size: 0.72rem; font-weight: 500; padding: 2px 7px; border-radius: 3px; letter-spacing: 0.04em; }
+.verb.post { background: var(--accent); color: var(--accent-ink); }
+.verb.get { background: var(--ok-soft); color: var(--ok); }
+.path { font-family: var(--font-mono); font-size: 0.9em; font-weight: 500; }
+
+.code-block { position: relative; margin: 0 0 18px; border: 1px solid var(--rule); background: var(--surface); }
+.code-head {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 6px 8px 6px 14px; border-bottom: 1px solid var(--rule); background: var(--bg);
+  font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
+}
+.copy {
+  font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.04em; text-transform: uppercase;
+  padding: 4px 10px; border: 1px solid var(--rule); background: var(--surface); color: var(--ink);
+  border-radius: 3px; cursor: pointer;
+}
+.copy:hover { border-color: var(--accent); color: var(--accent); }
+.copy.done { border-color: var(--ok); color: var(--ok); }
+.code-block pre { margin: 0; padding: 14px 16px; overflow-x: auto; font-family: var(--font-mono); font-size: 0.83rem; line-height: 1.55; }
+.code-block pre .c { color: var(--muted); }
+.code-block pre .k { color: var(--accent); }
+
+.table-wrap { overflow-x: auto; margin: 8px 0 22px; border: 1px solid var(--rule); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 0.9rem; line-height: 1.45; }
+th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--rule); }
+th { font-family: var(--font-mono); font-weight: 500; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); background: var(--bg); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+table.wide td { min-width: 11em; }
+td.status { font-family: var(--font-mono); font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; }
+td.status.s4 { color: var(--warn); }
+td.status.s5 { color: var(--crit); }
+td.codes code { display: inline-block; margin: 0 2px 4px 0; }
+
+.outcomes { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+.pill { font-family: var(--font-mono); font-size: 0.78rem; padding: 2px 9px; border-radius: 999px; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.crit { background: var(--crit-soft); color: var(--crit); }
+.pill.neutral { background: var(--accent-soft); color: var(--accent); }
+
+.note { display: grid; gap: 6px; padding: 14px 18px; margin: 6px 0 22px; background: var(--surface); border-top: 2px solid var(--rule); max-width: var(--measure); }
+.note p { margin: 0; }
+.note .label { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.09em; text-transform: uppercase; font-weight: 500; color: var(--accent); }
+.note.info { border-top-color: var(--accent); background: var(--accent-soft); }
+
+footer.colophon { margin-top: 72px; padding-top: 18px; border-top: 1px solid var(--rule); font-size: 0.82rem; color: var(--muted); display: grid; gap: 6px; max-width: var(--measure); }
+
+@media (max-width: 680px) {
+  .page { padding-block: 24px 48px; }
+  section > h2 { margin-top: 48px; }
+}
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+
+<div class="page">
+  <header class="masthead">
+    <div class="eyebrow"><span>Developer guide</span><span>OpenAPI 3.1 · version 2026-11-01</span><span>Set: <a href="https://claude.ai/artifact/TffwU1tZSYPskHMrim4vMt">README</a> · <a href="https://claude.ai/artifact/MP58H22t29JpVKY7b9vtPW">Architecture &amp; Compliance</a> · <a href="https://claude.ai/artifact/1ZUwVgHKksnCriUEyjua3o">WhatsApp Onboarding</a> · <a href="https://claude.ai/artifact/FiCj3NRZZ1YG5DTcPG3Abb">Database Schema</a></span></div>
+    <h1>TshepoVet Verification API</h1>
+    <p class="lede">Verify a South African company (CIPC registration, directors, VAT, SARS tax compliance) or a driver's licence and PrDP with one request. Funds are reserved from your prepaid wallet before any bureau is called and charged only when a definitive answer comes back.</p>
+    <div class="facts">
+      <div class="fact"><b>R3.00</b><small>company check, VAT-exclusive</small></div>
+      <div class="fact"><b>R2.50</b><small>driving licence and PrDP check</small></div>
+      <div class="fact"><b>~8 s</b><small>sync wait; longer checks return 202 and a webhook</small></div>
+      <div class="fact"><b>24 h</b><small>Idempotency-Key replay window</small></div>
+      <div class="fact"><b>50 / s</b><small>default rate limit per key on verify endpoints</small></div>
+    </div>
+  </header>
+
+  <nav aria-label="Sections">
+    <ol class="index">
+      <li><a href="#endpoints"><span>1</span>Endpoints</a></li>
+      <li><a href="#company"><span>2</span>Company check</a></li>
+      <li><a href="#driver"><span>3</span>Driver check</a></li>
+      <li><a href="#sandbox"><span>4</span>Sandbox values</a></li>
+      <li><a href="#anatomy"><span>5</span>Handler anatomy</a></li>
+      <li><a href="#webhooks"><span>6</span>Webhooks</a></li>
+      <li><a href="#errors"><span>7</span>Errors</a></li>
+      <li><a href="#local"><span>8</span>Running locally</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <section id="endpoints">
+      <h2><span class="num">1</span>Endpoints</h2>
+      <div class="table-wrap">
+        <table class="wide">
+          <thead><tr><th>Endpoint</th><th>Handler</th><th>Service</th></tr></thead>
+          <tbody>
+            <tr><td><span class="verb post">POST</span> <span class="path">/v1/verify/company</span></td><td><code>src/routes/verify.ts</code></td><td><code>src/services/companyVerification.ts</code></td></tr>
+            <tr><td><span class="verb post">POST</span> <span class="path">/v1/verify/driver-license</span><br><small>alias <code>/driver-licence</code></small></td><td><code>src/routes/verify.ts</code></td><td><code>src/services/driverLicenceVerification.ts</code></td></tr>
+            <tr><td><span class="verb get">GET</span> <span class="path">/v1/verifications/{id}</span></td><td><code>src/routes/verify.ts</code></td><td><code>src/services/lifecycle.ts</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <ul>
+        <li><strong>Authentication:</strong> <code>Authorization: Bearer tv_live_xxxxxxxx.&lt;secret&gt;</code>. Sandbox keys start with <code>tv_test_</code>, are free, and only ever reach the deterministic mock bureau.</li>
+        <li><strong>Idempotency:</strong> send <code>Idempotency-Key</code> on every POST. Retrying with the same key and body returns the original response with <code>Idempotent-Replayed: true</code> and never charges twice.</li>
+        <li><strong>Sync or async:</strong> <code>mode: sync</code> (the default) waits up to about 8 seconds. If checks are still running you get <code>202</code> with <code>status: processing</code>; the result arrives by webhook and at <code>GET /v1/verifications/{id}</code>.</li>
+        <li><strong>Contract:</strong> <code>openapi/openapi.yaml</code>. A contract test keeps it in sync with the route validators: request fields must match the schemas, every reference must resolve, and the examples must validate.</li>
+      </ul>
+    </section>
+
+    <section id="company">
+      <h2><span class="num">2</span><span class="verb post">POST</span><span class="path">/v1/verify/company</span></h2>
+      <p>Checks the CIPC registration and status, active directors, VAT registration and, with the vendor's PIN, the SARS tax compliance status. A TCS check needs consent covering <code>tax_compliance_verification</code>; <code>monitor: true</code> also needs <code>continuous_monitoring</code> and enrols the vendor in expiry monitoring at R15 per vendor per month.</p>
+      <div class="code-block">
+        <div class="code-head"><span>Request · curl</span><button class="copy" type="button">Copy</button></div>
+<pre>curl -s https://api.tshepovet.co.za/v1/verify/company \
+  -H "Authorization: Bearer $TSHEPOVET_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: onboard-SUP-0001-v1" \
+  -d '{
+    "registration_number": "2019/123456/07",
+    "vat_number": "4123456789",
+    "tax_reference_number": "9123456789",
+    "tcs_pin": "AB12CD34EF",
+    "checks": ["registration", "directors", "vat", "tcs"],
+    "external_ref": "SUP-0001",
+    "monitor": true,
+    "consent": {
+      "notice_code": "company_verification",
+      "subject_display": "ACME TRADING (PTY) LTD",
+      "subject_role": "authorised_representative",
+      "purposes": ["tax_compliance_verification", "continuous_monitoring"],
+      "captured_at": "2026-11-14T08:00:00+02:00",
+      "evidence_reference": "onboarding-form-8812",
+      "attested_by": "procurement@buyer.example"
+    }
+  }'</pre>
+      </div>
+      <p><code>registration_number</code> accepts <code>2019/123456/07</code>, <code>2019-123456-07</code>, <code>201912345607</code>, and the <code>CK</code> and <code>K</code> prefixes. Without <code>vat</code> or <code>tcs</code> in <code>checks</code>, no consent is needed.</p>
+
+      <h3>Example response</h3>
+      <div class="code-block">
+        <div class="code-head"><span>200 OK · application/json</span><button class="copy" type="button">Copy</button></div>
+<pre>{
+  "id": "01a1dc4f-3f47-7698-af4f-d9da4cd13b16",
+  "object": "verification",
+  "type": "company",
+  "status": "completed",
+  "outcome": "verified",
+  "vendor_id": "01a1dc4f-3f43-7a5d-8b21-0fd5fadd8d77",
+  "external_ref": "SUP-0001",
+  "subject": "2019/123456/07",
+  "checks": {
+    "registration": {
+      "status": "passed", "source": "provider:cpb", "data_as_of": "2026-11-14T08:01:12Z", "stale": false,
+      "result": { "legal_name": "ACME TRADING (PTY) LTD", "cipc_status": "in_business",
+                  "cipc_status_raw": "In Business", "incorporation_date": "2019-03-15",
+                  "entity_type": "Private Company" }
+    },
+    "directors": {
+      "status": "passed", "source": "provider:cpb", "data_as_of": "2026-11-14T08:01:12Z", "stale": false,
+      "result": { "active": [ { "full_name": "THANDI MOKOENA", "role": "director",
+                                "appointed_on": "2019-03-15", "id_number_last4": "9087" } ],
+                  "resigned_count": 1 }
+    },
+    "vat": {
+      "status": "passed", "source": "cache:redis", "data_as_of": "2026-11-12T10:22:03Z", "stale": false,
+      "result": { "registered": true, "vendor_name": "ACME TRADING (PTY) LTD", "name_matches_cipc": true }
+    },
+    "tcs": {
+      "status": "passed", "source": "provider:searchworks", "data_as_of": "2026-11-14T08:01:13Z", "stale": false,
+      "result": { "tcs_status": "compliant", "pin_status": "active", "pin_expires_on": "2027-06-02" }
+    }
+  },
+  "risk_flags": [],
+  "billing": { "sku": "COMPANY_CHECK", "price_cents": 300, "currency": "ZAR",
+               "vat_exclusive": true, "charged": true, "wallet_balance_cents": 99700 },
+  "requested_at": "2026-11-14T08:01:11Z",
+  "completed_at": "2026-11-14T08:01:13Z"
+}</pre>
+      </div>
+
+      <h3>Reading the response</h3>
+      <div class="outcomes" aria-label="Possible outcomes">
+        <span class="pill ok">verified</span><span class="pill warn">verified_with_warnings</span><span class="pill crit">failed_checks</span><span class="pill crit">not_found</span><span class="pill neutral">unable_to_verify</span>
+      </div>
+      <ul>
+        <li><code>outcome</code> is decision support (POPIA <span class="cite">s71</span>). Your team makes the onboarding decision.</li>
+        <li><code>checks.&lt;name&gt;.source</code> and <code>data_as_of</code> show whether data came from cache, a bureau, or stale cache served during an outage (<code>stale: true</code>).</li>
+        <li><code>risk_flags</code> are stable codes to branch on, for example <code>cipc_status_deregistration_process</code>, <code>vat_number_registered_to_different_name</code>, <code>sars_non_compliant</code>, <code>tcs_pin_expired</code> and <code>director_appointed_within_30_days</code>.</li>
+        <li>Director ID numbers come back as the last four digits only. The TCS PIN is never echoed, logged or sent in webhooks.</li>
+        <li><code>billing.charged</code> and <code>billing.wallet_balance_cents</code> report the charge. If every provider fails you get <code>unable_to_verify</code> and <code>charged: false</code>.</li>
+      </ul>
+    </section>
+
+    <section id="driver">
+      <h2><span class="num">3</span><span class="verb post">POST</span><span class="path">/v1/verify/driver-license</span></h2>
+      <p>The driver is a natural person who is not party to your contract, so <strong>consent is always required</strong>: either a <code>consent_id</code> captured by TshepoVet, or an attestation by the employer (<code>on_behalf_of_subject: true</code>) with an evidence reference you can produce on request.</p>
+      <div class="code-block">
+        <div class="code-head"><span>Request · curl</span><button class="copy" type="button">Copy</button></div>
+<pre>curl -s https://api.tshepovet.co.za/v1/verify/driver-license \
+  -H "Authorization: Bearer $TSHEPOVET_KEY" -H "Content-Type: application/json" \
+  -H "Idempotency-Key: driver-8001015009087-2026-11" \
+  -d '{
+    "id_number": "8001015009087",
+    "licence_number": "400100001234",
+    "surname": "Mokoena",
+    "required_codes": ["C1"],
+    "required_prdp": ["G"],
+    "vendor_id": "01a1dc4f-3f43-7a5d-8b21-0fd5fadd8d77",
+    "consent": {
+      "notice_code": "driver_verification",
+      "subject_display": "T. Mokoena",
+      "subject_role": "driver",
+      "on_behalf_of_subject": true,
+      "purposes": ["driver_licence_verification"],
+      "captured_at": "2026-11-14T08:00:00+02:00",
+      "evidence_reference": "driver-consent-form-77",
+      "attested_by": "fleet@logistics.example"
+    }
+  }'</pre>
+      </div>
+      <ul>
+        <li><code>required_codes</code> follows the licence code hierarchy: <code>EC1</code> satisfies a <code>C1</code> requirement, but <code>EC1</code> does not satisfy <code>C</code>.</li>
+        <li>PrDP categories (G, P, D) must match exactly by default. A category D holder under 25 is flagged.</li>
+        <li>Gazetted grace periods for licence-card backlogs come back as <code>licence_in_gazetted_grace_period</code>, a warning rather than a failure.</li>
+        <li>The <code>id_number</code> is checked locally (13 digits, Luhn check digit, plausible date of birth) before anything is charged.</li>
+      </ul>
+    </section>
+
+    <section id="sandbox">
+      <h2><span class="num">4</span>Sandbox test values</h2>
+      <p>With a <code>tv_test_</code> key, these inputs trigger fixed scenarios so you can test every branch of your integration for free.</p>
+      <div class="table-wrap">
+        <table class="wide">
+          <thead><tr><th>Input</th><th>Result</th></tr></thead>
+          <tbody>
+            <tr><td>Enterprise number sequence <code>000404</code>, e.g. <code>2020/000404/07</code></td><td>Company not found</td></tr>
+            <tr><td>Sequence <code>000500</code></td><td>Provider error; exercises failover</td></tr>
+            <tr><td>Sequence <code>000777</code></td><td>Status "AR Deregistration Process"</td></tr>
+            <tr><td>Sequence <code>000888</code></td><td>A director appointed 10 days ago</td></tr>
+            <tr><td>VAT <code>4000000404</code></td><td>Not registered</td></tr>
+            <tr><td>TCS PIN starting <code>NC</code> / <code>EX</code> / <code>RV</code> / <code>SOON</code></td><td>Non-compliant / expired PIN / revoked PIN / PIN expires in 10 days</td></tr>
+            <tr><td>Licence number ending <code>0404</code> / <code>0410</code> / <code>0420</code> / <code>0430</code></td><td>Not found / licence expired / PrDP expired / licence suspended</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="anatomy">
+      <h2><span class="num">5</span>Handler anatomy</h2>
+      <p>What <code>POST /v1/verify/company</code> does, in order:</p>
+      <div class="code-block">
+        <div class="code-head"><span>Request pipeline</span><button class="copy" type="button">Copy</button></div>
+<pre>requestContext      -&gt; X-Request-Id
+apiKeyAuth          -&gt; authenticate_api_key(prefix) + constant-time HMAC compare + scope
+rateLimit           -&gt; Redis fixed window per key (50 rps)
+idempotency         -&gt; claim / replay / 409 / 422
+zod parse           -&gt; CompanyRequestSchema (.strict(): unknown fields rejected)
+SA normalisation    -&gt; VAT (4xxxxxxxxx), tax ref, TCS PIN
+CompanyVerificationService.start()
+  TX1: resolve vendor (definer fn) -&gt; link -&gt; consent -&gt; insert verification -&gt; RESERVE hold
+  process(): parallel resolve(registration | vat | tcs) via cache -&gt; waterfall
+  TX2: persist vendor/directors/PIN -&gt; checks -&gt; provider_calls -&gt; CAPTURE|RELEASE -&gt; outbox -&gt; audit
+respond()           -&gt; 200 (done) | 202 (still processing) + Location
+errorHandler        -&gt; RFC 9457 problem+json with a stable code</pre>
+      </div>
+      <p>The wallet deduction (<code>src/billing/wallet.ts</code>) is one atomic statement, with a database constraint behind it:</p>
+      <div class="code-block">
+        <div class="code-head"><span>Reserve · SQL</span><button class="copy" type="button">Copy</button></div>
+<pre>UPDATE wallets SET held_cents = held_cents + $2
+ WHERE tenant_id = $1 AND status = 'active'
+   AND balance_cents - held_cents + credit_limit_cents &gt;= $2
+RETURNING id;            <span class="c">-- no row =&gt; 402 insufficient_funds</span></pre>
+      </div>
+      <p>The capture moves the hold into the balance and posts two ledger entries (debit the customer wallet, credit usage revenue) under the idempotency key <code>capture:&lt;hold_id&gt;</code>. The <a href="https://claude.ai/artifact/FiCj3NRZZ1YG5DTcPG3Abb#billing">Database Schema page</a> lists every billing invariant the database enforces.</p>
+    </section>
+
+    <section id="webhooks">
+      <h2><span class="num">6</span>Receiving webhooks</h2>
+      <p>Events are <strong>thin</strong>: ids, statuses and flags only. Fetch details with <code>GET /v1/verifications/{id}</code>. Delivery is at least once, so deduplicate on the event <code>id</code>. Failed deliveries are retried with exponential backoff for about 36 hours.</p>
+      <div class="table-wrap">
+        <table class="wide">
+          <thead><tr><th>Header</th><th>Value</th></tr></thead>
+          <tbody>
+            <tr><td><code>TshepoVet-Signature</code></td><td><code>t=&lt;unix time&gt;,v1=&lt;hex HMAC-SHA256(secret, "&lt;t&gt;.&lt;raw body&gt;")&gt;</code>; several <code>v1</code> values during secret rotation</td></tr>
+            <tr><td><code>TshepoVet-Event-Id</code></td><td>Event id; use it to deduplicate</td></tr>
+            <tr><td><code>TshepoVet-Event-Type</code></td><td><code>verification.completed</code>, <code>verification.failed</code>, <code>wallet.low_balance</code>, <code>vendor.payment_locked</code>, …</td></tr>
+            <tr><td><code>TshepoVet-Delivery-Attempt</code></td><td>1 for the first attempt</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="code-block">
+        <div class="code-head"><span>Receiver · TypeScript / Express</span><button class="copy" type="button">Copy</button></div>
+<pre>import crypto from 'node:crypto';
+import express from 'express';
+
+const app = express();
+app.post('/tshepovet/webhooks', express.raw({ type: 'application/json' }), (req, res) =&gt; {
+  const header = req.header('tshepovet-signature') ?? '';
+  const parts = Object.fromEntries(header.split(',').map((p) =&gt; p.split('=') as [string, string]));
+  const t = Number(parts.t);
+  if (!t || Math.abs(Date.now() / 1000 - t) &gt; 300) return res.sendStatus(400); <span class="c">// replay window</span>
+  const expected = Buffer.from(crypto.createHmac('sha256', process.env.TSHEPOVET_WEBHOOK_SECRET!).update(`${t}.${req.body}`).digest('hex'));
+  const ok = header.split(',').some((p) =&gt; {
+    const sig = Buffer.from(p.startsWith('v1=') ? p.slice(3) : '');
+    return sig.length === expected.length &amp;&amp; crypto.timingSafeEqual(sig, expected);
+  });
+  if (!ok) return res.sendStatus(401);
+  const event = JSON.parse(req.body.toString('utf8'));
+  <span class="c">// enqueue(event): respond fast, process asynchronously and idempotently on event.id</span>
+  res.sendStatus(204);
+});</pre>
+      </div>
+      <p>Verify against the <strong>raw</strong> body, not re-serialised JSON. <code>src/webhooks/signing.ts</code> holds the reference implementation.</p>
+    </section>
+
+    <section id="errors">
+      <h2><span class="num">7</span>Errors</h2>
+      <p>Errors are RFC 9457 <code>application/problem+json</code> with a stable <code>code</code> to switch on and a <code>request_id</code> to quote to support. Nothing is created or charged on any 4xx.</p>
+      <div class="table-wrap">
+        <table class="wide">
+          <thead><tr><th>HTTP</th><th>code</th><th>When</th></tr></thead>
+          <tbody>
+            <tr><td class="status s4">400</td><td class="codes"><code>validation_error</code> <code>invalid_registration_number</code> <code>invalid_id_number</code> <code>invalid_tcs_pin</code> <code>vat_number_required</code> <code>tcs_inputs_required</code> <code>tcs_pin_is_tax_reference</code> <code>consent_ambiguous</code></td><td>Input problems</td></tr>
+            <tr><td class="status s4">401</td><td class="codes"><code>unauthorized</code></td><td>Missing or invalid key</td></tr>
+            <tr><td class="status s4">402</td><td class="codes"><code>insufficient_funds</code></td><td>Wallet can't cover the check; <code>details.required_cents</code> and <code>available_cents</code> say by how much</td></tr>
+            <tr><td class="status s4">403</td><td class="codes"><code>forbidden</code> <code>tenant_suspended</code></td><td>Key lacks the scope, or the account is suspended</td></tr>
+            <tr><td class="status s4">404</td><td class="codes"><code>not_found</code> <code>vendor_not_found</code></td><td>Also returned for other accounts' resources, so existence never leaks</td></tr>
+            <tr><td class="status s4">409</td><td class="codes"><code>idempotency_in_progress</code></td><td>The same Idempotency-Key is still running; retry shortly</td></tr>
+            <tr><td class="status s4">422</td><td class="codes"><code>consent_required</code> <code>consent_not_found</code> <code>consent_expired</code> <code>consent_subject_mismatch</code> <code>idempotency_key_reused</code> <code>notice_not_found</code></td><td>Consent is missing or invalid, or a key was reused with a different body</td></tr>
+            <tr><td class="status s4">429</td><td class="codes"><code>rate_limited</code></td><td>Wait for <code>Retry-After</code></td></tr>
+            <tr><td class="status s5">500</td><td class="codes"><code>internal_error</code></td><td>Unexpected failure. The Idempotency-Key is released, so a retry runs as a new request; quote the <code>request_id</code> to support</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="code-block">
+        <div class="code-head"><span>422 · application/problem+json</span><button class="copy" type="button">Copy</button></div>
+<pre>{
+  "type": "https://docs.tshepovet.co.za/errors/consent_required",
+  "title": "A valid consent covering the requested purposes is required",
+  "status": 422,
+  "code": "consent_required",
+  "request_id": "req_3f2b9c0d41e84a6f9a1c2b7d5e6f8a90",
+  "details": { "missing_purposes": ["tax_compliance_verification"] }
+}</pre>
+      </div>
+    </section>
+
+    <section id="local">
+      <h2><span class="num">8</span>Running locally</h2>
+      <p>Requires Node 20+, PostgreSQL 16 and Redis 7. The app must connect as a role <strong>without</strong> superuser or <code>BYPASSRLS</code>, otherwise row-level security is silently skipped.</p>
+      <div class="code-block">
+        <div class="code-head"><span>Quick start · shell</span><button class="copy" type="button">Copy</button></div>
+<pre>npm install
+<span class="c"># owner role runs migrations; the app role has no superuser/BYPASSRLS</span>
+psql -c "CREATE ROLE tshepovet_owner LOGIN SUPERUSER PASSWORD 'devpass';"
+psql -c "CREATE DATABASE tshepovet_dev OWNER tshepovet_owner;"
+export MIGRATION_DATABASE_URL=postgres://tshepovet_owner:devpass@localhost:5432/tshepovet_dev
+npx tsx scripts/migrate.ts
+psql "$MIGRATION_DATABASE_URL" -c "CREATE ROLE tshepovet_api LOGIN PASSWORD 'apipass' IN ROLE tshepovet_app;"
+
+<span class="c"># secrets: fill the three 32-byte base64 keys in .env</span>
+cp .env.example .env
+set -a; source .env; set +a
+npx tsx scripts/seed-dev.ts    <span class="c"># demo tenant, R1,000 credit, live + test keys</span>
+
+npm run dev
+npm test                       <span class="c"># 81 unit + integration tests</span></pre>
+      </div>
+    </section>
+
+    <footer class="colophon">
+      <span>Compiled from <code>docs/05-api.md</code>, <code>openapi/openapi.yaml</code> and the README in the TshepoVet repository. Hosts such as <code>api.tshepovet.co.za</code> are the planned production names.</span>
+      <span>The examples use sample data: the company, ID number, PIN and ids are illustrations, not real records.</span>
+    </footer>
+  </main>
+</div>
+
+<script>
+(function () {
+  document.querySelectorAll('.code-block').forEach(function (block) {
+    var btn = block.querySelector('.copy');
+    var pre = block.querySelector('pre');
+    if (!btn || !pre) return;
+    btn.addEventListener('click', function () {
+      var text = pre.innerText;
+      function done(label) {
+        btn.textContent = label;
+        btn.classList.toggle('done', label === 'Copied');
+        setTimeout(function () { btn.textContent = 'Copy'; btn.classList.remove('done'); }, 1600);
+      }
+      function selectFallback() {
+        try {
+          var range = document.createRange();
+          range.selectNodeContents(pre);
+          var sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+          done('Selected, press Ctrl+C');
+        } catch (e) { done('Select and copy'); }
+      }
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function () { done('Copied'); }, selectFallback);
+        } else {
+          selectFallback();
+        }
+      } catch (e) { selectFallback(); }
+    });
+  });
+})();
+</script>
+
+</body>
+</html>
