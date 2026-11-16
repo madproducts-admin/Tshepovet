@@ -16,7 +16,7 @@ async function main() {
     extra.push({ path: '/webhooks/whatsapp', router: whatsappRouter({ appSecret: config.WHATSAPP_APP_SECRET, verifyToken: config.WHATSAPP_VERIFY_TOKEN, redis, log: logger }) });
   }
   const app = createApp(container, extra);
-  const server = app.listen(config.PORT, () => logger.info({ port: config.PORT }, 'tshepovet api listening'));
+  const server = app.listen(config.PORT, config.HOST, () => logger.info({ host: config.HOST, port: config.PORT }, 'tshepovet api listening'));
 
   const shutdown = (signal: string) => {
     logger.info({ signal }, 'shutting down');

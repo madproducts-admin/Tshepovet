@@ -62,7 +62,7 @@ const HEADERS = `
   Cross-Origin-Opener-Policy: same-origin
   X-Robots-Tag: noindex, nofollow
 
-/assets/*
+${SITE.basePath}/assets/*
   Cache-Control: public, max-age=31536000, immutable
 ${SITE.pages.map((p) => `\n${p.path}\n  Cache-Control: no-cache\n`).join('')}`;
 

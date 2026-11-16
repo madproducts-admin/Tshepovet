@@ -13,8 +13,8 @@
  *   - hoists the <title>, <meta>, <link> and <style> that the claude.ai shell
  *     left in <body> into <head>, and drops the claude:* meta tags
  *   - rewrites links to the claude.ai pages as root-relative clean paths
- *     (/database-schema#billing). Root-relative rather than ./relative because
- *     404.html is served at any depth (/a/b/c)
+ *     (/docs/database-schema#billing). Root-relative rather than ./relative because
+ *     404.html is served at any depth under /docs/
  *   - renders each <pre class="mermaid"> to inline SVG in headless Chromium,
  *     inside the page's own CSS with the page's own web fonts loaded, so the
  *     labels are measured exactly as they will be shown. No mermaid ships
@@ -38,7 +38,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -126,7 +126,7 @@ function buildId() {
 // ── In-page helpers (serialised into the browser; must be self-contained) ──
 
 /** Adapts one source page. Uses DOMParser, so no page script ever runs. */
-function transformInPage({ html, artifactPaths, buildId, buildIdMeta, siteCssHref }) {
+function transformInPage({ html, artifactPaths, buildId, buildIdMeta, siteCssHref, faviconHref }) {
   const doc = new DOMParser().parseFromString(html, 'text/html');
   const head = doc.head;
   const headOnly = new Set(['TITLE', 'META', 'LINK', 'STYLE']);
@@ -146,7 +146,7 @@ function transformInPage({ html, artifactPaths, buildId, buildIdMeta, siteCssHre
   const icon = doc.createElement('link');
   icon.setAttribute('rel', 'icon');
   icon.setAttribute('type', 'image/svg+xml');
-  icon.setAttribute('href', '/favicon.svg');
+  icon.setAttribute('href', faviconHref);
   head.querySelector('title').after(meta(buildIdMeta, buildId), meta('robots', 'noindex, nofollow'), icon);
   const css = doc.createElement('link');
   css.setAttribute('rel', 'stylesheet');
@@ -258,15 +258,16 @@ function inspectInPage(html) {
 if (!existsSync(MERMAID)) fail(`${MERMAID} is missing: run npm ci`);
 
 const id = buildId();
+const BASE = SITE.basePath; // every page and asset lives under it; the Worker is routed there
 console.log(`build id: ${id}`);
 await rm(OUT, { recursive: true, force: true });
-await mkdir(join(OUT, 'assets'), { recursive: true });
+await mkdir(join(OUT, BASE, 'assets'), { recursive: true });
 
-const assetNames = new Map(); // content hash -> /assets/ path
+const assetNames = new Map(); // content hash -> <base>/assets/ path
 async function writeAsset(stem, ext, text) {
   const hash = sha12(text);
   if (!assetNames.has(hash)) {
-    const name = `/assets/${stem}.${hash}.${ext}`;
+    const name = `${BASE}/assets/${stem}.${hash}.${ext}`;
     await writeFile(join(OUT, name), text);
     assetNames.set(hash, name);
   }
@@ -274,7 +275,11 @@ async function writeAsset(stem, ext, text) {
 }
 
 const siteCssHref = await writeAsset('site', 'css', await readFile(join(ROOT, SITE.siteCss), 'utf8'));
-for (const f of SITE.staticFiles) await copyFile(join(STATIC, f), join(OUT, f));
+for (const f of SITE.staticFiles) {
+  await mkdir(dirname(join(OUT, f.to)), { recursive: true });
+  await copyFile(join(STATIC, f.from), join(OUT, f.to));
+}
+const faviconHref = `/${SITE.staticFiles.find((f) => f.from === 'favicon.svg').to}`;
 
 const artifactPaths = Object.fromEntries(SITE.pages.map((p) => [p.artifact, p.path]));
 const jobs = [...SITE.pages, { ...SITE.notFound, path: null }];
@@ -297,13 +302,15 @@ try {
   const built = [];
   for (const job of jobs) {
     const source = await readFile(join(ROOT, job.source), 'utf8');
-    const stem = job.out.replace(/\.html$/, '');
+    const stem = basename(job.out, '.html');
+    await mkdir(dirname(join(OUT, job.out)), { recursive: true });
     let { html, scripts, diagrams } = await page.evaluate(transformInPage, {
       html: source,
       artifactPaths,
       buildId: id,
       buildIdMeta: SITE.buildIdMeta,
       siteCssHref,
+      faviconHref,
     });
     for (let i = 0; i < scripts.length; i++) {
       html = html.replace(`__TSV_SCRIPT_${i}__`, await writeAsset(stem, 'js', scripts[i].trim() + '\n'));
@@ -333,7 +340,7 @@ try {
   const info = new Map();
   for (const b of built) info.set(b.job.out, await page.evaluate(inspectInPage, b.html));
   const idsByPath = new Map(SITE.pages.map((p) => [p.path, new Set(info.get(p.out).ids)]));
-  const files = new Set([...SITE.staticFiles.map((f) => `/${f}`), ...assetNames.values()]);
+  const files = new Set([...SITE.staticFiles.map((f) => `/${f.to}`), ...assetNames.values()]);
   const allowedStyles = SITE.csp.styleOrigins.map((o) => `${o}/`);
   const external = new Set();
 
@@ -350,7 +357,7 @@ try {
     for (const e of r.embeds) problems.push(`${where}: <${e}> is not expected on this site; check the CSP allows its source`);
     for (const s of r.scripts) {
       if (s.inline && !s.type) problems.push(`${where}: inline <script> (blocked by the CSP)`);
-      else if (s.src && !(s.src.startsWith('/assets/') && files.has(s.src))) problems.push(`${where}: script ${s.src} is not a built asset`);
+      else if (s.src && !(s.src.startsWith(`${BASE}/assets/`) && files.has(s.src))) problems.push(`${where}: script ${s.src} is not a built asset`);
     }
     for (const href of r.stylesheets) {
       if (!(files.has(href) || allowedStyles.some((o) => href.startsWith(o)))) problems.push(`${where}: stylesheet ${href} is not allowed by the CSP`);
@@ -376,6 +383,7 @@ try {
       } else if (!files.has(path)) {
         problems.push(`${where}: ${href} does not exist on the site`);
       }
+      if (!path.startsWith(`${BASE}/`)) problems.push(`${where}: ${href} is outside ${BASE}/, which the API answers, not this site`);
     }
   }
   for (const w of warnings) console.warn(`  warning: ${w}`);

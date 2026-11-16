@@ -1,19 +1,24 @@
 {
-  "$comment": "The docs site at tshepovet.madproducts.ai. One source for the build, assemble, deploy and smoke steps. 'artifact' is the private claude.ai page each source file was first published as; links to it are rewritten to 'path' at build time.",
+  "$comment": "The docs at tshepovet.madproducts.ai/docs. One source for the build, assemble, deploy and smoke steps. The API owns the rest of the host (IIS on the box, see deploy/README.md); the Worker answers only 'routes'. 'artifact' is the private claude.ai page each source file was first published as; links to it are rewritten to 'path' at build time.",
   "worker": "tshepovet-site",
   "host": "tshepovet.madproducts.ai",
   "zone": "madproducts.ai",
   "liveUrl": "https://tshepovet.madproducts.ai",
+  "basePath": "/docs",
+  "routes": ["tshepovet.madproducts.ai/docs*", "tshepovet.madproducts.ai/robots.txt"],
   "buildIdMeta": "build-id",
   "pages": [
-    { "source": "docs/pages/readme.html", "out": "index.html", "path": "/", "artifact": "TffwU1tZSYPskHMrim4vMt" },
-    { "source": "docs/pages/architecture-compliance.html", "out": "architecture-compliance.html", "path": "/architecture-compliance", "artifact": "MP58H22t29JpVKY7b9vtPW" },
-    { "source": "docs/pages/whatsapp-onboarding.html", "out": "whatsapp-onboarding.html", "path": "/whatsapp-onboarding", "artifact": "1ZUwVgHKksnCriUEyjua3o" },
-    { "source": "docs/pages/database-schema.html", "out": "database-schema.html", "path": "/database-schema", "artifact": "FiCj3NRZZ1YG5DTcPG3Abb" },
-    { "source": "docs/pages/verification-api.html", "out": "verification-api.html", "path": "/verification-api", "artifact": "9zS9q39GCCbB5F8ysAVU9R" }
+    { "source": "docs/pages/readme.html", "out": "docs/index.html", "path": "/docs/", "artifact": "TffwU1tZSYPskHMrim4vMt" },
+    { "source": "docs/pages/architecture-compliance.html", "out": "docs/architecture-compliance.html", "path": "/docs/architecture-compliance", "artifact": "MP58H22t29JpVKY7b9vtPW" },
+    { "source": "docs/pages/whatsapp-onboarding.html", "out": "docs/whatsapp-onboarding.html", "path": "/docs/whatsapp-onboarding", "artifact": "1ZUwVgHKksnCriUEyjua3o" },
+    { "source": "docs/pages/database-schema.html", "out": "docs/database-schema.html", "path": "/docs/database-schema", "artifact": "FiCj3NRZZ1YG5DTcPG3Abb" },
+    { "source": "docs/pages/verification-api.html", "out": "docs/verification-api.html", "path": "/docs/verification-api", "artifact": "9zS9q39GCCbB5F8ysAVU9R" }
   ],
-  "notFound": { "source": "deploy/site/static/404.html", "out": "404.html" },
-  "staticFiles": ["favicon.svg", "robots.txt"],
+  "notFound": { "source": "deploy/site/static/404.html", "out": "docs/404.html" },
+  "staticFiles": [
+    { "from": "favicon.svg", "to": "docs/favicon.svg" },
+    { "from": "robots.txt", "to": "robots.txt" }
+  ],
   "siteCss": "deploy/site/static/site.css",
   "csp": {
     "$comment": "scriptOrigins/connectOrigins: Cloudflare Web Analytics, which the madproducts.ai zone injects into every HTML page (owner decision 2026-11-16 to allow it, as Mia's Crowns does).",

@@ -10,7 +10,7 @@
 <style>
 /* Site-only page (not one of the docs/pages design pages): served by Cloudflare for any path
    that has no file, with status 404. Same tokens and type as the design set. Every link is
-   root-relative, because this page is served at any depth (/a/b/c). */
+   root-relative, because this page is served at any depth under /docs/. */
 :root {
   --bg: #f4f5f8;
   --surface: #ffffff;
@@ -66,17 +66,17 @@ h2 { font-family: var(--font-display); font-stretch: 108%; font-weight: 700; fon
   <header class="masthead">
     <div class="eyebrow"><span>404</span><span>TshepoVet design pages</span></div>
     <h1>Page not found</h1>
-    <p class="lede">There is no page at this address. The TshepoVet design pages are listed below.</p>
+    <p class="lede">There is no page at this address. The TshepoVet design pages are listed below; the API itself is at /v1.</p>
   </header>
 
   <main>
     <h2>Pages</h2>
     <ul class="pages">
-      <li><a href="/"><span class="n">0</span><span><b>README</b><small>Product, pricing, the five deliverables, quick start and known gaps</small></span></a></li>
-      <li><a href="/architecture-compliance"><span class="n">1</span><span><b>Architecture &amp; Compliance</b><small>System design, unit economics, POPIA and SARS compliance</small></span></a></li>
-      <li><a href="/database-schema"><span class="n">2</span><span><b>Database Schema</b><small>Tables, row-level security, the ledger and the audit chain</small></span></a></li>
-      <li><a href="/whatsapp-onboarding"><span class="n">3</span><span><b>WhatsApp Onboarding</b><small>The conversation, document OCR and post-validation</small></span></a></li>
-      <li><a href="/verification-api"><span class="n">4</span><span><b>Verification API</b><small>Endpoints, idempotency, webhooks and the sandbox</small></span></a></li>
+      <li><a href="/docs/"><span class="n">0</span><span><b>README</b><small>Product, pricing, the five deliverables, quick start and known gaps</small></span></a></li>
+      <li><a href="/docs/architecture-compliance"><span class="n">1</span><span><b>Architecture &amp; Compliance</b><small>System design, unit economics, POPIA and SARS compliance</small></span></a></li>
+      <li><a href="/docs/database-schema"><span class="n">2</span><span><b>Database Schema</b><small>Tables, row-level security, the ledger and the audit chain</small></span></a></li>
+      <li><a href="/docs/whatsapp-onboarding"><span class="n">3</span><span><b>WhatsApp Onboarding</b><small>The conversation, document OCR and post-validation</small></span></a></li>
+      <li><a href="/docs/verification-api"><span class="n">4</span><span><b>Verification API</b><small>Endpoints, idempotency, webhooks and the sandbox</small></span></a></li>
     </ul>
   </main>
 </div>

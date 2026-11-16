@@ -1,7 +1,8 @@
 /**
- * One-command deploy of the docs site (https://tshepovet.madproducts.ai) with
+ * One-command deploy of the docs (https://tshepovet.madproducts.ai/docs) with
  * a post-deploy gate. Same shape as Mia's Crowns' tools/deploy.mjs, minus the
- * shop-only steps (migration ledger, worker data, image variants).
+ * shop-only steps (migration ledger, worker data, image variants). The API on
+ * the rest of the host has its own deploy: deploy/app/deploy-app.ps1.
  *
  *   node tools/deploy.mjs [--dry-run] [--skip-tests] [--skip-smoke]
  *   npm run deploy | npm run deploy:dry
@@ -11,9 +12,9 @@
  *   0. the working tree is clean. The build ships the WORKING TREE, not HEAD,
  *      so anything uncommitted would go live without being in git. A dry run
  *      only warns, and its build id ends in "-dirty"
- *      + usable Cloudflare credentials, and the custom-domain pre-flight: the
- *      first attach must not replace an existing DNS record (read-only; see
- *      customDomainPreflight). Both are checked again right before wrangler
+ *      + usable Cloudflare credentials, and the route pre-flight: no custom
+ *      domain may hold the host, and no other Worker our routes (read-only;
+ *      see customDomainPreflight). Both are checked again right before wrangler
  *   1. typecheck + the unit tests that need no Redis or PostgreSQL. The other
  *      30 (waterfall + integration) run in GitHub CI, which has both services
  *   2. build the site (tools/build-site.mjs: renders the diagrams, and fails on
@@ -47,7 +48,8 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SITE = JSON.parse(readFileSync(join(ROOT, 'tools/lib/site.json'), 'utf8'));
 const WRANGLER_DIR = join(ROOT, 'deploy/site');
 const WORKER = SITE.worker;
-const LIVE = process.env.TSV_DEPLOY_URL ?? SITE.liveUrl;
+const LIVE = process.env.TSV_DEPLOY_URL ?? SITE.liveUrl; // the host; the smoke suite's base URL
+const DOCS = `${LIVE}${SITE.basePath}/`; // where the build id is read
 const OAUTH_FILE = process.env.TSV_WRANGLER_OAUTH ?? join(process.env.APPDATA ?? '', 'xdg.config/.wrangler/config/default.toml');
 const ACCOUNT_FILE = process.env.TSV_CF_ENV ?? 'D:/applications/MiasCrowns.com/old/v1/.env';
 const MIN_TOKEN_MINUTES = 15;
@@ -106,19 +108,16 @@ function cloudflareEnv() {
   return { env, problems, note };
 }
 
-// ── Custom-domain pre-flight ───────────────────────────────────────────────
+// ── Route pre-flight ───────────────────────────────────────────────────────
 /**
- * Attaching a custom domain replaces any DNS record of the same name, and
- * wrangler 4 does not ask first when it is not on a terminal - which is how
- * this script runs it (publishCustomDomains sets override_existing_dns_record
- * and override_existing_origin whenever stdout is not a TTY). So before the
- * first attach this proves there is nothing to replace, or stops.
- *
- * wrangler's OAuth token has no DNS-read scope (HTTP 403 on dns_records), so
- * with that token the DNS half needs a person: look at DNS > Records for the
- * zone, and if the host has no record of its own, set TSV_DNS_CHECKED to the
- * host name. The zone's *.madproducts.ai wildcard is a different name and is
- * not replaced.
+ * The Worker answers only /docs* and /robots.txt on the host (plain routes);
+ * the API on the box answers the rest through the zone's *.madproducts.ai
+ * wildcard. Two things would break that, and both are checked read-only:
+ *  - a Workers custom domain on the host: it takes the whole host, so the API
+ *    would vanish behind the Worker (the docs site used one until 2026-11-16);
+ *  - one of our route patterns already pointing at another Worker.
+ * Never use custom_domain for this host: wrangler 4 without a terminal (as
+ * this script runs it) also replaces any DNS record of the same name unasked.
  */
 async function cfGet(env, path) {
   const res = await fetch(`https://api.cloudflare.com/client/v4${path}`, {
@@ -139,32 +138,24 @@ async function customDomainPreflight(env) {
   const domains = await cfGet(env, `/accounts/${acct}/workers/domains?hostname=${encodeURIComponent(host)}`);
   if (!domains.ok) return { ok: false, reason: `could not list Worker custom domains (HTTP ${domains.status})` };
   const attached = domains.result.filter((d) => d.hostname === host);
-  const other = attached.find((d) => d.service !== WORKER);
-  if (other) return { ok: false, reason: `${host} is a custom domain of Worker "${other.service}": deploying would move it` };
-  if (attached.length) return { ok: true, note: `${host} is already attached to ${WORKER}` };
-
+  if (attached.length) {
+    return {
+      ok: false,
+      reason:
+        `${host} is a custom domain of Worker "${attached[0].service}", which hides the API. Detach it ` +
+        `(DELETE /accounts/:account/workers/domains/${attached[0].id}; see deploy/README.md, "Cutover") and rerun`,
+    };
+  }
   const zones = await cfGet(env, `/zones?name=${encodeURIComponent(SITE.zone)}&account.id=${acct}`);
   if (!zones.ok || zones.result.length !== 1) {
     return { ok: false, reason: `zone ${SITE.zone} not found in account ${acct.slice(0, 6)}… (HTTP ${zones.status})` };
   }
-  const records = await cfGet(env, `/zones/${zones.result[0].id}/dns_records?name=${encodeURIComponent(host)}`);
-  if (records.ok) {
-    if (records.result.length) {
-      const list = records.result.map((r) => `${r.type} ${r.name} -> ${r.content}`).join(', ');
-      return { ok: false, reason: `DNS already has ${list}: attaching the custom domain would replace it. Ask the owner.` };
-    }
-    return { ok: true, note: `first attach; no DNS record of its own for ${host}` };
-  }
-  if (process.env.TSV_DNS_CHECKED === host) {
-    return { ok: true, note: `first attach; this token cannot read DNS (HTTP ${records.status}), TSV_DNS_CHECKED says a person found no record for ${host}` };
-  }
-  return {
-    ok: false,
-    reason:
-      `first attach, and this token cannot read DNS (HTTP ${records.status}), so nothing shows ${host} has no record of its own ` +
-      `(an existing one would be REPLACED without a prompt). Check DNS > Records for ${SITE.zone} in the dashboard; ` +
-      `if there is none, rerun with TSV_DNS_CHECKED=${host}`,
-  };
+  const routes = await cfGet(env, `/zones/${zones.result[0].id}/workers/routes`);
+  if (!routes.ok) return { ok: false, reason: `could not list the zone's Worker routes (HTTP ${routes.status})` };
+  const taken = routes.result.filter((r) => SITE.routes.includes(r.pattern) && r.script && r.script !== WORKER);
+  if (taken.length) return { ok: false, reason: `route ${taken[0].pattern} belongs to Worker "${taken[0].script}"` };
+  const ours = routes.result.filter((r) => SITE.routes.includes(r.pattern)).length;
+  return { ok: true, note: `no custom domain on ${host}; ${ours} of ${SITE.routes.length} routes already ours, none taken` };
 }
 
 const buildIdOf = (html) => html.match(/<meta name="build-id" content="([^"]+)"/)?.[1] ?? null;
@@ -172,7 +163,7 @@ const buildIdOf = (html) => html.match(/<meta name="build-id" content="([^"]+)"/
 /** What the live site serves now: { status, build }. */
 async function fetchLive() {
   try {
-    const res = await fetch(`${LIVE}/?cb=${Date.now()}`, { cache: 'no-store', headers: { 'cache-control': 'no-cache' } });
+    const res = await fetch(`${DOCS}?cb=${Date.now()}`, { cache: 'no-store', headers: { 'cache-control': 'no-cache' } });
     return { status: res.status, build: res.ok ? buildIdOf(await res.text()) : null };
   } catch (err) {
     return { status: `unreachable (${err.cause?.code ?? err.message})`, build: null };
@@ -197,11 +188,11 @@ console.log(`   Cloudflare: ${creds.problems.length ? creds.problems.join('; ') 
 if (creds.problems.length && !dryRun) die('Cloudflare credentials are not usable', creds.problems.join('\n'));
 
 // Read-only. Run again right before wrangler, since the build takes minutes.
-head('custom domain pre-flight (read-only)');
+head('route pre-flight (read-only)');
 let preflight = { ok: false, reason: 'skipped: no usable Cloudflare credentials' };
 if (!creds.problems.length) preflight = await customDomainPreflight(creds.env);
 console.log(`   ${preflight.ok ? `ok: ${preflight.note}` : `BLOCKED: ${preflight.reason}`}`);
-if (!preflight.ok && !dryRun) die('the custom domain pre-flight did not pass');
+if (!preflight.ok && !dryRun) die('the route pre-flight did not pass');
 
 // ── 1. Cheap gates first ───────────────────────────────────────────────────
 if (!has('--skip-tests')) {
@@ -225,15 +216,11 @@ const before = await fetchLive();
 console.log(`   currently live:    ${before.build ?? `(no TshepoVet build: HTTP ${before.status})`}`);
 if (before.build === expected) console.log('   note: this build id is already live: a redeploy changes nothing but the version id');
 
-const rollbackHelp = before.build
-  ? `Roll back:  cd deploy/site && npx wrangler@4 rollback --name ${WORKER}`
-  : `This was the first deploy, so there is no earlier version to roll back to.\n` +
-    `To take the site down instead:  npx wrangler@4 delete --name ${WORKER}\n` +
-    `(removes the Worker and its custom domain; ask the owner first)`;
+const rollbackHelp = `Roll back:  cd deploy/site && npx wrangler@4 rollback --name ${WORKER}`;
 
 if (dryRun) {
   console.log('\n--dry-run: stopping before wrangler deploy.');
-  console.log(`   would deploy deploy/dist as Worker "${WORKER}" to ${LIVE}`);
+  console.log(`   would deploy deploy/dist as Worker "${WORKER}" on ${SITE.routes.join(', ')}`);
   // Fall through rather than process.exit(): an open keep-alive socket from
   // the live check makes a hard exit assert inside libuv on Windows.
 } else {
@@ -242,7 +229,7 @@ if (dryRun) {
   const fresh = cloudflareEnv(); // the token may have aged during the build
   if (fresh.problems.length) die('Cloudflare credentials are no longer usable', fresh.problems.join('\n'));
   const again = await customDomainPreflight(fresh.env);
-  if (!again.ok) die(`custom domain pre-flight: ${again.reason}`);
+  if (!again.ok) die(`route pre-flight: ${again.reason}`);
   const res = spawnSync('npx --yes wrangler@4 deploy', { cwd: WRANGLER_DIR, shell: true, encoding: 'utf8', env: fresh.env });
   const out = (res.stdout ?? '') + (res.stderr ?? '');
   process.stdout.write(out);
@@ -266,8 +253,8 @@ if (dryRun) {
   if (has('--skip-smoke')) {
     console.log('\n(skipping the smoke suite at your request)');
   } else {
-    head('smoke suite against the live site');
-    const smoke = spawnSync('npx playwright test --reporter=line', {
+    head('docs smoke suite against the live site');
+    const smoke = spawnSync('npx playwright test tests/smoke/site.smoke.ts --reporter=line', {
       cwd: ROOT,
       shell: true,
       stdio: 'inherit',

@@ -128,16 +128,16 @@ test('page scripts run under the CSP', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   const finish = await watch(page);
 
-  await page.goto('/');
+  await page.goto('/docs/');
   const copy = page.locator('.code-block .copy').first();
   await copy.click();
   await expect(copy).toHaveText(/Copied|Selected/);
 
-  await page.goto('/database-schema');
+  await page.goto('/docs/database-schema');
   await page.locator('#table-filter').fill('ledger');
   await expect(page.locator('#filter-count')).toHaveText(/^Showing \d+ of \d+ groups$/);
 
-  await page.goto('/architecture-compliance');
+  await page.goto('/docs/architecture-compliance');
   const cost = page.locator('#r-cost');
   const before = await cost.textContent();
   await page.locator('#c-bureau').fill('9.00');
@@ -147,7 +147,7 @@ test('page scripts run under the CSP', async ({ page, context }) => {
 });
 
 test('security, robots and caching headers', async ({ request, baseURL }) => {
-  const res = await request.get('/');
+  const res = await request.get('/docs/');
   expect(res.status()).toBe(200);
   const h = res.headers();
 
@@ -168,30 +168,31 @@ test('security, robots and caching headers', async ({ request, baseURL }) => {
   expect(h['x-robots-tag']).toBe('noindex, nofollow');
   expect(h['cache-control']).toBe('no-cache');
 
-  const asset = (await res.text()).match(/src="(\/assets\/[^"]+\.js)"/)?.[1];
-  expect(asset, 'a hashed script on the home page').toBeTruthy();
+  const asset = (await res.text()).match(/src="(\/docs\/assets\/[^"]+\.js)"/)?.[1];
+  expect(asset, 'a hashed script on the docs home page').toBeTruthy();
   const a = await request.get(asset!);
   expect(a.status()).toBe(200);
   expect(a.headers()['cache-control']).toBe('public, max-age=31536000, immutable');
   expect(a.headers()['content-type']).toContain('javascript');
 });
 
-test('an unknown path gets the 404 page, whose links work from any depth', async ({ page }) => {
-  const finish = await watch(page, { expected404: '/no/such/page' });
-  const res = await page.goto('/no/such/page');
+test('an unknown /docs path gets the 404 page, whose links work from any depth', async ({ page }) => {
+  const finish = await watch(page, { expected404: '/docs/no/such/page' });
+  const res = await page.goto('/docs/no/such/page');
   expect(res?.status()).toBe(404);
   expect(res?.headers()['x-robots-tag']).toBe('noindex, nofollow');
   await expect(page.locator('h1')).toHaveText('Page not found');
-  await page.locator('a[href="/database-schema"]').click();
-  await expect(page).toHaveURL(/\/database-schema$/);
+  await page.locator('a[href="/docs/database-schema"]').click();
+  await expect(page).toHaveURL(/\/docs\/database-schema$/);
   await expect(page.locator('h1')).toContainText('Database');
   expect(await finish()).toEqual([]);
 });
 
 test('.html paths redirect to the clean path', async ({ request, baseURL }) => {
   for (const [from, to] of [
-    ['/verification-api.html', '/verification-api'],
-    ['/index.html', '/'],
+    ['/docs/verification-api.html', '/docs/verification-api'],
+    ['/docs/index.html', '/docs/'],
+    ['/docs', '/docs/'],
   ]) {
     const res = await request.get(from, { maxRedirects: 0 });
     expect([301, 302, 307, 308], from).toContain(res.status());

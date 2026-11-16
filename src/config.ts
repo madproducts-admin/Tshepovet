@@ -7,6 +7,8 @@ const b64Key = z
 const ConfigSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(8080),
+  // Behind a reverse proxy, bind 127.0.0.1 so the port is never reachable from outside.
+  HOST: z.string().default('0.0.0.0'),
   DATABASE_URL: z.string().url(),
   WORKER_DATABASE_URL: z.string().url().optional(),
   REDIS_URL: z.string().default('redis://localhost:6379/0'),
