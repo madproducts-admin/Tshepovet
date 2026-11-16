@@ -38,6 +38,16 @@ const ConfigSchema = z.object({
   WHATSAPP_GRAPH_VERSION: z.string().default('v23.0'),
 
   OCR_MODEL: z.string().default('claude-opus-5-5'),
+
+  // --- Portal accounts (docs/PLAN.md M2) ---------------------------------------------
+  /** Base URL for links in emails (verify, reset, invite). */
+  APP_URL: z.string().url().default('https://tshepovet.madproducts.ai'),
+  /** __Host- prefixed, Secure cookies. Default: on in production, off otherwise (plain-http tests). */
+  COOKIE_SECURE: z.enum(['true', 'false']).optional(),
+  SESSION_IDLE_MINUTES: z.coerce.number().int().min(5).max(24 * 60).default(12 * 60),
+  SESSION_ABSOLUTE_HOURS: z.coerce.number().int().min(1).max(30 * 24).default(7 * 24),
+  AUTH_MAX_FAILURES: z.coerce.number().int().min(3).max(20).default(5),
+  AUTH_LOCK_MINUTES: z.coerce.number().int().min(1).max(24 * 60).default(15),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

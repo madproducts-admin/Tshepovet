@@ -9,6 +9,12 @@ declare global {
       requestId: string;
       auth?: AuthContext;
       rawBody?: Buffer;
+      /** Parsed Cookie header (portal routes only). */
+      cookies?: Record<string, string>;
+      /** The buyer-portal session, when the session cookie is valid. */
+      portal?: { token: string; session: import('@tshepovet/core').SessionData };
+      /** The staff-console session, when the staff cookie is valid. */
+      staff?: { token: string; session: import('@tshepovet/core').SessionData };
     }
   }
 }

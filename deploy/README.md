@@ -41,7 +41,7 @@ npm run site:smoke         # docs smoke suite against the live site
 `npm run deploy` runs these steps in order:
 
 0. **Pre-checks.** The working tree must be clean: the deploy builds the working tree, not HEAD. Cloudflare credentials must be usable. The route pre-flight must pass: no custom domain on the host, and no other Worker on our routes.
-1. **Gates.** `npm run typecheck` and `npm run test:unit:no-services`: 52 tests, the ones that need no Redis or PostgreSQL.
+1. **Gates.** `npm run typecheck` and `npm run test:unit:no-services`: the unit tests that need no Redis or PostgreSQL.
 2. **Build.** `tools/build-site.mjs` builds the site (see "What the docs build does").
 3. **Assemble.** `tools/assemble-deploy.mjs` writes `deploy/dist` and its `_headers` file.
 4. **Upload.** `npx wrangler@4 deploy` from `deploy/site/`.

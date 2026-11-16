@@ -3,6 +3,11 @@ import { CONTAINER, type Container } from './container';
 import { HealthController } from './http/health.controller';
 import { V1Controller } from './http/v1.controller';
 import { WhatsAppWebhookController } from './http/whatsapp.controller';
+import { AuthController } from './portal/auth.controller';
+import { AuthService } from './portal/auth.service';
+import { PortalGuard, StaffGuard } from './portal/guards';
+import { StaffAuthController } from './portal/staff-auth.controller';
+import { TeamController } from './portal/team.controller';
 
 /**
  * The HTTP application. The domain services come in pre-built (CONTAINER) instead of being
@@ -15,8 +20,13 @@ export class AppModule {
   static register(container: Container): DynamicModule {
     return {
       module: AppModule,
-      providers: [{ provide: CONTAINER, useValue: container }],
-      controllers: [HealthController, V1Controller, WhatsAppWebhookController],
+      providers: [
+        { provide: CONTAINER, useValue: container },
+        { provide: AuthService, useFactory: (c: Container) => new AuthService(c), inject: [CONTAINER] },
+        PortalGuard,
+        StaffGuard,
+      ],
+      controllers: [HealthController, V1Controller, WhatsAppWebhookController, AuthController, TeamController, StaffAuthController],
     };
   }
 }

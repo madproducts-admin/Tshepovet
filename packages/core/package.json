@@ -6,9 +6,12 @@
   "license": "UNLICENSED",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",
+    "@node-rs/argon2": "^2.2.2",
     "ioredis": "^6.0.0",
     "pg": "^8.23.1",
     "pino": "^10.4.0",

@@ -1,5 +1,6 @@
 import type { Pool } from 'pg';
 import {
+  AccountStore,
   bureauSpecsFromEnv,
   CapabilityConfigSource,
   CheckResolver,
@@ -12,10 +13,12 @@ import {
   HttpBureauAdapter,
   LocalKeyProvider,
   type Logger,
+  MfaChallengeStore,
   MockProvider,
   PgCapabilityConfig,
   type ProviderAdapter,
   type RedisClient,
+  SessionStore,
   StaticCapabilityConfig,
   VerificationCache,
   WaterfallEngine,
@@ -37,6 +40,12 @@ export interface Container {
   consent: ConsentService;
   company: CompanyVerificationService;
   driver: DriverLicenceVerificationService;
+  /** Portal accounts (docs/PLAN.md M2). */
+  accounts: AccountStore;
+  sessions: SessionStore;
+  mfa: MfaChallengeStore;
+  /** Secure, __Host- cookies (HTTPS); off only for plain-http tests and local runs. */
+  cookieSecure: boolean;
 }
 
 export interface ContainerOverrides {
@@ -95,5 +104,9 @@ export function buildContainer(config: Config, pool: Pool, redis: RedisClient, l
     syncDeadlineMs: config.SYNC_DEADLINE_MS,
     costCeilingCents: config.DRIVER_CHECK_COST_CEILING_CENTS,
   });
-  return { config, pool, redis, crypto, log, cache, resolvers, consent, company, driver };
+  const accounts = new AccountStore(pool);
+  const sessions = new SessionStore(redis, { idleSeconds: config.SESSION_IDLE_MINUTES * 60, absoluteSeconds: config.SESSION_ABSOLUTE_HOURS * 3600 });
+  const mfa = new MfaChallengeStore(redis);
+  const cookieSecure = config.COOKIE_SECURE ? config.COOKIE_SECURE === 'true' : config.NODE_ENV === 'production';
+  return { config, pool, redis, crypto, log, cache, resolvers, consent, company, driver, accounts, sessions, mfa, cookieSecure };
 }

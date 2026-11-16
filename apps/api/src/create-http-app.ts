@@ -12,6 +12,8 @@ import { idempotency } from './http/middleware/idempotency';
 import { rateLimit } from './http/middleware/rateLimit';
 import { requestContext } from './http/middleware/requestContext';
 import { NestPinoLogger } from './nest-logger';
+import { cookieNames } from './portal/cookies';
+import { portalContext } from './portal/portal.middleware';
 
 /**
  * Builds the HTTP application around a ready Container: used by main.ts and by the
@@ -49,6 +51,13 @@ export async function createHttpApp(c: Container): Promise<INestApplication> {
   const pepper = Buffer.from(c.config.API_KEY_PEPPER, 'base64');
   app.use('/v1/verify', apiKeyAuth(c.pool, pepper, 'verify:write'), rateLimit(c.redis, 50), idempotency(c.pool));
   app.use('/v1/verifications', apiKeyAuth(c.pool, pepper, 'verify:read'), rateLimit(c.redis, 100));
+  // The portal and staff APIs: session cookies + CSRF proof (portal/portal.middleware.ts).
+  // Nothing they return may be cached by a browser or a proxy.
+  app.use('/api', (_req: Request, res: express.Response, next: express.NextFunction) => {
+    res.setHeader('cache-control', 'no-store');
+    next();
+  });
+  app.use('/api', portalContext(c.sessions, cookieNames(c.cookieSecure)));
   // Errors the middleware above passes to next() - a malformed JSON body, a bad API key, a rate
   // limit - are answered here, by the pre-port errorHandler. Left to Nest, a body-parser error
   // would arrive wrapped as a generic 400 instead of invalid_json.

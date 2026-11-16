@@ -1,6 +1,11 @@
 /** @tshepovet/core: the framework-free domain. Apps import from here, never from deep paths. */
 export * from './audit/audit';
+export * from './auth/accounts';
 export * from './auth/apiKeys';
+export * from './auth/password';
+export * from './auth/sessions';
+export * from './auth/tokens';
+export * from './auth/totp';
 export * from './billing/wallet';
 export * from './cache/verificationCache';
 export * from './config';
@@ -16,6 +21,7 @@ export * from './lib/db';
 export * from './lib/errors';
 export * from './lib/logger';
 export * from './lib/redis';
+export * from './mail/outbox';
 export * from './ocr/extractor';
 export * from './ocr/postValidate';
 export * from './ocr/schemas';

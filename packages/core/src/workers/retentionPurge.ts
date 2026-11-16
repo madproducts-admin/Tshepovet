@@ -27,7 +27,14 @@ export async function purgeOnce(pool: import('pg').Pool, deleteObject: (key: str
   }
 
   const counts = await pool.query<{ run_retention_purge: Record<string, number> }>(`SELECT run_retention_purge(5000)`);
+  // Spent sign-in tokens and old outbox mail (whose bodies can carry token links): 0003_accounts.sql.
+  const auth = await pool.query<{ purge_auth_artifacts: Record<string, number> }>(`SELECT purge_auth_artifacts()`);
   await pool.query(`SELECT ensure_audit_partitions(3)`);
-  return { expired_holds: holds.rowCount, images_deleted: docs.rowCount, ...counts.rows[0]!.run_retention_purge };
+  return {
+    expired_holds: holds.rowCount,
+    images_deleted: docs.rowCount,
+    ...counts.rows[0]!.run_retention_purge,
+    ...auth.rows[0]!.purge_auth_artifacts,
+  };
 }
 

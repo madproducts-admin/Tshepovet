@@ -47,7 +47,7 @@ With `ENABLED_PROVIDERS=mock` (the default outside production), live keys hit th
 ## Tests
 
 ```bash
-npm test            # 89 tests: unit + integration (needs PostgreSQL and Redis)
+npm test            # unit + integration tests (the integration suite needs PostgreSQL and Redis)
 npm run typecheck
 ```
 
