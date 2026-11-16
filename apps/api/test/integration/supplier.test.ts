@@ -26,6 +26,7 @@ let buyer: Awaited<ReturnType<typeof ownerWithMfa>>;
 let supplierId = '';
 let inviteToken = '';
 const SUPPLIER_EMAIL = 'director@acme-supplier.example';
+const BUYER = 'Supplier Side Buyers (Pty) Ltd';
 
 const parse = <T extends z.ZodType>(schema: T, res: request.Response, status = 200): z.infer<T> => {
   expect(res.status, JSON.stringify(res.body)).toBe(status);
@@ -162,6 +163,67 @@ describe('the public passport', () => {
   });
 });
 
+describe('another buyer onboarding the same supplier', () => {
+  // Anyone can sign up as a buyer, add any company and invite an address they control. What
+  // that onboarding enters stays theirs: it must not reach the first buyer, the passport or
+  // the supplier's own sign-in unless the identity matched an active director.
+  const ATTACKER = 'someone@not-acme.example';
+  let other: Awaited<ReturnType<typeof ownerWithMfa>>;
+
+  it('keeps an onboarding by someone who is not a director with the buyer that invited them', async () => {
+    other = await ownerWithMfa(t.app, owner, 'buyer@other-buyer.example', 'Other Buyers (Pty) Ltd');
+    expect((await other.b.post('/api/wallet/topups', { credit_cents: 100_000 })).status).toBe(201);
+    const s = await other.b.post('/api/suppliers', { registration_number: '2019/123456/07' });
+    expect(s.status, JSON.stringify(s.body)).toBe(201);
+    const otherSupplierId = s.body.id;
+    parse(SupplierInviteSchema, await other.b.post(`/api/suppliers/${otherSupplierId}/invitations`, { email: ATTACKER }), 201);
+    const o = await new Onboarder(await token(ATTACKER, 'vendor_invite', '/onboard')).init();
+
+    parse(OnboardingStateSchema, await o.post('start', { agree: true, full_name: 'Pieter van der Merwe', role: 'Director' }));
+    parse(OnboardingStateSchema, await o.post('company', { correct: true }));
+    expect(parse(OnboardingStateSchema, await o.post('documents', { kind: 'identity', sample: 'id_other_person' })).identity).toEqual({ state: 'review', is_director: false });
+    parse(OnboardingStateSchema, await o.post('documents', { kind: 'bbbee', sample: 'bbbee_eme' }));
+    parse(OnboardingStateSchema, await o.post('bank', { bank_name: 'Capitec', account_number: '1400999999', account_type: 'savings' }));
+    expect((await o.post('bank', { bank_name: 'Capitec', account_number: '1400888888', account_type: 'savings' })).body.code).toBe('bank_already_added');
+    parse(OnboardingStateSchema, await o.post('submit', { publish_passport: true }));
+    expect((await o.post('skip', { step: 'tax' })).body.code).toBe('already_submitted');
+
+    // The buyer that invited them sees what was entered, as its own.
+    const mine = parse(SupplierDetailSchema, await other.b.get(`/api/suppliers/${otherSupplierId}`));
+    expect(mine.bank_accounts.map((a) => a.account_last4).sort()).toEqual(['5678', '9999']);
+
+    // The first buyer does not, and its record is as it was.
+    const first = parse(SupplierDetailSchema, await buyer.b.get(`/api/suppliers/${supplierId}`));
+    expect(first.bank_accounts.map((a) => a.account_last4)).toEqual(['5678']);
+    expect(first.documents).toHaveLength(3);
+
+    // Nothing became the supplier's shared record.
+    const shared = await owner.query(
+      `SELECT 'contact' FROM vendor_contacts WHERE email = $1 AND tenant_id IS NULL
+       UNION ALL SELECT 'bank' FROM vendor_bank_accounts WHERE account_last4 = '9999' AND tenant_id IS NULL
+       UNION ALL SELECT 'bbbee' FROM vendor_bbbee_profiles WHERE tenant_id = $2`,
+      [ATTACKER, other.tenantId],
+    );
+    expect(shared.rows).toEqual([{ '?column?': 'bbbee' }]); // the profile exists, as the other buyer's own
+    const submitted = await owner.query<{ details: { shared_record_updated: boolean; passport_published: boolean } }>(
+      `SELECT details FROM audit_log WHERE tenant_id = $1 AND action = 'onboarding.submitted'`,
+      [other.tenantId],
+    );
+    expect(submitted.rows[0]!.details).toMatchObject({ shared_record_updated: false, passport_published: false });
+
+    // The passport still shows only what the director confirmed.
+    const p = parse(PublicPassportSchema, await request(t.app).get(`/api/passport/${publicId}`));
+    expect(p).toMatchObject({ legal_name: 'ACME TRADING (PTY) LTD', directors: ['T.M.'], bbbee: { level: 1 } });
+  });
+
+  it('gives that address no sign-in to the supplier’s self-service', async () => {
+    const anon = await new Browser(t.app).init();
+    const vcsrf = (await anon.agent.get('/api/vendor/auth/csrf')).body.csrf_token;
+    expect((await anon.agent.post('/api/vendor/auth/magic-link').set('x-csrf-token', vcsrf).send({ email: ATTACKER })).body).toEqual({ status: 'check_email' });
+    expect((await owner.query(`SELECT 1 FROM email_outbox WHERE to_email = $1 AND template = 'vendor_login'`, [ATTACKER])).rowCount).toBe(0);
+  });
+});
+
 describe('supplier self-service', () => {
   let s: Browser;
   it('signs in with a link sent to the onboarded address, and answers the same for anyone else', async () => {
@@ -183,8 +245,9 @@ describe('supplier self-service', () => {
     const me = parse(VendorPortalSchema, await s.agent.get('/api/vendor/me'));
     expect(me.contact).toEqual({ full_name: 'Thandi Mokoena', email: SUPPLIER_EMAIL });
     expect(me.vendor.passport_status).toBe('active');
-    expect(me.buyers.map((b) => b.buyer)).toEqual(['Supplier Side Buyers (Pty) Ltd']);
-    expect(me.consents[0]!.purposes.map((p) => p.purpose)).toContain('passport_sharing');
+    // Every buyer that holds the supplier is listed, including one whose onboarding was not promoted.
+    expect(me.buyers.map((b) => b.buyer).sort()).toEqual(['Other Buyers (Pty) Ltd', 'Supplier Side Buyers (Pty) Ltd']);
+    expect(me.consents.find((c) => c.buyer === BUYER)!.purposes.map((p) => p.purpose)).toContain('passport_sharing');
     // A supplier session opens nothing in the buyer portal.
     expect((await s.agent.get('/api/suppliers')).status).toBe(401);
   });
@@ -202,7 +265,7 @@ describe('supplier self-service', () => {
   it('withdraws consent to monitoring, which ends the buyer’s monitoring', async () => {
     expect((await buyer.b.post(`/api/monitoring/${supplierId}`, {})).status).toBe(201);
     const me = await s.agent.get('/api/vendor/me');
-    const consent = me.body.consents[0].id;
+    const consent = me.body.consents.find((c: { buyer: string }) => c.buyer === BUYER).id;
     const r = await s.agent.post(`/api/vendor/consents/${consent}/withdraw`).set('x-csrf-token', s.csrf).send({ purposes: ['continuous_monitoring'] });
     expect(r.status).toBe(200);
     expect((await buyer.b.get('/api/monitoring')).body.counts.enrolled).toBe(0);
@@ -212,7 +275,7 @@ describe('supplier self-service', () => {
 
   it('sends an access request to the buyer’s 30-day queue', async () => {
     const me = await s.agent.get('/api/vendor/me');
-    const r = await s.agent.post('/api/vendor/requests').set('x-csrf-token', s.csrf).send({ relationship_id: me.body.buyers[0].relationship_id, request_type: 'access' });
+    const r = await s.agent.post('/api/vendor/requests').set('x-csrf-token', s.csrf).send({ relationship_id: me.body.buyers.find((b: { buyer: string }) => b.buyer === BUYER).relationship_id, request_type: 'access' });
     expect(r.status).toBe(201);
     const q = await buyer.b.get('/api/compliance/requests');
     expect(q.body.items[0]).toMatchObject({ request_type: 'access', status: 'received', days_left: 30, supplier_name: 'ACME TRADING (PTY) LTD' });

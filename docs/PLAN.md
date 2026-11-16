@@ -182,6 +182,12 @@ db/migrations/ 0001, 0002 unchanged; 0003+ add what the new features need (§5)
 - **Type parsing:** `date` columns stay `YYYY-MM-DD` strings and `bigint` becomes a number (range-checked), for every pool.
 - **Still to come:** invoice PDFs (M5 with the wallet screens), the conflict-of-interest radar's import and matching (M7, behind the flag), a general per-session rate limit on `/api` (M9).
 
+**M6 decisions (the supplier's side).**
+- **Trust boundary.** Anyone can sign up as a buyer, add any company and invite an address they control. So what an invitation's onboarding enters (contact, documents, bank account, B-BBEE profile) belongs to the inviting buyer only (`tenant_id` set) and is invisible to other buyers. It becomes the supplier's shared record (`tenant_id` NULL), which can publish the passport and sign in to self-service, only through `onboarding_promote()` at submit, and only when the identity document matched an active director on the register. The API role cannot write shared rows at all (split RLS policies in migration 0005). A security review of the first M6 commit found the gap; a test now plays the second buyer.
+- **One bank account per onboarding,** and every step re-checks under the invitation's row lock that it was not already submitted (the tax step calls a bureau outside the lock).
+- **Migration 0005** runs with the release (M10).
+- **Before live mode (not the sandbox):** a matched ID document is weak proof of being a director, since a photo of someone else's card would pass. Promotion in live mode needs a liveness or selfie match against the ID (or a DHA check) as well; until then the sandbox is the only mode, and its sample documents make the director path available to anyone by design.
+
 ## 8. Blocked on the owner (none of it stops the build)
 
 - **Bureau and payment contracts:** bureau contracts and credentials (XDS, CPB, SearchWorks, VerifyID), and confirmation of which bureaus offer TCS and eNaTIS; a payment provider for top-ups (the fleet default is Paddle via Cloud).

@@ -38,6 +38,12 @@ import { clientIp } from '../portal/auth.service';
  *
  * The steps mirror the WhatsApp flow: consent, the company as the register knows it, an
  * identity document, then (optional) B-BBEE evidence, bank details and a tax PIN, and submit.
+ *
+ * Anyone can sign up as a buyer and invite an address they control, so what is entered here
+ * (contact, documents, bank account, B-BBEE profile) is the inviting buyer's own (tenant_id).
+ * It becomes the supplier's shared record, and the passport can go live, only through
+ * onboarding_promote() at submit: when the identity document matched an active director on
+ * the register (migration 0005).
  */
 interface Invite {
   invite_id: string;
@@ -55,8 +61,8 @@ interface Progress {
   contact_id?: string;
   company?: { state: OnboardingState['company']['state']; verification_id?: string };
   identity?: { state: OnboardingState['identity']['state']; document_id?: string; is_director?: boolean };
-  bbbee?: { state: OnboardingState['bbbee']['state']; document_id?: string; level?: number | null; reasons?: string[] };
-  bank?: { state: OnboardingState['bank']['state']; last4?: string };
+  bbbee?: { state: OnboardingState['bbbee']['state']; document_id?: string; profile_id?: string; level?: number | null; reasons?: string[] };
+  bank?: { state: OnboardingState['bank']['state']; account_id?: string; last4?: string };
   tax?: { state: OnboardingState['tax']['state']; verification_id?: string; detail?: string };
 }
 
@@ -100,7 +106,9 @@ export class OnboardingController {
   /** The buyer's tenant, with the invitation's progress locked for this change. */
   private async change<T>(inv: Invite, fn: (client: PoolClient, p: Progress) => Promise<T>): Promise<T> {
     return withTenantTx(this.c.pool, inv.tenant_id, async (client) => {
-      const r = await client.query<{ progress: Progress }>(`SELECT progress FROM vendor_invites WHERE id = $1 FOR UPDATE`, [inv.invite_id]);
+      const r = await client.query<{ progress: Progress; completed_at: Date | null }>(`SELECT progress, completed_at FROM vendor_invites WHERE id = $1 FOR UPDATE`, [inv.invite_id]);
+      // Checked again under the row lock: a step that started before submit must not write after it.
+      if (r.rows[0]!.completed_at) throw new ApiError(409, 'already_submitted', 'This onboarding was already submitted. Your customer is reviewing it.');
       const p = r.rows[0]!.progress;
       const out = await fn(client, p);
       await client.query(`UPDATE vendor_invites SET progress = $2 WHERE id = $1`, [inv.invite_id, JSON.stringify(p)]);
@@ -183,12 +191,12 @@ export class OnboardingController {
       this.requireOpen(inv, p, false);
       if (p.consent_id) return;
       const contact = await client.query<{ id: string }>(
-        `INSERT INTO vendor_contacts (vendor_id, full_name, email, role, authority_basis, email_verified_at, purge_after)
-         VALUES ($1, $2, $3, $4, 'unverified', now(), now() + interval '5 years')
-         ON CONFLICT (vendor_id, email) WHERE email IS NOT NULL
+        `INSERT INTO vendor_contacts (vendor_id, tenant_id, full_name, email, role, authority_basis, email_verified_at, purge_after)
+         VALUES ($1, $2, $3, $4, $5, 'unverified', now(), now() + interval '5 years')
+         ON CONFLICT (vendor_id, email, coalesce(tenant_id, '00000000-0000-0000-0000-000000000000'::uuid)) WHERE email IS NOT NULL
          DO UPDATE SET full_name = EXCLUDED.full_name, role = coalesce(EXCLUDED.role, vendor_contacts.role), email_verified_at = now()
          RETURNING id`,
-        [inv.vendor_id, b.full_name, inv.email, b.role ?? null],
+        [inv.vendor_id, inv.tenant_id, b.full_name, inv.email, b.role ?? null],
       );
       p.contact_id = contact.rows[0]!.id;
       const v = await client.query<{ legal_name: string }>(`SELECT legal_name FROM vendors WHERE id = $1`, [inv.vendor_id]);
@@ -307,7 +315,7 @@ export class OnboardingController {
         `INSERT INTO vendor_documents (vendor_id, tenant_id, document_type, sha256, mime_type, size_bytes, source_channel, issued_on, expires_on,
                                        extracted_fields, extracted_fields_enc, extraction_confidence, extraction_model, review_status,
                                        image_purge_after, record_purge_after)
-         VALUES ($1, NULL, $2, $3, 'application/x-sandbox-sample', 1, 'portal', $4, $5, $6, $7, 1, 'sandbox', $8,
+         VALUES ($1, $9, $2, $3, 'application/x-sandbox-sample', 1, 'portal', $4, $5, $6, $7, 1, 'sandbox', $8,
                  now() + make_interval(days => (SELECT image_retention_days FROM ref_document_types WHERE code = $2)), now() + interval '5 years')
          RETURNING id`,
         [
@@ -319,6 +327,7 @@ export class OnboardingController {
           JSON.stringify(fields),
           enc,
           v.outcome === 'ok' && (b.kind === 'identity' || v.bbbee?.decision === 'accept') ? 'auto_accepted' : v.bbbee?.decision === 'reject' ? 'rejected' : 'needs_review',
+          inv.tenant_id,
         ],
       );
       const documentId = doc.rows[0]!.id;
@@ -336,12 +345,13 @@ export class OnboardingController {
         const a = v.bbbee!;
         const ex = extraction.bbbee!;
         const issued = ex.commissioner_of_oaths_date ?? ex.issue_date;
+        let profileId: string | undefined;
         if (issued && a.validUntil && a.validUntil > issued) {
-          await client.query(
-            `INSERT INTO vendor_bbbee_profiles (vendor_id, evidence_document_id, evidence_type, sector_code, financial_year_end, annual_turnover_cents,
+          const prof = await client.query<{ id: string }>(
+            `INSERT INTO vendor_bbbee_profiles (vendor_id, tenant_id, evidence_document_id, evidence_type, sector_code, financial_year_end, annual_turnover_cents,
                                                 black_ownership_pct, black_female_ownership_pct, bbbee_level, procurement_recognition_pct,
                                                 is_empowering_supplier, issued_on, valid_until, commissioner_of_oaths, validation_flags, status)
-             VALUES ($1, $2, $3, 'generic', $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+             VALUES ($1, $16, $2, $3, 'generic', $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id`,
             [
               inv.vendor_id,
               documentId,
@@ -358,12 +368,15 @@ export class OnboardingController {
               JSON.stringify({ present: ex.commissioner_of_oaths_present, name: ex.commissioner_of_oaths_name, date: ex.commissioner_of_oaths_date }),
               a.flags,
               a.decision === 'accept' ? 'accepted' : a.decision === 'reject' ? 'rejected' : 'pending_review',
+              inv.tenant_id,
             ],
           );
+          profileId = prof.rows[0]!.id;
         }
         p.bbbee = {
           state: a.decision === 'accept' ? 'accepted' : a.decision === 'reject' ? 'refused' : 'review',
           document_id: documentId,
+          ...(profileId ? { profile_id: profileId } : {}),
           level: a.decision === 'accept' ? a.level : null,
           reasons: a.flags.map((f) => BBBEE_REASONS[f]).filter((x): x is string => Boolean(x)),
         };
@@ -382,12 +395,14 @@ export class OnboardingController {
     const enc = await this.c.crypto.encrypt(b.account_number, `bank_account:${inv.vendor_id}`);
     return this.change(inv, async (client, p) => {
       this.requireOpen(inv, p);
-      await client.query(
-        `INSERT INTO vendor_bank_accounts (vendor_id, bank_name, account_number_enc, account_number_bidx, account_last4, account_type, avs_status, purge_after)
-         VALUES ($1, $2, $3, $4, $5, $6, 'not_checked', now() + interval '5 years')`,
-        [inv.vendor_id, b.bank_name, enc, this.c.crypto.blindIndex('bank_account', b.account_number), b.account_number.slice(-4), b.account_type],
+      // One account per onboarding: a changed account is a conversation with the customer, not a resubmission.
+      if (p.bank?.state === 'added') throw new ApiError(409, 'bank_already_added', 'Bank details were already added. Ask your customer if they need to change.');
+      const acct = await client.query<{ id: string }>(
+        `INSERT INTO vendor_bank_accounts (vendor_id, tenant_id, bank_name, account_number_enc, account_number_bidx, account_last4, account_type, avs_status, purge_after)
+         VALUES ($1, $7, $2, $3, $4, $5, $6, 'not_checked', now() + interval '5 years') RETURNING id`,
+        [inv.vendor_id, b.bank_name, enc, this.c.crypto.blindIndex('bank_account', b.account_number), b.account_number.slice(-4), b.account_type, inv.tenant_id],
       );
-      p.bank = { state: 'added', last4: b.account_number.slice(-4) };
+      p.bank = { state: 'added', account_id: acct.rows[0]!.id, last4: b.account_number.slice(-4) };
       await this.auditStep(client, req, inv, p, 'onboarding.bank_added');
       return this.viewAfter(client, inv, p);
     });
@@ -466,22 +481,16 @@ export class OnboardingController {
       if (!p.identity || !['accepted', 'review'].includes(p.identity.state)) throw new ApiError(409, 'identity_first', 'Add your identity document first.');
       await client.query(`UPDATE tenant_vendors SET status = 'pending_review' WHERE id = $1 AND status IN ('invited','onboarding')`, [inv.tenant_vendor_id]);
       await client.query(`UPDATE vendor_invites SET completed_at = now() WHERE id = $1`, [inv.invite_id]);
-      let published = false;
-      if (b.publish_passport) {
+      // The progress (with the ids promotion checks) is saved first; then the database decides.
+      await client.query(`UPDATE vendor_invites SET progress = $2 WHERE id = $1`, [inv.invite_id, JSON.stringify(p)]);
+      const pr = (await client.query<{ promoted: boolean; published: boolean }>(`SELECT * FROM onboarding_promote($1, $2)`, [inv.invite_id, b.publish_passport])).rows[0]!;
+      if (pr.published) {
         await client.query(`INSERT INTO consent_purposes (consent_id, tenant_id, purpose, lawful_basis) VALUES ($1, $2, 'passport_sharing', 'consent') ON CONFLICT DO NOTHING`, [
           p.consent_id,
           inv.tenant_id,
         ]);
-        // Every fact at first; the supplier can show fewer from its own portal.
-        const r = await client.query(
-          `UPDATE vendors SET passport_status = 'active',
-                  passport_public_fields = ARRAY['legal_name','registration_number','cipc_status','vat_status','tcs_status','bbbee_level','directors_initials','verified_at']
-            WHERE id = $1 AND passport_last_verified_at IS NOT NULL AND passport_status <> 'active'`,
-          [inv.vendor_id],
-        );
-        published = Boolean(r.rowCount);
       }
-      await this.auditStep(client, req, inv, p, 'onboarding.submitted', { passport_published: published });
+      await this.auditStep(client, req, inv, p, 'onboarding.submitted', { shared_record_updated: pr.promoted, passport_published: pr.published });
       const admins = await client.query<{ email: string }>(`SELECT email::text AS email FROM tenant_users WHERE role IN ('owner','admin','procurement') AND disabled_at IS NULL`);
       const v = await client.query<{ legal_name: string }>(`SELECT legal_name FROM vendors WHERE id = $1`, [inv.vendor_id]);
       for (const a of admins.rows) {

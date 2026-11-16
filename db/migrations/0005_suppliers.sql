@@ -11,6 +11,14 @@
 -- Supplier contacts and the public are not tenant users, so - like sign-in - the steps that
 -- cross tenants go through narrow SECURITY DEFINER functions that take the vendor (or the
 -- token hash) and return only what that step needs.
+--
+-- The trust boundary: anyone can sign up as a buyer, add any company and invite an address
+-- they control. So whatever is entered through an invitation (contact, bank account, B-BBEE
+-- profile, documents) belongs to the INVITING BUYER ONLY (tenant_id set). It becomes the
+-- supplier's shared record (tenant_id NULL), visible to every buyer and able to publish the
+-- passport or sign in to self-service, only through onboarding_promote(): when the identity
+-- document matched an active director on the CIPC register. The API role cannot write shared
+-- rows at all.
 -- =============================================================================
 BEGIN;
 
@@ -58,7 +66,31 @@ $$;
 -- Supplier contacts: sign-in by magic link
 -- -----------------------------------------------------------------------------
 ALTER TABLE vendor_contacts ADD COLUMN email_verified_at timestamptz;   -- set when they onboard from the emailed link
-CREATE UNIQUE INDEX uq_vendor_contacts_email ON vendor_contacts (vendor_id, email) WHERE email IS NOT NULL;
+
+-- Supplier-entered data: the inviting buyer's own (tenant_id) until promoted (NULL = shared).
+ALTER TABLE vendor_contacts      ADD COLUMN tenant_id uuid REFERENCES tenants(id);
+ALTER TABLE vendor_bank_accounts ADD COLUMN tenant_id uuid REFERENCES tenants(id);
+ALTER TABLE vendor_bbbee_profiles ADD COLUMN tenant_id uuid REFERENCES tenants(id);
+-- One contact per address per buyer, and one shared contact per address.
+CREATE UNIQUE INDEX uq_vendor_contacts_email ON vendor_contacts (vendor_id, email, coalesce(tenant_id, '00000000-0000-0000-0000-000000000000'::uuid)) WHERE email IS NOT NULL;
+
+DO $$
+DECLARE t text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY['vendor_contacts', 'vendor_bank_accounts', 'vendor_bbbee_profiles'] LOOP
+    EXECUTE format('DROP POLICY IF EXISTS vendor_child ON %I', t);
+    -- Read: the shared record of a visible supplier, plus this buyer's own rows.
+    EXECUTE format('CREATE POLICY supplier_data_read ON %I FOR SELECT USING (tenant_can_see_vendor(vendor_id) AND (tenant_id IS NULL OR tenant_id = current_tenant_id()))', t);
+    -- Write: only this buyer's own rows. Shared rows come only from onboarding_promote().
+    EXECUTE format('CREATE POLICY supplier_data_insert ON %I FOR INSERT WITH CHECK (tenant_can_see_vendor(vendor_id) AND tenant_id = current_tenant_id())', t);
+    EXECUTE format('CREATE POLICY supplier_data_update ON %I FOR UPDATE USING (tenant_id = current_tenant_id()) WITH CHECK (tenant_id = current_tenant_id())', t);
+  END LOOP;
+END $$;
+-- Documents likewise: the API role may no longer write passport-level (tenant_id NULL) rows.
+DROP POLICY IF EXISTS doc_visible ON vendor_documents;
+CREATE POLICY doc_read ON vendor_documents FOR SELECT USING (tenant_id = current_tenant_id() OR (tenant_id IS NULL AND tenant_can_see_vendor(vendor_id)));
+CREATE POLICY doc_insert ON vendor_documents FOR INSERT WITH CHECK (tenant_id = current_tenant_id() AND tenant_can_see_vendor(vendor_id));
+CREATE POLICY doc_update ON vendor_documents FOR UPDATE USING (tenant_id = current_tenant_id()) WITH CHECK (tenant_id = current_tenant_id());
 
 CREATE TABLE vendor_login_tokens (
   id                 uuid PRIMARY KEY DEFAULT uuid_v7(),
@@ -77,7 +109,8 @@ RETURNS TABLE (contact_id uuid, vendor_id uuid, full_name text, legal_name text)
 LANGUAGE sql SECURITY DEFINER SET search_path = public, pg_temp AS $$
   SELECT c.id, c.vendor_id, c.full_name, v.legal_name
     FROM vendor_contacts c JOIN vendors v ON v.id = c.vendor_id
-   WHERE c.email = p_email AND c.email_verified_at IS NOT NULL;
+   WHERE c.email = p_email AND c.email_verified_at IS NOT NULL
+     AND c.tenant_id IS NULL AND c.authority_basis IN ('director', 'member', 'sole_proprietor');
 $$;
 
 -- Issues a sign-in link for a contact; earlier unused links for that contact stop working.
@@ -105,7 +138,8 @@ $$;
 CREATE FUNCTION vendor_contact_live(p_contact uuid)
 RETURNS TABLE (vendor_id uuid, full_name text, email citext)
 LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public, pg_temp AS $$
-  SELECT vendor_id, full_name, email FROM vendor_contacts WHERE id = p_contact AND email_verified_at IS NOT NULL;
+  SELECT vendor_id, full_name, email FROM vendor_contacts
+   WHERE id = p_contact AND email_verified_at IS NOT NULL AND tenant_id IS NULL AND authority_basis IN ('director', 'member', 'sole_proprietor');
 $$;
 
 -- -----------------------------------------------------------------------------
@@ -139,7 +173,7 @@ LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public, pg_temp AS $$
         'expires_on', d.expires_on, 'created_at', d.created_at)
         ORDER BY d.created_at DESC)
       FROM vendor_documents d LEFT JOIN ref_document_types rt ON rt.code = d.document_type
-     WHERE d.vendor_id = p_vendor AND d.superseded_by IS NULL), '[]'::jsonb),
+     WHERE d.vendor_id = p_vendor AND d.superseded_by IS NULL AND d.tenant_id IS NULL), '[]'::jsonb),
     'requests', coalesce((SELECT jsonb_agg(jsonb_build_object(
         'id', r.id, 'buyer', t.legal_name, 'request_type', r.request_type, 'status', r.status, 'received_at', r.received_at, 'due_at', r.due_at)
         ORDER BY r.received_at DESC)
@@ -218,7 +252,7 @@ LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public, pg_temp AS $$
               FROM tax_compliance_pins p WHERE p.vendor_id = v.id AND p.last_verified_at IS NOT NULL
              ORDER BY p.last_verified_at DESC LIMIT 1),
     'bbbee', (SELECT jsonb_build_object('level', b.bbbee_level, 'valid_until', b.valid_until)
-                FROM vendor_bbbee_profiles b WHERE b.vendor_id = v.id AND b.status = 'accepted'
+                FROM vendor_bbbee_profiles b WHERE b.vendor_id = v.id AND b.status = 'accepted' AND b.tenant_id IS NULL
                ORDER BY b.valid_until DESC LIMIT 1),
     'directors', coalesce((SELECT jsonb_agg(
         regexp_replace(initcap(d.full_name), '(\w)\w*\s*', '\1.', 'g') ORDER BY d.full_name)
@@ -227,10 +261,63 @@ LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public, pg_temp AS $$
   FROM vendors v WHERE v.passport_public_id = p_public_id AND v.passport_status <> 'none';
 $$;
 
+-- -----------------------------------------------------------------------------
+-- Promotion: an onboarding's data becomes the supplier's shared record only when its identity
+-- document matched an active director on the register (authority_basis = 'director', set by
+-- the API after comparing blind indexes). Every row is checked to belong to this invitation's
+-- buyer and supplier; anything else is left alone. Returns whether it promoted, and whether
+-- the passport was published.
+-- -----------------------------------------------------------------------------
+CREATE FUNCTION onboarding_promote(p_invite uuid, p_publish boolean)
+RETURNS TABLE (promoted boolean, published boolean)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
+DECLARE
+  i vendor_invites%ROWTYPE;
+  v_vendor uuid;
+  c vendor_contacts%ROWTYPE;
+  v_shared uuid;
+  v_published boolean := false;
+BEGIN
+  SELECT * INTO i FROM vendor_invites WHERE id = p_invite AND tenant_id = current_tenant_id() AND completed_at IS NOT NULL;
+  IF NOT FOUND THEN RETURN QUERY SELECT false, false; RETURN; END IF;
+  SELECT vendor_id INTO v_vendor FROM tenant_vendors WHERE id = i.tenant_vendor_id;
+  SELECT * INTO c FROM vendor_contacts
+   WHERE id = (i.progress->>'contact_id')::uuid AND vendor_id = v_vendor AND tenant_id = i.tenant_id;
+  IF NOT FOUND OR c.authority_basis IS DISTINCT FROM 'director' OR (i.progress->'identity'->>'is_director')::boolean IS NOT TRUE THEN
+    RETURN QUERY SELECT false, false; RETURN;
+  END IF;
+
+  -- The contact: becomes (or refreshes) the shared contact for this address.
+  SELECT id INTO v_shared FROM vendor_contacts WHERE vendor_id = v_vendor AND email = c.email AND tenant_id IS NULL;
+  IF v_shared IS NULL THEN
+    UPDATE vendor_contacts SET tenant_id = NULL WHERE id = c.id;
+  ELSE
+    UPDATE vendor_contacts SET full_name = c.full_name, role = coalesce(c.role, role), authority_basis = 'director',
+                               is_authorised_signatory = true, email_verified_at = now() WHERE id = v_shared;
+  END IF;
+
+  UPDATE vendor_bank_accounts SET tenant_id = NULL
+   WHERE id = (i.progress->'bank'->>'account_id')::uuid AND vendor_id = v_vendor AND tenant_id = i.tenant_id;
+  UPDATE vendor_bbbee_profiles SET tenant_id = NULL
+   WHERE id = (i.progress->'bbbee'->>'profile_id')::uuid AND vendor_id = v_vendor AND tenant_id = i.tenant_id;
+  UPDATE vendor_documents SET tenant_id = NULL
+   WHERE id IN ((i.progress->'identity'->>'document_id')::uuid, (i.progress->'bbbee'->>'document_id')::uuid)
+     AND vendor_id = v_vendor AND tenant_id = i.tenant_id;
+
+  IF p_publish THEN
+    UPDATE vendors SET passport_status = 'active',
+           passport_public_fields = ARRAY['legal_name','registration_number','cipc_status','vat_status','tcs_status','bbbee_level','directors_initials','verified_at']
+     WHERE id = v_vendor AND passport_last_verified_at IS NOT NULL AND passport_status <> 'active';
+    v_published := FOUND;
+  END IF;
+  RETURN QUERY SELECT true, v_published;
+END $$;
+
 DO $$
 DECLARE f text;
 BEGIN
   FOREACH f IN ARRAY ARRAY[
+    'onboarding_promote(uuid, boolean)',
     'onboarding_open(bytea)', 'vendor_login_candidates(citext)', 'vendor_issue_login_token(uuid, bytea, interval)',
     'vendor_consume_login_token(bytea)', 'vendor_contact_live(uuid)', 'vendor_portal_view(uuid)',
     'vendor_set_passport(uuid, text, text[])', 'vendor_withdraw_consent(uuid, uuid, text[])',
