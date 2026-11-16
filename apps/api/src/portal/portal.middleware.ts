@@ -64,15 +64,21 @@ export function portalContext(sessions: SessionStore, accounts: AccountStore, na
 
 type Current = { role: string; stage: SessionData['stage'] } | null;
 
+/*
+ * The stage is only ever DOWNGRADED here, never upgraded. A session at mfa_setup was signed in
+ * with a password alone; the account later enrolling MFA (in another session) must not lift it
+ * to full access. Only AuthService.mfaEnable promotes a session, and only the one that
+ * completed enrolment; enrolling also ends the account's other sessions.
+ */
 async function currentUser(s: SessionData, accounts: AccountStore): Promise<Current> {
   const u = await accounts.userById(s.subjectId);
   if (!u || u.disabled_at || u.tenant_status !== 'active' || u.tenant_id !== s.tenantId) return null;
   const needsMfa = (MFA_REQUIRED_ROLES as readonly string[]).includes(u.role) && !u.mfa_enrolled;
-  return { role: u.role, stage: needsMfa ? 'mfa_setup' : s.stage === 'mfa_setup' && !u.mfa_enrolled ? 'mfa_setup' : 'full' };
+  return { role: u.role, stage: needsMfa ? 'mfa_setup' : s.stage };
 }
 
 async function currentStaff(s: SessionData, accounts: AccountStore): Promise<Current> {
   const st = await accounts.staffById(s.subjectId);
   if (!st || st.disabled_at) return null;
-  return { role: st.role, stage: st.mfa_enrolled ? 'full' : 'mfa_setup' };
+  return { role: st.role, stage: st.mfa_enrolled ? s.stage : 'mfa_setup' };
 }

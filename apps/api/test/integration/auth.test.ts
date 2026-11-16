@@ -378,6 +378,23 @@ describe('sessions follow the account (security review fixes)', () => {
     expect((await member.get('/api/auth/session')).body.stage).toBe('mfa_setup');
   });
 
+  it('never lifts another password-only session to full access when the account enrols MFA', async () => {
+    const email = 'twin@mfa-twin.example';
+    const legit = await signUpVerified(email, 'Twin (Pty) Ltd');
+    legit.adopt(await legit.post('/api/auth/login', { email, password: PW }));
+    const other = await new Browser().init(); // e.g. someone else who knows the password
+    other.adopt(await other.post('/api/auth/login', { email, password: PW }));
+    expect((await other.get('/api/auth/session')).body.stage).toBe('mfa_setup');
+
+    const setup = await legit.post('/api/auth/mfa/setup');
+    expect((await legit.post('/api/auth/mfa/enable', { code: totpCode(setup.body.secret, totpStep()) })).status).toBe(200);
+    expect((await legit.get('/api/auth/session')).body.stage).toBe('full');
+
+    // The other session did not pass MFA: it is ended, and never reaches the portal.
+    expect((await other.get('/api/auth/session')).status).toBe(401);
+    expect((await other.get('/api/team')).status).toBe(401);
+  });
+
   it('caps concurrent second-factor guesses and counts them toward the lockout', async () => {
     const email = 'guess@mfa-cap.example';
     const { secret } = await ownerWithMfa(email, 'Guess (Pty) Ltd');

@@ -332,7 +332,10 @@ export class AuthService {
     else await this.c.accounts.setMfa(s.subjectId, enc, true);
     await this.c.accounts.replaceRecoveryCodes(subject, codes.map(recoveryCodeHash));
     await this.c.mfa.clearPendingSecret(kind, s.subjectId);
+    // Only the session that completed enrolment is promoted; every other session of the
+    // account (signed in with a password alone) ends.
     if (s.stage === 'mfa_setup') await this.c.sessions.update(token, { stage: 'full' });
+    await this.c.sessions.destroyAll(kind, s.subjectId, token);
     await this.mfaChanged(req, kind, s, 'Two-step verification was turned on');
     return { recovery_codes: codes };
   }
