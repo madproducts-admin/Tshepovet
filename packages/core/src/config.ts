@@ -48,6 +48,19 @@ const ConfigSchema = z.object({
   SESSION_ABSOLUTE_HOURS: z.coerce.number().int().min(1).max(30 * 24).default(7 * 24),
   AUTH_MAX_FAILURES: z.coerce.number().int().min(3).max(20).default(5),
   AUTH_LOCK_MINUTES: z.coerce.number().int().min(1).max(24 * 60).default(15),
+
+  // --- The buyer portal (docs/PLAN.md M3) --------------------------------------------
+  /**
+   * The sandbox deployment: portal checks are answered by the deterministic mock bureau (and
+   * still priced against the wallet), top-ups go through the sandbox payment stand-in and are
+   * credited at once, and live API keys cannot be created. Every screen says so.
+   */
+  SANDBOX: z.enum(['true', 'false']).default('false'),
+  /** The conflict-of-interest radar: off until the s57 prior-authorisation assessment (PLAN §8). */
+  COI_RADAR_ENABLED: z.enum(['true', 'false']).default('false'),
+  /** Addresses webhooks may never be sent to, on top of every private and reserved range
+   * (comma-separated IPs: e.g. the box's own public address). */
+  WEBHOOK_DENY_IPS: z.string().default(''),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

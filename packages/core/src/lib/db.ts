@@ -1,4 +1,19 @@
-import { Pool, PoolClient, QueryResultRow } from 'pg';
+import { Pool, PoolClient, QueryResultRow, types } from 'pg';
+
+/*
+ * Type parsing for every pool in the process (pg keeps it in module state):
+ * - DATE columns are calendar days, not instants: they stay 'YYYY-MM-DD' strings. pg's default
+ *   makes a local-midnight Date, which JSON then shifts by the server's UTC offset (on a
+ *   UTC+2 box, 2026-11-16 would reach the browser as 2026-11-15T22:00Z).
+ * - int8 (bigint: money in cents, counts, audit sequence numbers) becomes a number, refused
+ *   outside the safe-integer range rather than silently rounded.
+ */
+types.setTypeParser(1082, (v: string) => v);
+types.setTypeParser(20, (v: string) => {
+  const n = Number(v);
+  if (!Number.isSafeInteger(n)) throw new RangeError(`int8 value ${v} is outside the safe integer range`);
+  return n;
+});
 
 export type Db = Pool;
 

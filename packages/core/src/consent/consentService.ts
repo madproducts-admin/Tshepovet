@@ -49,7 +49,8 @@ export interface ConsentAttestation {
   noticeCode: string;
   purposes: Array<{ purpose: Purpose; lawfulBasis: LawfulBasis }>;
   capturedAt: string;
-  method: 'api_attestation';
+  /** api_attestation: the buyer's system attests over /v1. web_checkbox: a portal user ticks it. */
+  method: 'api_attestation' | 'web_checkbox';
   /** Buyer's own evidence pointer (e.g. signed onboarding form id). */
   evidenceReference: string;
   attestedBy: string;
@@ -89,14 +90,23 @@ export class ConsentService {
 
   async recordAttestation(
     client: PoolClient,
-    args: { tenantId: string; vendorId: string | null; apiKeyId: string; attestation: ConsentAttestation; requestMeta: Record<string, unknown> },
+    args: {
+      tenantId: string;
+      vendorId: string | null;
+      apiKeyId: string | null;
+      userId?: string | null;
+      attestation: ConsentAttestation;
+      requestMeta: Record<string, unknown>;
+    },
   ): Promise<string> {
     const a = args.attestation;
+    // The notice the subject was shown: the web version for a portal checkbox, else the API one.
+    const channel = a.method === 'web_checkbox' ? 'web' : 'api';
     const notice = await client.query<{ id: string; body_sha256: Buffer }>(
       `SELECT id, body_sha256 FROM privacy_notices
-        WHERE code = $1 AND channel = 'api' AND language = 'en' AND effective_from <= now() AND retired_at IS NULL
+        WHERE code = $1 AND channel = $2 AND language = 'en' AND effective_from <= now() AND retired_at IS NULL
         ORDER BY version DESC LIMIT 1`,
-      [a.noticeCode],
+      [a.noticeCode, channel],
     );
     if (!notice.rows[0]) throw new ApiError(422, 'notice_not_found', `No active privacy notice '${a.noticeCode}'`);
 
@@ -114,8 +124,8 @@ export class ConsentService {
     const c = await client.query<{ id: string }>(
       `INSERT INTO consent_records (tenant_id, vendor_id, subject_type, subject_role, subject_ref_bidx, subject_display,
                                     on_behalf_of_subject, notice_id, capture_method, evidence, evidence_sha256,
-                                    captured_by_api_key, granted_at, purge_after)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, now() + interval '5 years')
+                                    captured_by_api_key, captured_by_user, granted_at, purge_after)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, now() + interval '5 years')
        RETURNING id`,
       [
         args.tenantId,
@@ -130,6 +140,7 @@ export class ConsentService {
         JSON.stringify(evidence),
         evidenceHash,
         args.apiKeyId,
+        args.userId ?? null,
         a.capturedAt,
       ],
     );

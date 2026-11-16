@@ -1,0 +1,146 @@
+import { randomUUID } from 'node:crypto';
+import { Controller, Get, HttpCode, Inject, Patch, Post, Req, Res, UseGuards } from '@nestjs/common';
+import type { Request, Response } from 'express';
+import type { PoolClient } from 'pg';
+import { z } from 'zod';
+import { ApiError, settleSandboxTopup } from '@tshepovet/core';
+import { LedgerQuerySchema, TopupRequestSchema, UpdateWalletSchema } from '@tshepovet/contracts';
+import { CONTAINER, type Container } from '../container';
+import { PortalGuard, RequirePermission } from './guards';
+import { auditBy, inTenant, me, pageOf, sendCsv, Where } from './tenant';
+
+const TOPUP_COLUMNS = `id, credit_cents, vat_cents, gross_cents, status, payment_provider, tax_invoice_number, created_at`;
+
+/** Movements of the customer's wallet account: positive adds credit, negative spends it. */
+function ledger(q: z.infer<typeof LedgerQuerySchema>) {
+  const w = new Where();
+  if (q.kind) w.add(`t.kind = ?`, q.kind);
+  if (q.from) w.add(`t.created_at >= ?::date`, q.from);
+  if (q.to) w.add(`t.created_at < ?::date + 1`, q.to);
+  const from = `FROM ledger_transactions t
+                JOIN ledger_entries e ON e.transaction_id = t.id
+                JOIN wallets wl ON wl.ledger_account_id = e.account_id`;
+  return { w, from };
+}
+
+/**
+ * The prepaid wallet over the double-entry ledger (packages/core billing/wallet.ts). Money is
+ * VAT-exclusive credit; a top-up's tax invoice carries the VAT on top.
+ */
+@Controller('api/wallet')
+@UseGuards(PortalGuard)
+export class WalletController {
+  constructor(@Inject(CONTAINER) private readonly c: Container) {}
+
+  private async view(client: PoolClient, tenantId: string) {
+    const r = await client.query<{
+      balance_cents: number;
+      held_cents: number;
+      credit_limit_cents: number;
+      low_balance_threshold_cents: number;
+      status: 'active' | 'frozen';
+    }>(`SELECT balance_cents, held_cents, credit_limit_cents, low_balance_threshold_cents, status FROM wallets WHERE tenant_id = $1`, [tenantId]);
+    const w = r.rows[0];
+    if (!w) throw new ApiError(404, 'not_found', 'This organisation has no wallet yet.');
+    const available = w.balance_cents - w.held_cents + w.credit_limit_cents;
+    return { currency: 'ZAR' as const, ...w, available_cents: available, low_balance: available < w.low_balance_threshold_cents, sandbox: this.c.config.SANDBOX === 'true' };
+  }
+
+  @Get()
+  @RequirePermission('wallet:read')
+  async get(@Req() req: Request) {
+    return inTenant(this.c, req, (client) => this.view(client, me(req).tenantId));
+  }
+
+  @Patch()
+  @RequirePermission('wallet:topup')
+  async update(@Req() req: Request) {
+    const b = UpdateWalletSchema.parse(req.body);
+    return inTenant(this.c, req, async (client) => {
+      await client.query(`UPDATE wallets SET low_balance_threshold_cents = $2, low_balance_notified_at = NULL, updated_at = now() WHERE tenant_id = $1`, [
+        me(req).tenantId,
+        b.low_balance_threshold_cents,
+      ]);
+      await auditBy(client, req, { action: 'wallet.threshold_changed', entityType: 'wallet', entityId: me(req).tenantId, details: b });
+      return this.view(client, me(req).tenantId);
+    });
+  }
+
+  @Get('holds')
+  @RequirePermission('wallet:read')
+  async holds(@Req() req: Request) {
+    return inTenant(this.c, req, async (client) => {
+      const r = await client.query(
+        `SELECT id, sku, amount_cents, reference_type, reference_id, created_at, expires_at FROM wallet_holds WHERE status = 'active' ORDER BY created_at DESC`,
+      );
+      return r.rows;
+    });
+  }
+
+  @Get('ledger')
+  @RequirePermission('wallet:read')
+  async ledger(@Req() req: Request) {
+    const q = LedgerQuerySchema.parse(req.query);
+    return inTenant(this.c, req, async (client) => {
+      const { w, from } = ledger(q);
+      const { limit, offset } = pageOf(q);
+      const total = await client.query<{ n: number }>(`SELECT count(*) AS n ${from} ${w.sql}`, w.params);
+      const rows = await client.query(
+        `SELECT t.id, t.kind, t.memo, t.reference_type, t.reference_id, (-e.amount_cents) AS amount_cents, t.created_at
+           ${from} ${w.sql} ORDER BY t.created_at ${q.order === 'asc' ? 'ASC' : 'DESC'}, t.id LIMIT ${w.bind(limit)} OFFSET ${w.bind(offset)}`,
+        w.params,
+      );
+      return { items: rows.rows, total: total.rows[0]!.n, page: q.page, page_size: q.page_size };
+    });
+  }
+
+  @Get('ledger.csv')
+  @RequirePermission('wallet:read')
+  async ledgerCsv(@Req() req: Request, @Res() res: Response) {
+    const q = LedgerQuerySchema.parse(req.query);
+    const rows = await inTenant(this.c, req, async (client) => {
+      const { w, from } = ledger(q);
+      return (
+        await client.query(
+          `SELECT t.created_at, t.kind, t.memo, t.reference_type, t.reference_id, (-e.amount_cents) AS amount_cents ${from} ${w.sql} ORDER BY t.created_at DESC, t.id LIMIT 50000`,
+          w.params,
+        )
+      ).rows;
+    });
+    sendCsv(
+      res,
+      'wallet-ledger.csv',
+      ['Date', 'Kind', 'Memo', 'Reference type', 'Reference', 'Amount (ZAR, excl. VAT)'],
+      rows.map((r) => [r.created_at, r.kind, r.memo, r.reference_type, r.reference_id, (r.amount_cents / 100).toFixed(2)]),
+    );
+  }
+
+  @Get('topups')
+  @RequirePermission('wallet:read')
+  async topups(@Req() req: Request) {
+    const q = z.object({ page: z.coerce.number().int().min(1).default(1), page_size: z.coerce.number().int().min(1).max(100).default(25) }).parse(req.query);
+    return inTenant(this.c, req, async (client) => {
+      const { limit, offset } = pageOf(q);
+      const total = await client.query<{ n: number }>(`SELECT count(*) AS n FROM wallet_topups`);
+      const rows = await client.query(`SELECT ${TOPUP_COLUMNS} FROM wallet_topups ORDER BY created_at DESC, id DESC LIMIT $1 OFFSET $2`, [limit, offset]);
+      return { items: rows.rows, total: total.rows[0]!.n, page: q.page, page_size: q.page_size };
+    });
+  }
+
+  @Post('topups')
+  @HttpCode(201)
+  @RequirePermission('wallet:topup')
+  async topup(@Req() req: Request) {
+    const b = TopupRequestSchema.parse(req.body);
+    if (this.c.config.SANDBOX !== 'true') {
+      throw new ApiError(409, 'payments_unavailable', 'Online top-ups are not open yet. Ask TshepoVet for an invoice to pay by EFT.');
+    }
+    const u = me(req);
+    return inTenant(this.c, req, async (client) => {
+      const t = await settleSandboxTopup(client, { tenantId: u.tenantId, creditCents: b.credit_cents, requestedBy: u.userId, reference: `sandbox-${randomUUID()}` });
+      await auditBy(client, req, { action: 'wallet.topped_up', entityType: 'wallet_topup', entityId: t.id, details: { credit_cents: t.credit_cents, provider: 'sandbox', invoice: t.tax_invoice_number } });
+      const { balance_cents, ...topup } = t;
+      return { topup, balance_cents };
+    });
+  }
+}

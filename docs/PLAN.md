@@ -170,6 +170,18 @@ db/migrations/ 0001, 0002 unchanged; 0003+ add what the new features need (§5)
 - **Services:** `tshepovet-api` runs `apps\api\dist\main.js`. A new `tshepovet-worker` runs `apps\api\dist\worker.js` and replaces both `tshepovet-webhooks` (stop, then uninstall) and the hourly purge task (unregister; `run-purge.ps1` goes).
 - **Gates:** `deploy\app\run-tests.ps1` (the full suite on the box) instead of the inline test environment.
 
+**Carried into M10 from M3.**
+- **Environment:** the box's API and worker need `SANDBOX=true` (portal checks answered by the mock bureau but priced against the wallet, sandbox top-ups, no live keys) and `WEBHOOK_DENY_IPS=209.58.145.5` (the box's own public address, on top of every private and reserved range the webhook guard already refuses). `COI_RADAR_ENABLED` stays unset until the s57 assessment (§8).
+- **Migration 0004** (`db/migrations/0004_portal.sql`) runs with the release.
+
+**M3 decisions (the portal API).**
+- **One route table.** `packages/contracts/src/api/routes.ts` lists every `/api` route with its permission and zod request/response schemas. It generates the OpenAPI 3.1 document (served at `/api/openapi.json`), and a test checks it against the routes and `@RequirePermission` the controllers actually register, both ways. That test found two check endpoints with no permission before they shipped.
+- **Strict responses.** The integration tests parse every response with its strict schema, so an undeclared field (an internal id, an encrypted column) fails a test instead of reaching a browser.
+- **Portal checks** reuse the `/v1` services with the user as requester (`verifications.requested_by_user`, consent `captured_by_user`, capture method `web_checkbox` against the web-channel notices).
+- **Webhook targets** must be https on the public internet: checked when an endpoint is saved and again at connect time, against the address actually dialled (DNS rebinding). Signing secrets rotate with a 24-hour overlap (two `v1=` signatures).
+- **Type parsing:** `date` columns stay `YYYY-MM-DD` strings and `bigint` becomes a number (range-checked), for every pool.
+- **Still to come:** invoice PDFs (M5 with the wallet screens), the conflict-of-interest radar's import and matching (M7, behind the flag), a general per-session rate limit on `/api` (M9).
+
 ## 8. Blocked on the owner (none of it stops the build)
 
 - **Bureau and payment contracts:** bureau contracts and credentials (XDS, CPB, SearchWorks, VerifyID), and confirmation of which bureaus offer TCS and eNaTIS; a payment provider for top-ups (the fleet default is Paddle via Cloud).

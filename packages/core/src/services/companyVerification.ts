@@ -109,6 +109,7 @@ export class CompanyVerificationService {
           tenantId: auth.tenantId,
           vendorId,
           apiKeyId: auth.apiKeyId,
+          userId: auth.userId ?? null,
           attestation: input.consentAttestation,
           requestMeta: { request_id: requestId },
         });

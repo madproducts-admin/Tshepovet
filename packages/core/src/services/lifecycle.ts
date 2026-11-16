@@ -9,8 +9,18 @@ import { enqueueWebhook } from '../webhooks/outbox';
 
 export interface AuthContext {
   tenantId: string;
-  apiKeyId: string;
+  /** The API key behind a /v1 request; null when a signed-in portal user asked. */
+  apiKeyId: string | null;
+  /** The portal user behind an /api request. */
+  userId?: string | null;
+  /** Which providers answer: the 'live' bureaus or the deterministic 'test' mock. */
   environment: 'live' | 'test';
+  /**
+   * Charge the price book although the 'test' providers answer. Set by the sandbox portal,
+   * where the bureau is the mock but the wallet, holds and ledger run for real on sandbox
+   * credit. tv_test_ API keys leave it unset: their checks are free.
+   */
+  chargeTestChecks?: boolean;
   scopes: string[];
 }
 
@@ -43,20 +53,34 @@ export interface CreateArgs {
 
 /** Inside the caller's tenant transaction: price, insert verification, reserve funds. */
 export async function createVerification(client: PoolClient, a: CreateArgs): Promise<{ verificationId: string; holdId: string | null; priceCents: number }> {
-  const priceCents = await priceFor(client, a.auth.tenantId, a.sku, a.auth.environment);
+  const priceCents = await priceFor(client, a.auth.tenantId, a.sku, a.auth.chargeTestChecks ? 'live' : a.auth.environment);
   const v = await client.query<{ id: string }>(
     `INSERT INTO verifications (tenant_id, verification_type, tenant_vendor_id, vendor_id, subject_fingerprint, subject_display,
-                                consent_id, checks_requested, sku, price_cents, requested_by_api_key, request_id, purge_after)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now() + interval '5 years') RETURNING id`,
-    [a.auth.tenantId, a.type, a.tenantVendorId, a.vendorId, a.subjectFingerprint, a.subjectDisplay, a.consentId, a.checksRequested, a.sku, priceCents, a.auth.apiKeyId, a.requestId],
+                                consent_id, checks_requested, sku, price_cents, requested_by_api_key, requested_by_user, request_id, purge_after)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, now() + interval '5 years') RETURNING id`,
+    [
+      a.auth.tenantId,
+      a.type,
+      a.tenantVendorId,
+      a.vendorId,
+      a.subjectFingerprint,
+      a.subjectDisplay,
+      a.consentId,
+      a.checksRequested,
+      a.sku,
+      priceCents,
+      a.auth.apiKeyId,
+      a.auth.userId ?? null,
+      a.requestId,
+    ],
   );
   const verificationId = v.rows[0]!.id;
   const hold = await reserve(client, { tenantId: a.auth.tenantId, amountCents: priceCents, sku: a.sku, referenceType: 'verification', referenceId: verificationId });
   if (hold) await client.query(`UPDATE verifications SET wallet_hold_id = $2 WHERE id = $1`, [verificationId, hold.id]);
   await audit(client, {
     tenantId: a.auth.tenantId,
-    actorType: 'api_key',
-    actorId: a.auth.apiKeyId,
+    actorType: a.auth.userId ? 'user' : 'api_key',
+    actorId: a.auth.userId ?? a.auth.apiKeyId,
     action: 'verification.created',
     entityType: 'verification',
     entityId: verificationId,

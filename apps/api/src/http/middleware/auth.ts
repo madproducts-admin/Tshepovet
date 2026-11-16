@@ -23,6 +23,9 @@ export function apiKeyAuth(pool: Pool, pepper: Buffer, requiredScope: string) {
       if (row.tenant_status !== 'active') throw new ApiError(403, 'tenant_suspended', 'This account is suspended');
       if (!row.scopes.includes(requiredScope)) throw Errors.forbidden(requiredScope);
       req.auth = { tenantId: row.tenant_id, apiKeyId: row.key_id, environment: row.environment, scopes: row.scopes };
+      // "Last used" for the Developers page (at most one write a minute per key). Recording it
+      // is a convenience: a failure here must not fail the customer's request.
+      await pool.query(`SELECT touch_api_key($1)`, [row.key_id]).catch(() => undefined);
       next();
     } catch (err) {
       next(err);

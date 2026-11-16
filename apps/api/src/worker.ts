@@ -1,4 +1,4 @@
-import { createPool, Crypto, loadConfig, LocalKeyProvider, logger, purgeOnce, WebhookDispatcher } from '@tshepovet/core';
+import { createPool, Crypto, guardedWebhookFetch, loadConfig, LocalKeyProvider, logger, purgeOnce, WebhookDispatcher } from '@tshepovet/core';
 
 /**
  * The background process (service tshepovet-worker), as the tshepovet_jobs login
@@ -14,7 +14,8 @@ async function main() {
   const config = loadConfig();
   const pool = createPool(config.WORKER_DATABASE_URL ?? config.DATABASE_URL, 10);
   const crypto = new Crypto(new LocalKeyProvider(config.KEK_KEYS), Buffer.from(config.BLIND_INDEX_ROOT_KEY, 'base64'));
-  const dispatcher = new WebhookDispatcher(pool, crypto, logger);
+  // Deliveries go to public addresses only, and never to the addresses in WEBHOOK_DENY_IPS.
+  const dispatcher = new WebhookDispatcher(pool, crypto, logger, guardedWebhookFetch(config.WEBHOOK_DENY_IPS));
 
   let stopping = false;
   let wake: (() => void) | null = null;

@@ -72,6 +72,7 @@ export class DriverLicenceVerificationService {
           tenantId: auth.tenantId,
           vendorId: input.vendorId,
           apiKeyId: auth.apiKeyId,
+          userId: auth.userId ?? null,
           attestation: { ...input.consentAttestation, subjectRefBidx: subjectBidx },
           requestMeta: { request_id: requestId },
         });

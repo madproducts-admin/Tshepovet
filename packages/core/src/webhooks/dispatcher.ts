@@ -1,7 +1,22 @@
 import type { Pool } from 'pg';
 import type { Crypto } from '../lib/crypto';
 import type { Logger } from '../lib/logger';
+import { guardedWebhookFetch, type WebhookFetch } from './safeTarget';
 import { signWebhook } from './signing';
+
+type Claimed = {
+  id: string;
+  attempts: number;
+  url: string;
+  secret_enc: Buffer;
+  previous_secret_enc: Buffer | null;
+  previous_secret_expires_at: Date | null;
+  endpoint_id: string;
+  tenant_id: string;
+  event_id: string;
+  event_type: string;
+  payload: unknown;
+};
 
 /**
  * Delivers outbox rows. Runs as tshepovet_worker (BYPASSRLS) because it
@@ -25,16 +40,18 @@ export class WebhookDispatcher {
     private readonly pool: Pool,
     private readonly crypto: Crypto,
     private readonly log: Logger,
-    private readonly fetchImpl: typeof fetch = fetch,
+    /** The HTTP client. Default: HTTPS to public addresses only (safeTarget.ts). */
+    private readonly fetchImpl: WebhookFetch = guardedWebhookFetch(),
   ) {}
 
   async runOnce(batchSize = 50): Promise<number> {
     const client = await this.pool.connect();
-    let claimed: Array<{ id: string; attempts: number; url: string; secret_enc: Buffer; endpoint_id: string; tenant_id: string; event_id: string; event_type: string; payload: unknown }>;
+    let claimed: Claimed[];
     try {
       await client.query('BEGIN');
       const r = await client.query(
-        `SELECT d.id, d.attempts, d.endpoint_id, d.tenant_id, d.event_id, e.event_type, e.payload, w.url, w.secret_enc
+        `SELECT d.id, d.attempts, d.endpoint_id, d.tenant_id, d.event_id, e.event_type, e.payload, w.url, w.secret_enc,
+                w.previous_secret_enc, w.previous_secret_expires_at
            FROM webhook_deliveries d
            JOIN webhook_events e ON e.id = d.event_id
            JOIN webhook_endpoints w ON w.id = d.endpoint_id AND w.status = 'active'
@@ -60,13 +77,18 @@ export class WebhookDispatcher {
     return claimed.length;
   }
 
-  private async deliver(d: { id: string; attempts: number; url: string; secret_enc: Buffer; endpoint_id: string; tenant_id: string; event_id: string; event_type: string; payload: unknown }) {
+  private async deliver(d: Claimed) {
     const body = JSON.stringify(d.payload);
     const attempt = d.attempts + 1;
     let status: number | null = null;
     let error: string | null = null;
     try {
-      const secret = await this.crypto.decryptString(d.secret_enc, `webhook_secret:${d.tenant_id}`);
+      const aad = `webhook_secret:${d.tenant_id}`;
+      // During a rotation the previous secret keeps signing (one v1= each) until it expires.
+      const secrets = [await this.crypto.decryptString(d.secret_enc, aad)];
+      if (d.previous_secret_enc && d.previous_secret_expires_at && d.previous_secret_expires_at > new Date()) {
+        secrets.push(await this.crypto.decryptString(d.previous_secret_enc, aad));
+      }
       const res = await this.fetchImpl(d.url, {
         method: 'POST',
         headers: {
@@ -75,7 +97,7 @@ export class WebhookDispatcher {
           'tshepovet-event-id': d.event_id,
           'tshepovet-event-type': d.event_type,
           'tshepovet-delivery-attempt': String(attempt),
-          'tshepovet-signature': signWebhook([secret], body),
+          'tshepovet-signature': signWebhook(secrets, body),
         },
         body,
         redirect: 'manual', // never follow redirects with signed payloads

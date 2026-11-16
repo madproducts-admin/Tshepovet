@@ -54,6 +54,7 @@ export async function buildTestApp(overrides: ContainerOverrides = {}) {
     REDIS_URL: process.env.TEST_REDIS_URL,
     ENABLED_PROVIDERS: 'mock',
     SYNC_DEADLINE_MS: '5000',
+    SANDBOX: 'true',
     ...KEYS,
   });
   const pool = new Pool({ connectionString: config.DATABASE_URL, max: 10 });
@@ -62,6 +63,7 @@ export async function buildTestApp(overrides: ContainerOverrides = {}) {
   const nest = await createHttpApp(container);
   return {
     app: nest.getHttpServer(),
+    nest,
     container,
     close: async () => {
       await nest.close();
