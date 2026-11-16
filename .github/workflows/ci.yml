@@ -1,0 +1,87 @@
+name: CI
+
+# Cost: this repository is public, and standard GitHub-hosted runners are free
+# for public repositories. Keep it that way: use `ubuntu-latest` only (no
+# larger, macOS or Windows runners), upload no artifacts, and let concurrency
+# cancel superseded runs. If the repository is made private, runs count
+# against the account's included Actions minutes.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Typecheck, build and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      # Throwaway credentials for the job's own database container.
+      TEST_OWNER_DATABASE_URL: postgres://tshepovet_owner:devpass@localhost:5432/tshepovet_test
+      TEST_APP_DATABASE_URL: postgres://tshepovet_api:apipass@localhost:5432/tshepovet_test
+      TEST_REDIS_URL: redis://localhost:6379/15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Same roles as the README quick start. The app role must not be a
+      # superuser or have BYPASSRLS, so the integration tests run under
+      # row-level security. The migrations themselves run inside the tests.
+      - name: Create database roles
+        run: |
+          docker exec -i ${{ job.services.postgres.id }} psql -U postgres -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE tshepovet_owner LOGIN SUPERUSER PASSWORD 'devpass';
+          CREATE DATABASE tshepovet_test OWNER tshepovet_owner;
+          CREATE ROLE tshepovet_app NOLOGIN;
+          CREATE ROLE tshepovet_api LOGIN PASSWORD 'apipass' IN ROLE tshepovet_app;
+          SQL
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Test (unit + integration)
+        run: npm test
