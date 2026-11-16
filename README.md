@@ -12,6 +12,8 @@ This repository contains the architecture, the full PostgreSQL schema, the POPIA
 | 4 | WhatsApp and AI OCR onboarding | [docs/04-whatsapp-ocr-onboarding.md](docs/04-whatsapp-ocr-onboarding.md) · `src/whatsapp/` · `src/ocr/` |
 | 5 | OpenAPI spec and Express handlers for `POST /v1/verify/company` and `POST /v1/verify/driver-license` | [openapi/openapi.yaml](openapi/openapi.yaml) · [docs/05-api.md](docs/05-api.md) · `src/routes/verify.ts` |
 
+Designed HTML versions of this README and the docs are in [docs/pages/](docs/pages/), with links to the published pages.
+
 ## Quick start
 
 Requirements: Node 20+, PostgreSQL 16, Redis 7.
