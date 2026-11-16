@@ -114,6 +114,7 @@ its custom domain. Ask the owner first.
 | Date (UTC) | Build | Worker version | Notes |
 |---|---|---|---|
 | 2026-11-16 16:06 | `cacb9cd` | `040de47a-5148-4c86-bdf2-7c08541c4c73` | First deploy. A person checked DNS (`TSV_DNS_CHECKED`): only the `*.madproducts.ai` wildcard, no `tshepovet` record. The live site, headers and TLS checked out, but the smoke gate failed: the CSP blocked the zone-injected Web Analytics beacon. |
+| 2026-11-16 16:17 | `19e6049` | `fdc86957-11c3-4513-a34a-319dc02476ad` | The CSP allows Cloudflare Web Analytics. The smoke suite passed 12/12 against the live site, TLS included. |
 
 ## What the build does (tools/build-site.mjs)
 
