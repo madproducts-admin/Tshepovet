@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>TshepoVet Database Schema</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: member of the TshepoVet design set (same tokens and type). One reading column;
+   every database guarantee is shown next to the SQL that enforces it. */
+:root {
+  --bg: #f4f5f8;
+  --surface: #ffffff;
+  --ink: #151922;
+  --muted: #586174;
+  --rule: #d9dce3;
+  --accent: #2b3796;
+  --accent-soft: #e5e7f6;
+  --accent-ink: #ffffff;
+  --code-bg: #eceef3;
+  --mark: #fbe7a8;
+  --ok: #1d7448;
+  --ok-soft: #e0f1e7;
+  --warn: #9a5800;
+  --warn-soft: #f8ecd9;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --measure: 70ch;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1117; --surface: #151922; --ink: #e5e8ee; --muted: #9aa3b5; --rule: #2a303c;
+    --accent: #a3adff; --accent-soft: #1d2340; --accent-ink: #0e1117; --code-bg: #1c212c; --mark: #4a3f14;
+    --ok: #63c891; --ok-soft: #14291e; --warn: #e4a74c; --warn-soft: #2e2313;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1117; --surface: #151922; --ink: #e5e8ee; --muted: #9aa3b5; --rule: #2a303c;
+  --accent: #a3adff; --accent-soft: #1d2340; --accent-ink: #0e1117; --code-bg: #1c212c; --mark: #4a3f14;
+  --ok: #63c891; --ok-soft: #14291e; --warn: #e4a74c; --warn-soft: #2e2313;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 24px); }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+.page {
+  max-width: 1080px; margin: 0 auto; padding-block: 40px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.masthead { display: grid; gap: 20px; padding-bottom: 32px; border-bottom: 2px solid var(--ink); margin-bottom: 12px; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.eyebrow span:first-child { color: var(--accent); font-weight: 500; }
+.eyebrow a { color: inherit; }
+h1 { font-family: var(--font-display); font-stretch: 115%; font-weight: 800; font-size: clamp(2.1rem, 5.4vw, 3.6rem); line-height: 1.02; letter-spacing: -0.015em; margin: 0; text-wrap: balance; }
+.lede { max-width: 64ch; margin: 0; color: var(--muted); font-size: 1.08rem; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); border-top: 1px solid var(--rule); margin-top: 4px; }
+.fact { padding: 14px 16px 2px 0; display: grid; gap: 2px; align-content: start; }
+.fact b { font-family: var(--font-display); font-stretch: 110%; font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.fact small { color: var(--muted); font-size: 0.82rem; line-height: 1.35; }
+
+.index { display: flex; flex-wrap: wrap; gap: 6px 22px; padding: 14px 0 0; margin: 0 0 8px; list-style: none; font-size: 0.88rem; }
+.index a { color: var(--muted); text-decoration: none; display: inline-flex; gap: 8px; align-items: baseline; }
+.index a span { font-family: var(--font-mono); font-size: 0.78rem; color: var(--accent); }
+.index a:hover { color: var(--ink); }
+
+main { min-width: 0; }
+section { scroll-margin-top: 24px; }
+section > h2 { font-family: var(--font-display); font-stretch: 108%; font-weight: 700; font-size: 1.55rem; line-height: 1.2; margin: 64px 0 14px; display: flex; gap: 12px; align-items: baseline; text-wrap: balance; }
+section > h2 .num { font-family: var(--font-mono); font-weight: 500; font-size: 0.85rem; color: var(--accent); flex: none; }
+h3 { font-family: var(--font-display); font-stretch: 105%; font-weight: 650; font-size: 1.05rem; margin: 26px 0 8px; }
+p, ul { max-width: var(--measure); }
+p { margin: 0 0 14px; }
+ul { padding-left: 1.25em; margin: 0 0 16px; display: grid; gap: 8px; }
+li::marker { color: var(--muted); }
+strong { font-weight: 600; }
+a { color: var(--accent); text-underline-offset: 2px; }
+a:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+code { font-family: var(--font-mono); font-size: 0.86em; background: var(--code-bg); padding: 0.08em 0.36em; border-radius: 3px; overflow-wrap: anywhere; }
+code.hit { background: var(--mark); }
+.cite { font-family: var(--font-mono); font-size: 0.82em; font-weight: 500; color: var(--accent); white-space: nowrap; }
+
+pre.sql {
+  font-family: var(--font-mono); font-size: 0.84rem; line-height: 1.55; background: var(--surface);
+  border: 1px solid var(--rule); padding: 14px 16px; margin: 0 0 18px; overflow-x: auto; max-width: 100%;
+}
+pre.sql .c { color: var(--muted); }
+.sql-label { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+
+.diagram { background: var(--surface); border: 1px solid var(--rule); padding: 18px; margin: 8px 0 20px; overflow-x: auto; }
+.diagram pre.mermaid { margin: 0; font-size: 0.8rem; background: none; }
+
+.table-wrap { overflow-x: auto; margin: 8px 0 22px; border: 1px solid var(--rule); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 0.9rem; line-height: 1.45; }
+th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--rule); }
+th { font-family: var(--font-mono); font-weight: 500; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); background: var(--bg); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+table.wide td { min-width: 12em; }
+td.tables { min-width: 16em; }
+td.tables code { display: inline-block; margin: 0 2px 4px 0; }
+
+.filter { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 4px 0 4px; }
+.filter label { font-size: 0.86rem; color: var(--muted); }
+.filter input {
+  font-family: var(--font-mono); font-size: 0.9rem; padding: 7px 10px; width: min(320px, 100%);
+  border: 1px solid var(--rule); background: var(--surface); color: var(--ink); border-radius: 3px;
+}
+.filter output { font-size: 0.82rem; color: var(--muted); }
+
+.note { display: grid; gap: 6px; padding: 14px 18px; margin: 6px 0 22px; background: var(--surface); border-top: 2px solid var(--rule); max-width: var(--measure); }
+.note p { margin: 0; }
+.note .label { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.09em; text-transform: uppercase; font-weight: 500; }
+.note.warn { border-top-color: var(--warn); background: var(--warn-soft); }
+.note.warn .label { color: var(--warn); }
+
+footer.colophon { margin-top: 72px; padding-top: 18px; border-top: 1px solid var(--rule); font-size: 0.82rem; color: var(--muted); display: grid; gap: 6px; max-width: var(--measure); }
+
+@media (max-width: 680px) {
+  .page { padding-block: 24px 48px; }
+  section > h2 { margin-top: 48px; }
+}
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+
+<div class="page">
+  <header class="masthead">
+    <div class="eyebrow"><span>Design dossier</span><span>PostgreSQL 16</span><span>Set: <a href="https://claude.ai/artifact/TffwU1tZSYPskHMrim4vMt">README</a> · <a href="https://claude.ai/artifact/MP58H22t29JpVKY7b9vtPW">Architecture &amp; Compliance</a> · <a href="https://claude.ai/artifact/1ZUwVgHKksnCriUEyjua3o">WhatsApp Onboarding</a> · <a href="https://claude.ai/artifact/9zS9q39GCCbB5F8ysAVU9R">Verification API</a></span></div>
+    <h1>TshepoVet Database Schema</h1>
+    <p class="lede">The data model behind vendor passports, consent, billing and audit. Tenant isolation, overspend protection, ledger balance and audit integrity are enforced by PostgreSQL itself, so an application bug cannot break them. The test suite rebuilds the database from these exact migrations on every run, connected as a non-superuser, so row-level security is exercised for real.</p>
+    <div class="facts">
+      <div class="fact"><b>56</b><small>tables in <code>0001_init.sql</code>, plus monthly audit partitions</small></div>
+      <div class="fact"><b>Forced RLS</b><small>on every tenant table; the API role cannot bypass it</small></div>
+      <div class="fact"><b>ZAR cents</b><small>integer, VAT-exclusive, double-entry ledger</small></div>
+      <div class="fact"><b>7 years</b><small>audit log retention, hash-chained per tenant</small></div>
+    </div>
+  </header>
+
+  <nav aria-label="Sections">
+    <ol class="index">
+      <li><a href="#entities"><span>1</span>Entity relationships</a></li>
+      <li><a href="#groups"><span>2</span>Table groups</a></li>
+      <li><a href="#billing"><span>3</span>Billing invariants</a></li>
+      <li><a href="#audit"><span>4</span>Audit hash chain</a></li>
+      <li><a href="#rls"><span>5</span>Row-level security</a></li>
+      <li><a href="#retention"><span>6</span>Retention</a></li>
+      <li><a href="#migrations"><span>7</span>Running migrations</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <section id="entities">
+      <h2><span class="num">1</span>Core entity relationships</h2>
+      <p>The DDL is in <code>db/migrations/0001_init.sql</code> and the reference data in <code>0002_seed_reference_data.sql</code>. Vendors are global: one row per legal entity across all buyers. Everything a buyer owns hangs off <code>tenants</code>.</p>
+      <figure class="diagram">
+<pre class="mermaid">
+erDiagram
+  tenants ||--o{ api_keys : has
+  tenants ||--|| wallets : has
+  tenants ||--o{ tenant_vendors : "buys from"
+  vendors ||--o{ tenant_vendors : supplies
+  vendors ||--o{ vendor_passport_shares : "shares passport with"
+  tenants ||--o{ vendor_passport_shares : receives
+  vendors ||--o{ vendor_directors : has
+  vendors ||--o{ vendor_beneficial_owners : has
+  vendors ||--o{ vendor_bank_accounts : has
+  vendors ||--o{ vendor_bbbee_profiles : has
+  vendors ||--o{ vendor_documents : has
+  vendors ||--o{ vendor_credentials : "CIDB, COIDA, licences"
+  vendors ||--o{ tax_compliance_pins : has
+  tenant_vendors ||--o{ expiry_schedules : has
+  tenant_vendors ||--o{ monitoring_enrolments : has
+  tenants ||--o{ verifications : runs
+  verifications ||--o{ verification_checks : has
+  verifications ||--o{ provider_calls : "cost ledger"
+  verifications }o--|| consent_records : "lawful basis"
+  consent_records ||--o{ consent_purposes : granular
+  consent_records }o--|| privacy_notices : "exact text"
+  wallets ||--o{ wallet_holds : has
+  ledger_transactions ||--|{ ledger_entries : "sum = 0"
+  tenants ||--o{ webhook_endpoints : has
+  webhook_events ||--o{ webhook_deliveries : has
+  tenants ||--o{ tenant_employees : "COI radar"
+  tenants ||--o{ wa_conversations : has
+  tenants ||--o{ audit_log : "hash chain"
+</pre>
+      </figure>
+    </section>
+
+    <section id="groups">
+      <h2><span class="num">2</span>Table groups</h2>
+      <div class="filter">
+        <label for="table-filter">Find a table</label>
+        <input id="table-filter" type="search" placeholder="e.g. pin, consent, wallet" autocomplete="off" spellcheck="false">
+        <output id="filter-count" for="table-filter">Showing all 12 groups</output>
+      </div>
+      <div class="table-wrap">
+        <table class="wide" id="groups-table">
+          <thead><tr><th>Group</th><th>Tables</th><th>Key decisions</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Reference</strong></td><td class="tables"><code>ref_cipc_entity_types</code> <code>ref_bbbee_thresholds</code> <code>ref_bbbee_recognition_levels</code> <code>ref_document_types</code> <code>ref_regulatory_grace_periods</code> <code>ref_retention_policies</code> <code>price_book</code> <code>providers</code> <code>provider_capabilities</code> <code>privacy_notices</code> <code>processing_activities</code></td><td>Regulation is data, not code. Sector-code thresholds, gazetted licence grace periods, retention periods and prices change by gazette or contract, so the compliance team edits rows without a deploy. Rows not marked <code>verified</code> are never used for automatic decisions.</td></tr>
+            <tr><td><strong>Tenancy</strong></td><td class="tables"><code>tenants</code> <code>tenant_users</code> <code>api_keys</code></td><td><code>tenant_users.can_view_special_pi</code> gates B-BBEE ownership and biometric data. API keys are stored as <code>HMAC(pepper, key)</code>.</td></tr>
+            <tr><td><strong>Vendor Passport (global)</strong></td><td class="tables"><code>vendors</code> <code>vendor_directors</code> <code>vendor_beneficial_owners</code> <code>vendor_contacts</code> <code>vendor_bank_accounts</code> <code>vendor_bbbee_profiles</code> <code>vendor_documents</code> <code>vendor_credentials</code></td><td>One row per legal entity across all buyers. The natural key is the normalised CIPC number (<code>YYYY/NNNNNN/TT</code>, CHECK-constrained) or, for sole proprietors, the blind index of the owner's SA ID. CHECK constraints force companies to have a CIPC number and sole proprietors to have an owner ID.</td></tr>
+            <tr><td><strong>Relationships</strong></td><td class="tables"><code>tenant_vendors</code> <code>vendor_passport_shares</code> <code>monitoring_enrolments</code></td><td>Passport visibility is derived: a tenant sees a vendor only through a relationship or an active, unexpired share (<code>tenant_can_see_vendor()</code>). Monitoring periods use a <code>tstzrange</code> with an exclusion constraint, so double-billing is impossible.</td></tr>
+            <tr><td><strong>POPIA</strong></td><td class="tables"><code>privacy_notices</code> <code>consent_records</code> <code>consent_purposes</code> <code>processing_activities</code> <code>data_subject_requests</code></td><td>Notices are immutable and stored with a SHA-256 of the exact text shown. A consent record is one capture event, and each purpose can be withdrawn independently. Lawful basis is recorded per purpose, because consent is not the only basis. Data subject requests default to a 30-day due date (PAIA).</td></tr>
+            <tr><td><strong>SARS</strong></td><td class="tables"><code>tax_compliance_pins</code></td><td>The PIN is a bearer credential: envelope-encrypted with AAD <code>tcs_pin:&lt;tenant&gt;:&lt;vendor&gt;</code>, deduplicated by a tenant-keyed HMAC fingerprint, and <code>purge_after</code> is mandatory. It is kept only while monitoring is on and the PIN is active (see <a href="https://claude.ai/artifact/MP58H22t29JpVKY7b9vtPW#tcs">Architecture &amp; Compliance §2.8</a>).</td></tr>
+            <tr><td><strong>Documents and expiry</strong></td><td class="tables"><code>vendor_documents</code> <code>vendor_credentials</code> <code>expiry_schedules</code></td><td>Images and extracted fields have separate retention: <code>image_purge_after</code> (30–90 days) and <code>record_purge_after</code>. <code>perceptual_hash</code> catches the same ID photo reused across vendors. <code>reminders_sent</code> makes reminders idempotent.</td></tr>
+            <tr><td><strong>Engine</strong></td><td class="tables"><code>provider_calls</code> <code>verification_cache</code> <code>verifications</code> <code>verification_checks</code></td><td><code>provider_calls</code> is the per-attempt cost and health ledger, holding the bureau payload encrypted for 30 days. <code>verification_cache</code> enforces by CHECK constraint that global rows have no tenant and tenant rows have one. <code>verifications.bureau_cost_cents</code> gives the margin per check.</td></tr>
+            <tr><td><strong>Billing</strong></td><td class="tables"><code>price_book</code> <code>tenant_price_overrides</code> <code>ledger_accounts</code> <code>wallets</code> <code>wallet_holds</code> <code>ledger_transactions</code> <code>ledger_entries</code> <code>wallet_topups</code> <code>subscriptions</code></td><td>See <a href="#billing">§3</a>.</td></tr>
+            <tr><td><strong>Integration</strong></td><td class="tables"><code>idempotency_keys</code> <code>webhook_endpoints</code> <code>webhook_events</code> <code>webhook_deliveries</code></td><td>A transactional outbox: events are written in the same transaction as the state change they describe.</td></tr>
+            <tr><td><strong>WhatsApp</strong></td><td class="tables"><code>wa_conversations</code> <code>wa_inbound_messages</code> <code>ocr_jobs</code></td><td>The WhatsApp message id is the primary key of <code>wa_inbound_messages</code>, which deduplicates Meta's retries. A partial unique index allows one active conversation per buyer and phone number. <code>version</code> gives optimistic concurrency.</td></tr>
+            <tr><td><strong>Audit</strong></td><td class="tables"><code>audit_log</code> <code>audit_chain_heads</code></td><td>Monthly partitions. See <a href="#audit">§4</a>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Vendor identity is constrained in the table definition itself:</p>
+      <p class="sql-label">vendors (excerpt)</p>
+<pre class="sql">cipc_enterprise_number  text UNIQUE CHECK (cipc_enterprise_number ~ '^\d{4}/\d{6}/\d{2}$'),
+...
+CHECK (entity_kind &lt;&gt; 'sole_proprietor' OR owner_id_number_bidx IS NOT NULL),
+CHECK (entity_kind IN ('sole_proprietor','partnership','trust','npo_unincorporated','other')
+       OR cipc_enterprise_number IS NOT NULL)</pre>
+    </section>
+
+    <section id="billing">
+      <h2><span class="num">3</span>Billing invariants enforced by the database</h2>
+      <div class="table-wrap">
+        <table class="wide">
+          <thead><tr><th>Invariant</th><th>Mechanism</th></tr></thead>
+          <tbody>
+            <tr><td>A buyer can never spend credit they don't have, even under an application bug</td><td><code>CONSTRAINT wallet_no_overspend CHECK (balance_cents - held_cents + credit_limit_cents &gt;= 0)</code></td></tr>
+            <tr><td>Every ledger transaction balances</td><td>A <code>DEFERRABLE INITIALLY DEFERRED</code> constraint trigger, <code>assert_ledger_balanced()</code>: the entries must sum to zero at commit</td></tr>
+            <tr><td>The ledger is immutable</td><td><code>forbid_mutation()</code> triggers plus <code>REVOKE UPDATE, DELETE</code></td></tr>
+            <tr><td>A hold is captured at most once</td><td>The hold moves from <code>active</code> to <code>captured</code> in a single <code>UPDATE … WHERE status = 'active'</code>, and the ledger's <code>idempotency_key = 'capture:&lt;hold_id&gt;'</code> is UNIQUE</td></tr>
+            <tr><td>Top-up VAT arithmetic</td><td><code>CHECK (gross_cents = credit_cents + vat_cents)</code>. Credits are VAT-exclusive, with 15% VAT invoiced on top-up. Confirm the time-of-supply treatment of prepaid credits with your tax adviser.</td></tr>
+            <tr><td>One hold per verification</td><td><code>UNIQUE (reference_type, reference_id)</code></td></tr>
+            <tr><td>A vendor's monitoring is never billed twice for the same period</td><td><code>EXCLUDE USING gist (tenant_vendor_id WITH =, period WITH &amp;&amp;)</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The sign convention is debit positive, credit negative. The customer wallet is a <strong>liability</strong> (TshepoVet owes the buyer checks), so a top-up credits it and a usage capture debits it, with the opposite leg on <code>revenue_usage</code>. <code>wallets.balance_cents</code> is a projection of that account, and the integration test asserts that the projection equals the ledger.</p>
+      <p class="sql-label">One R3.00 check, as ledger entries</p>
+<pre class="sql"><span class="c">-- reserve: no ledger entry, only wallets.held_cents += 300</span>
+<span class="c">-- capture, transaction kind 'usage_capture', idempotency_key 'capture:&lt;hold_id&gt;'</span>
+Dr  customer_wallet   +300   <span class="c">-- liability falls: the buyer has used a check</span>
+Cr  revenue_usage     -300
+<span class="c">-- release (provider outage): held_cents -= 300, no ledger entry</span></pre>
+    </section>
+
+    <section id="audit">
+      <h2><span class="num">4</span>Audit hash chain</h2>
+      <p>Each tenant has its own chain. Every row's hash covers the previous row's hash, so editing or deleting any row breaks every hash after it.</p>
+      <p class="sql-label">audit_log_hash()</p>
+<pre class="sql">SELECT sha256(p_prev || convert_to(concat_ws('|', p_seq, p_key, r.actor_type, r.actor_id, r.action,
+              r.entity_type, r.entity_id, r.request_id, r.details::text,
+              to_char(r.occurred_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US')), 'UTF8'));</pre>
+      <ul>
+        <li><code>audit_log_chain()</code> is a <code>SECURITY DEFINER</code> BEFORE INSERT trigger. It locks the tenant's <code>audit_chain_heads</code> row, assigns <code>chain_seq = last_seq + 1</code>, and links the row to the previous hash. Because the sequence number is assigned under the lock, chain order equals <code>chain_seq</code> order even when transactions interleave.</li>
+        <li>The app role has no access to <code>audit_chain_heads</code> and no UPDATE or DELETE on <code>audit_log</code>.</li>
+        <li><code>verify_audit_chain(tenant)</code> returns the first broken <code>chain_seq</code>, which catches both edits and deletions (gaps). The smoke tests confirm it catches a superuser rewrite. For external anchoring, publish each tenant's daily head hash somewhere TshepoVet can't rewrite, such as the tenant's own webhook or an append-only bucket.</li>
+        <li>Monthly partitions older than seven years are dropped, per the <code>audit_log</code> retention policy.</li>
+      </ul>
+    </section>
+
+    <section id="rls">
+      <h2><span class="num">5</span>Row-level security</h2>
+      <div class="table-wrap">
+        <table class="wide">
+          <thead><tr><th>Policy</th><th>Tables</th><th>Rule</th></tr></thead>
+          <tbody>
+            <tr><td><code>tenant_isolation</code></td><td>23 tenant-owned tables (verifications, wallets, holds, expiry schedules, PINs, webhooks, conversations, …)</td><td><code>tenant_id = current_tenant_id()</code> for read and write</td></tr>
+            <tr><td><code>tenant_rw</code></td><td>Consent, ledger, provider calls, data subject requests</td><td>Read own rows; may write platform rows (<code>tenant_id IS NULL</code>), such as the revenue leg of a ledger entry</td></tr>
+            <tr><td><code>platform_accounts_read</code></td><td><code>ledger_accounts</code></td><td>The platform revenue and cash accounts are readable so captures can post to them</td></tr>
+            <tr><td><code>cache_*</code></td><td><code>verification_cache</code></td><td>Global rows readable and writable by all tenants; tenant rows by their own tenant only</td></tr>
+            <tr><td><code>vendor_visible</code>, <code>vendor_child</code></td><td>Vendors and their child tables</td><td><code>tenant_can_see_vendor(vendor_id)</code>: a relationship or an active passport share</td></tr>
+            <tr><td><code>doc_visible</code></td><td>Documents, credentials</td><td>Own uploads, or passport-level rows (<code>tenant_id IS NULL</code>) the vendor shared</td></tr>
+            <tr><td><code>audit_read</code>, <code>audit_insert</code></td><td><code>audit_log</code></td><td>Own chain only</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="sql-label">tenant_can_see_vendor()</p>
+<pre class="sql">SELECT EXISTS (SELECT 1 FROM tenant_vendors tv
+                WHERE tv.vendor_id = p_vendor AND tv.tenant_id = current_tenant_id())
+    OR EXISTS (SELECT 1 FROM vendor_passport_shares s
+                WHERE s.vendor_id = p_vendor AND s.tenant_id = current_tenant_id()
+                  AND s.revoked_at IS NULL AND (s.expires_at IS NULL OR s.expires_at &gt; now()));</pre>
+      <p>There is deliberately <strong>no INSERT policy on <code>vendors</code></strong>. Tenants create passports only through <code>resolve_vendor_by_cipc()</code> and <code>resolve_vendor_sole_proprietor()</code>, which deduplicate on the natural key and return only an id, so a tenant can't probe which companies other buyers work with. API-key authentication goes through <code>authenticate_api_key()</code>, because RLS hides <code>api_keys</code> until the tenant is known.</p>
+      <div class="note warn">
+        <span class="label">Operational requirement</span>
+        <p>The schema-owner role must have <code>BYPASSRLS</code> (or be the RDS master user), because <code>FORCE ROW LEVEL SECURITY</code> also applies to table owners and the definer functions rely on that bypass. The API connects as a separate login role that is a member of <code>tshepovet_app</code> and has no <code>BYPASSRLS</code>. Workers that legitimately span tenants (webhook dispatch, purge, monitoring, WhatsApp routing) use <code>tshepovet_worker</code>.</p>
+      </div>
+    </section>
+
+    <section id="retention">
+      <h2><span class="num">6</span>Retention (POPIA <span class="cite">s14</span>) in the schema</h2>
+      <p>Every table holding personal information has a purge-date column, filled at write time from <code>ref_retention_policies</code>. <code>run_retention_purge(batch)</code>, which only the worker role can execute, then does the following:</p>
+      <div class="table-wrap">
+        <table class="wide">
+          <thead><tr><th>Data</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr><td>TCS PINs past expiry, revoked or invalid</td><td><code>pin_enc := NULL</code> (crypto-shred), <code>status := 'purged'</code>; status history kept</td></tr>
+            <tr><td>Raw bureau payloads (30 days)</td><td><code>response_enc := NULL</code></td></tr>
+            <tr><td>Document images</td><td>The worker deletes the S3 object (all versions), <strong>then</strong> sets <code>storage_key := NULL</code></td></tr>
+            <tr><td>Document records past retention</td><td><code>extracted_fields_enc := NULL</code>, <code>document_number_bidx := NULL</code></td></tr>
+            <tr><td>Cache rows past <code>stale_until</code></td><td><code>DELETE</code></td></tr>
+            <tr><td>Verification results past retention</td><td><code>result := NULL</code>, <code>subject_display := '[purged]'</code>; the billing record is kept for tax purposes</td></tr>
+            <tr><td>Director ID numbers past retention</td><td><code>id_number_enc := NULL</code></td></tr>
+            <tr><td>HR imports (30 days after last activity)</td><td><code>DELETE</code></td></tr>
+            <tr><td>WhatsApp message metadata (30 days), idempotency keys (24 hours)</td><td><code>DELETE</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Each run writes a <code>purge_runs</code> row and a <code>retention.purged</code> audit event with counts, which is the evidence for the Information Regulator. Backups can't be rewritten, so deletion there relies on crypto-shredding: a purged row has no ciphertext left in live data, and backup ciphertexts become unrecoverable when the key version that wrapped them is retired at the end of the backup retention window.</p>
+    </section>
+
+    <section id="migrations">
+      <h2><span class="num">7</span>Running migrations</h2>
+<pre class="sql">MIGRATION_DATABASE_URL=postgres://owner:***@host:5432/tshepovet npx tsx scripts/migrate.ts</pre>
+      <p>The migrator is forward-only and records applied files in <code>schema_migrations</code>. Each file runs as a single transaction.</p>
+    </section>
+
+    <footer class="colophon">
+      <span>Compiled from <code>docs/02-database-schema.md</code>; SQL excerpts are copied from <code>db/migrations/0001_init.sql</code> in the TshepoVet repository.</span>
+    </footer>
+  </main>
+</div>
+
+<script>
+(function () {
+  var input = document.getElementById('table-filter');
+  var out = document.getElementById('filter-count');
+  var rows = Array.prototype.slice.call(document.querySelectorAll('#groups-table tbody tr'));
+  function apply() {
+    var q = input.value.trim().toLowerCase().replace(/\s+/g, '_');
+    var shown = 0;
+    rows.forEach(function (row) {
+      var codes = row.querySelectorAll('td.tables code');
+      var match = !q;
+      codes.forEach(function (c) {
+        var hit = q && c.textContent.toLowerCase().indexOf(q) !== -1;
+        c.classList.toggle('hit', Boolean(hit));
+        if (hit) match = true;
+      });
+      if (!match && q && row.cells[0].textContent.toLowerCase().indexOf(q.replace(/_/g, ' ')) !== -1) match = true;
+      row.hidden = !match;
+      if (match) shown++;
+    });
+    out.textContent = q ? (shown ? 'Showing ' + shown + ' of ' + rows.length + ' groups' : 'No table matches "' + input.value.trim() + '"') : 'Showing all ' + rows.length + ' groups';
+  }
+  input.addEventListener('input', apply);
+  apply();
+})();
+</script>
+
+</body>
+</html>

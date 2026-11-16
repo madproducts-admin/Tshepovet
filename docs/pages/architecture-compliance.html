@@ -1,0 +1,1101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>TshepoVet Architecture &amp; Compliance</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout: a two-part technical dossier. Sticky margin index on the left, one reading column,
+   wide tables scroll inside their own frames. Legal citations and code identifiers are set in mono as content. */
+:root {
+  --bg: #f4f5f8;
+  --surface: #ffffff;
+  --ink: #151922;
+  --muted: #586174;
+  --rule: #d9dce3;
+  --accent: #2b3796;          /* commissioner's-stamp ink */
+  --accent-soft: #e5e7f6;
+  --accent-ink: #ffffff;
+  --code-bg: #eceef3;
+  --ok: #1d7448;
+  --ok-soft: #e0f1e7;
+  --warn: #9a5800;
+  --warn-soft: #f8ecd9;
+  --crit: #b22a1d;
+  --crit-soft: #f9e3e0;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --measure: 70ch;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1117; --surface: #151922; --ink: #e5e8ee; --muted: #9aa3b5; --rule: #2a303c;
+    --accent: #a3adff; --accent-soft: #1d2340; --accent-ink: #0e1117; --code-bg: #1c212c;
+    --ok: #63c891; --ok-soft: #14291e; --warn: #e4a74c; --warn-soft: #2e2313; --crit: #f07a6c; --crit-soft: #33191a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1117; --surface: #151922; --ink: #e5e8ee; --muted: #9aa3b5; --rule: #2a303c;
+  --accent: #a3adff; --accent-soft: #1d2340; --accent-ink: #0e1117; --code-bg: #1c212c;
+  --ok: #63c891; --ok-soft: #14291e; --warn: #e4a74c; --warn-soft: #2e2313; --crit: #f07a6c; --crit-soft: #33191a;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html { scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 24px); }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.page {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-block: 40px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* ---------- masthead ---------- */
+.masthead {
+  display: grid;
+  gap: 20px;
+  padding-bottom: 32px;
+  border-bottom: 2px solid var(--ink);
+  margin-bottom: 40px;
+}
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+}
+.eyebrow span:first-child { color: var(--accent); font-weight: 500; }
+.eyebrow a { color: inherit; }
+h1 {
+  font-family: var(--font-display);
+  font-stretch: 115%;
+  font-weight: 800;
+  font-size: clamp(2.1rem, 5.4vw, 3.6rem);
+  line-height: 1.02;
+  letter-spacing: -0.015em;
+  margin: 0;
+  text-wrap: balance;
+}
+.lede { max-width: 62ch; margin: 0; color: var(--muted); font-size: 1.08rem; }
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0;
+  border-top: 1px solid var(--rule);
+  margin-top: 4px;
+}
+.fact { padding: 14px 16px 2px 0; display: grid; gap: 2px; }
+.fact b {
+  font-family: var(--font-display);
+  font-stretch: 110%;
+  font-size: 1.35rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.fact small { color: var(--muted); font-size: 0.82rem; line-height: 1.35; }
+
+/* ---------- layout ---------- */
+.layout {
+  display: grid;
+  grid-template-columns: 236px minmax(0, 1fr);
+  gap: 56px;
+  align-items: start;
+}
+.toc {
+  position: sticky;
+  top: calc(env(safe-area-inset-top, 0px) + 24px);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  font-size: 0.86rem;
+}
+.toc summary {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 4px 0 10px;
+  list-style: none;
+}
+.toc summary::-webkit-details-marker { display: none; }
+.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+.toc .part {
+  font-family: var(--font-display);
+  font-stretch: 110%;
+  font-weight: 700;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 16px 0 6px;
+  color: var(--ink);
+}
+.toc .part:first-child { margin-top: 0; }
+.toc a {
+  display: grid;
+  grid-template-columns: 2.6em 1fr;
+  gap: 4px;
+  padding: 4px 8px 4px 6px;
+  color: var(--muted);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  line-height: 1.35;
+}
+.toc a span:first-child { font-family: var(--font-mono); font-size: 0.78rem; padding-top: 1px; font-variant-numeric: tabular-nums; }
+.toc a:hover { color: var(--ink); }
+.toc a.active { color: var(--accent); border-left-color: var(--accent); }
+.toc a:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+main { min-width: 0; }
+.part-head {
+  display: grid;
+  gap: 8px;
+  padding: 0 0 18px;
+  margin: 0 0 8px;
+  border-bottom: 1px solid var(--rule);
+}
+.part-head + section h2 { margin-top: 28px; }
+.part-head:not(:first-child) { margin-top: 72px; padding-top: 28px; border-top: 2px solid var(--ink); }
+.part-label { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.part-head h2 {
+  font-family: var(--font-display);
+  font-stretch: 112%;
+  font-weight: 800;
+  font-size: clamp(1.7rem, 3.4vw, 2.3rem);
+  line-height: 1.1;
+  margin: 0;
+  text-wrap: balance;
+}
+.part-head p { margin: 0; color: var(--muted); max-width: var(--measure); }
+
+section { scroll-margin-top: 24px; }
+section > h2 {
+  font-family: var(--font-display);
+  font-stretch: 108%;
+  font-weight: 700;
+  font-size: 1.45rem;
+  line-height: 1.2;
+  margin: 56px 0 14px;
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  text-wrap: balance;
+}
+section > h2 .num {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 0.85rem;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+h3 {
+  font-family: var(--font-display);
+  font-stretch: 105%;
+  font-weight: 650;
+  font-size: 1.08rem;
+  margin: 30px 0 8px;
+}
+p, ul, ol.steps { max-width: var(--measure); }
+p { margin: 0 0 14px; }
+ul, ol.steps { padding-left: 1.25em; margin: 0 0 16px; display: grid; gap: 8px; }
+li::marker { color: var(--muted); }
+strong { font-weight: 600; }
+a { color: var(--accent); text-underline-offset: 2px; }
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  background: var(--code-bg);
+  padding: 0.08em 0.36em;
+  border-radius: 3px;
+  overflow-wrap: anywhere;
+}
+.cite {
+  font-family: var(--font-mono);
+  font-size: 0.82em;
+  font-weight: 500;
+  color: var(--accent);
+  white-space: nowrap;
+}
+pre.formula {
+  font-family: var(--font-mono);
+  font-size: 0.88rem;
+  line-height: 1.55;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  padding: 16px 18px;
+  margin: 0 0 18px;
+  overflow-x: auto;
+  max-width: 100%;
+}
+.diagram {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  padding: 18px;
+  margin: 8px 0 20px;
+  overflow-x: auto;
+}
+.diagram pre.mermaid { margin: 0; font-size: 0.8rem; background: none; }
+.diagram figcaption { font-size: 0.82rem; color: var(--muted); margin-top: 10px; }
+
+/* tables */
+.table-wrap { overflow-x: auto; margin: 8px 0 22px; border: 1px solid var(--rule); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 0.9rem; line-height: 1.45; }
+th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--rule); }
+th {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  background: var(--bg);
+  white-space: nowrap;
+}
+tr:last-child td { border-bottom: 0; }
+td:first-child { min-width: 11em; }
+table.wide td { min-width: 12em; }
+table.wide td:first-child { min-width: 13em; }
+.scope { font-family: var(--font-mono); font-size: 0.78rem; font-weight: 500; padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
+.scope.global { background: var(--ok-soft); color: var(--ok); }
+.scope.tenant { background: var(--accent-soft); color: var(--accent); }
+td.num, th.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* notes */
+.note {
+  display: grid;
+  gap: 6px;
+  padding: 14px 18px;
+  margin: 6px 0 22px;
+  background: var(--surface);
+  border-top: 2px solid var(--rule);
+  max-width: var(--measure);
+}
+.note p { margin: 0; }
+.note .label { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 0.09em; text-transform: uppercase; font-weight: 500; }
+.note.warn { border-top-color: var(--warn); background: var(--warn-soft); }
+.note.warn .label { color: var(--warn); }
+.note.legal { border-top-color: var(--accent); background: var(--accent-soft); }
+.note.legal .label { color: var(--accent); }
+.note.crit { border-top-color: var(--crit); background: var(--crit-soft); }
+.note.crit .label { color: var(--crit); }
+
+ol.steps { counter-reset: step; list-style: none; padding-left: 0; }
+ol.steps > li { counter-increment: step; display: grid; grid-template-columns: 2em minmax(0, 1fr); gap: 6px; }
+ol.steps > li::before {
+  content: counter(step);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--accent);
+  padding-top: 3px;
+  font-variant-numeric: tabular-nums;
+}
+ol.steps ol { margin: 8px 0 0; }
+
+/* calculator */
+.calc {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 0;
+  border: 1px solid var(--rule);
+  background: var(--surface);
+  margin: 10px 0 24px;
+}
+.calc-in { padding: 18px 20px; display: grid; gap: 14px; border-right: 1px solid var(--rule); }
+.calc-out { padding: 18px 20px; display: grid; gap: 16px; align-content: start; }
+.calc h3 { margin: 0; font-size: 0.95rem; }
+.field { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; align-items: center; }
+.field label { font-size: 0.86rem; color: var(--muted); }
+.field input[type="number"] {
+  width: 6.5em;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  padding: 6px 8px;
+  border: 1px solid var(--rule);
+  background: var(--bg);
+  color: var(--ink);
+  border-radius: 3px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.field input[type="range"] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
+.field output { font-family: var(--font-mono); font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+.field input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.readout { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.readout div { display: grid; gap: 2px; }
+.readout small { font-size: 0.76rem; color: var(--muted); line-height: 1.3; }
+.readout b { font-family: var(--font-display); font-stretch: 110%; font-size: 1.45rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.meter { position: relative; height: 14px; background: var(--bg); border: 1px solid var(--rule); }
+.meter-fill { position: absolute; inset: 0 auto 0 0; background: var(--ok); transition: width 0.2s ease; }
+.meter-fill.short { background: var(--warn); }
+.meter-mark { position: absolute; top: -5px; bottom: -5px; width: 2px; background: var(--ink); }
+.meter-legend { display: flex; justify-content: space-between; gap: 12px; font-size: 0.78rem; color: var(--muted); }
+.verdict { font-size: 0.9rem; margin: 0; }
+.verdict.ok { color: var(--ok); }
+.verdict.short { color: var(--warn); }
+
+footer.colophon {
+  margin-top: 72px;
+  padding-top: 18px;
+  border-top: 1px solid var(--rule);
+  font-size: 0.82rem;
+  color: var(--muted);
+  display: grid;
+  gap: 6px;
+  max-width: var(--measure);
+}
+
+@media (max-width: 960px) {
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .toc {
+    position: static;
+    max-height: none;
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    padding: 10px 14px;
+  }
+  .toc summary { padding: 4px 0; }
+  .toc details[open] summary { padding-bottom: 10px; }
+}
+@media (max-width: 680px) {
+  .calc { grid-template-columns: minmax(0, 1fr); }
+  .calc-in { border-right: 0; border-bottom: 1px solid var(--rule); }
+  .page { padding-block: 24px 48px; }
+  section > h2 { margin-top: 44px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .meter-fill { transition: none; }
+}
+</style>
+
+<div class="page">
+  <header class="masthead">
+    <div class="eyebrow"><span>Design dossier</span><span>Vendor onboarding · KYB · continuous compliance</span><span>South Africa</span><span>Set: <a href="https://claude.ai/artifact/TffwU1tZSYPskHMrim4vMt">README</a> · <a href="https://claude.ai/artifact/1ZUwVgHKksnCriUEyjua3o">WhatsApp Onboarding</a> · <a href="https://claude.ai/artifact/FiCj3NRZZ1YG5DTcPG3Abb">Database Schema</a> · <a href="https://claude.ai/artifact/9zS9q39GCCbB5F8ysAVU9R">Verification API</a></span></div>
+    <h1>TshepoVet Architecture &amp; Compliance</h1>
+    <p class="lede">How the platform verifies South African suppliers at R3.00 a check without breaking POPIA: the provider waterfall, the privacy-aware cache, the unit economics, and the consent, SARS TCS and retention workflows behind them.</p>
+    <div class="facts">
+      <div class="fact"><b>R3.00</b><small>company check: CIPC, directors, VAT, SARS TCS</small></div>
+      <div class="fact"><b>R2.50</b><small>driving licence and PrDP check</small></div>
+      <div class="fact"><b>≥ 64%</b><small>cache hit rate needed for a 50% margin at an illustrative R4.00 bureau cost</small></div>
+      <div class="fact"><b>af-south-1</b><small>Cape Town region for compute, data, cache and keys</small></div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="toc" aria-label="Contents">
+      <details id="toc-details" open>
+        <summary>Contents</summary>
+        <ol>
+          <li class="part">Part 1 · Architecture</li>
+          <li><a href="#goals"><span>1.1</span><span>Design goals</span></a></li>
+          <li><a href="#components"><span>1.2</span><span>Component view</span></a></li>
+          <li><a href="#lifecycle"><span>1.3</span><span>Request lifecycle</span></a></li>
+          <li><a href="#waterfall"><span>1.4</span><span>The waterfall router</span></a></li>
+          <li><a href="#caching"><span>1.5</span><span>POPIA-compliant caching</span></a></li>
+          <li><a href="#economics"><span>1.6</span><span>Unit economics</span></a></li>
+          <li><a href="#modules"><span>1.7</span><span>Module notes</span></a></li>
+          <li><a href="#security"><span>1.8</span><span>Security architecture</span></a></li>
+          <li><a href="#hardening"><span>1.9</span><span>Hardening still to do</span></a></li>
+          <li class="part">Part 2 · Compliance</li>
+          <li><a href="#roles"><span>2.1</span><span>Roles and contracts</span></a></li>
+          <li><a href="#lawful-basis"><span>2.2</span><span>Lawful basis per activity</span></a></li>
+          <li><a href="#consent"><span>2.3</span><span>Consent capture</span></a></li>
+          <li><a href="#special-pi"><span>2.4</span><span>Special personal information</span></a></li>
+          <li><a href="#automated"><span>2.5</span><span>Automated decisions</span></a></li>
+          <li><a href="#prior-authorisation"><span>2.6</span><span>Prior authorisation</span></a></li>
+          <li><a href="#cross-border"><span>2.7</span><span>Cross-border transfers</span></a></li>
+          <li><a href="#tcs"><span>2.8</span><span>SARS TCS PIN handling</span></a></li>
+          <li><a href="#purge"><span>2.9</span><span>Auto-purge of expired PII</span></a></li>
+          <li><a href="#obligations"><span>2.10</span><span>Operational checklist</span></a></li>
+          <li><a href="#sa-specifics"><span>2.11</span><span>FICA, B-BBEE and entity cases</span></a></li>
+        </ol>
+      </details>
+    </nav>
+
+    <main>
+      <!-- ======================= PART 1 ======================= -->
+      <div class="part-head" id="part-1">
+        <span class="part-label">Part 1</span>
+        <h2>System architecture and the waterfall API engine</h2>
+        <p>Node.js/TypeScript, PostgreSQL 16 and Redis. Every channel (API, portal, WhatsApp, monitoring) calls the same verification services.</p>
+      </div>
+
+      <section id="goals">
+        <h2><span class="num">1.1</span>Design goals, in priority order</h2>
+        <ol class="steps">
+          <li><div><strong>Unit margin at R3.00 per check.</strong> Every design choice is judged by its effect on the cost of a check: caching, request coalescing, prepaid bureau bundles, cost-aware routing, and not charging for our own outages.</div></li>
+          <li><div><strong>POPIA by construction.</strong> Tenant isolation is enforced in the database, identifiers are encrypted with blind indexes, the cache scope is decided by the data, and deletion is automatic.</div></li>
+          <li><div><strong>Correctness under failure.</strong> Holds instead of locks, a transactional outbox, idempotency keys, circuit breakers, and stale-if-error with explicit flags.</div></li>
+          <li><div><strong>One codebase for API, portal, WhatsApp and monitoring.</strong> Every channel calls the same verification services.</div></li>
+        </ol>
+      </section>
+
+      <section id="components">
+        <h2><span class="num">1.2</span>Component view</h2>
+        <figure class="diagram">
+<pre class="mermaid">
+flowchart LR
+  subgraph Clients
+    ERP[Buyer ERP / API client]
+    Portal[Buyer portal]
+    WA[Vendor on WhatsApp]
+    Pass[Passport QR viewers]
+  end
+  subgraph Edge["af-south-1 (Cape Town)"]
+    LB[ALB + WAF]
+    API[API service&lt;br/&gt;Express/TypeScript]
+    WAH[WhatsApp webhook receiver]
+  end
+  subgraph Workers
+    CW[Conversation worker&lt;br/&gt;state machine]
+    OCR[OCR worker&lt;br/&gt;Claude structured extraction]
+    DSP[Webhook dispatcher&lt;br/&gt;outbox to HTTPS]
+    MON[Monitoring scheduler&lt;br/&gt;expiry, re-checks, ERP lock]
+    PUR[Retention purge&lt;br/&gt;POPIA s14]
+  end
+  subgraph Data
+    PG[(PostgreSQL 16&lt;br/&gt;RLS, ledger, audit chain)]
+    RD[(Redis&lt;br/&gt;L1 cache, health, locks,&lt;br/&gt;streams, rate limits)]
+    S3[(S3 SSE-KMS&lt;br/&gt;document images)]
+    KMS[[KMS&lt;br/&gt;KEKs]]
+  end
+  subgraph External
+    B1[CPB]
+    B2[XDS]
+    B3[SearchWorks]
+    B4[VerifyID]
+    META[WhatsApp Cloud API]
+    LLM[Claude API]
+    ACC[Xero / Sage]
+  end
+  ERP &amp; Portal --&gt; LB --&gt; API
+  WA --&gt; META --&gt; WAH --&gt; RD
+  RD --&gt; CW --&gt; OCR --&gt; LLM
+  CW --&gt; API
+  API --&gt; PG &amp; RD
+  API --&gt;|waterfall| B1 &amp; B2 &amp; B3 &amp; B4
+  OCR --&gt; S3
+  API &amp; CW &amp; OCR --&gt; KMS
+  DSP --&gt; ERP
+  MON --&gt; ACC
+  MON --&gt; API
+  PUR --&gt; PG &amp; S3
+  Pass --&gt; API
+</pre>
+          <figcaption>Everything that stores or processes personal information runs in af-south-1. The LLM API and Meta are the cross-border processors (see §2.7).</figcaption>
+        </figure>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Component</th><th>Code</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td>API service</td><td><code>src/app.ts</code>, <code>src/routes/*</code></td><td>Stateless. Holds no tenant context between requests; the RLS context is set per transaction with <code>SET LOCAL</code>.</td></tr>
+              <tr><td>Waterfall engine</td><td><code>src/waterfall/engine.ts</code>, <code>health.ts</code></td><td>Cost- and uptime-aware routing, circuit breakers, upstream-outage detection.</td></tr>
+              <tr><td>Provider adapters</td><td><code>src/providers/adapters/*</code></td><td>One canonical model per capability. Bureau-specific mapping is isolated and pure.</td></tr>
+              <tr><td>Tiered cache</td><td><code>src/cache/verificationCache.ts</code></td><td>Redis L1 and Postgres L2, both encrypted. Global or tenant scope is decided by the type of data.</td></tr>
+              <tr><td>Check resolver</td><td><code>src/services/checkResolver.ts</code></td><td>Cache, then single-flight, then waterfall, then stale-if-error.</td></tr>
+              <tr><td>Verification services</td><td><code>companyVerification.ts</code>, <code>driverLicenceVerification.ts</code></td><td>Validation, consent, reserve, run, evaluate, finalise.</td></tr>
+              <tr><td>Billing</td><td><code>src/billing/wallet.ts</code></td><td>Reserve, capture and release over a double-entry ledger.</td></tr>
+              <tr><td>Webhooks</td><td><code>src/webhooks/*</code></td><td>Transactional outbox, Stripe-style signatures, a dispatcher using <code>SKIP LOCKED</code>.</td></tr>
+              <tr><td>WhatsApp</td><td><code>src/whatsapp/*</code></td><td>Webhook receiver, a pure state machine and an action-executing worker.</td></tr>
+              <tr><td>OCR</td><td><code>src/ocr/*</code></td><td>Claude vision with structured outputs, then deterministic post-validation.</td></tr>
+              <tr><td>Retention</td><td><code>retentionPurge.ts</code>, <code>run_retention_purge()</code></td><td>Crypto-shredding plus deletion of object-store images.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="lifecycle">
+        <h2><span class="num">1.3</span>Request lifecycle: <code>POST /v1/verify/company</code></h2>
+        <figure class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant C as Buyer
+  participant A as API
+  participant P as Postgres (RLS)
+  participant R as Redis
+  participant W as Waterfall
+  participant B as Bureaus
+  C-&gt;&gt;A: POST /v1/verify/company (Idempotency-Key)
+  A-&gt;&gt;P: authenticate_api_key(prefix) [SECURITY DEFINER]
+  A-&gt;&gt;P: claim idempotency key
+  A-&gt;&gt;A: normalise CIPC no., VAT, tax ref, PIN
+  note over A,P: TX 1 (tenant context)
+  A-&gt;&gt;P: resolve_vendor_by_cipc() + link tenant_vendors
+  A-&gt;&gt;P: record or assert consent purposes
+  A-&gt;&gt;P: insert verification + RESERVE wallet hold
+  par registration+directors / VAT / TCS
+    A-&gt;&gt;R: L1 cache (encrypted)
+    A-&gt;&gt;P: L2 cache
+    A-&gt;&gt;R: single-flight lock
+    A-&gt;&gt;W: execute(capability)
+    W-&gt;&gt;R: health snapshots, circuit state, volume tier
+    W-&gt;&gt;B: cheapest healthy provider, then failover
+  end
+  note over A,P: TX 2 (all or nothing)
+  A-&gt;&gt;P: vendor + directors (encrypted, blind-indexed)
+  A-&gt;&gt;P: checks, provider_calls, PIN vault if monitoring
+  A-&gt;&gt;P: CAPTURE or RELEASE hold, ledger entries
+  A-&gt;&gt;P: outbox verification.completed
+  A-&gt;&gt;P: audit_log (hash-chained)
+  A--&gt;&gt;C: 200, or 202 if past the sync deadline
+</pre>
+        </figure>
+        <p>Some properties follow from this structure:</p>
+        <ul>
+          <li><strong>No charge without delivery.</strong> The hold is captured only when the primary check returns a definitive answer. "Company does not exist" counts as definitive and is billed. A bureau outage is not billed.</li>
+          <li><strong>No delivery without a record.</strong> Results, billing, webhook and audit entry commit in one transaction (TX 2).</li>
+          <li><strong>A wallet row is never locked during a bureau call.</strong> The hold is a single atomic <code>UPDATE … WHERE balance - held + credit_limit &gt;= amount</code>, and the <code>wallet_no_overspend</code> CHECK constraint is the final guard.</li>
+          <li><strong>Retries are safe.</strong> The idempotency key replays the stored response, and the capture is keyed <code>capture:&lt;hold_id&gt;</code> in the ledger.</li>
+        </ul>
+      </section>
+
+      <section id="waterfall">
+        <h2><span class="num">1.4</span>The waterfall router</h2>
+        <h3>Capabilities, not bureaus</h3>
+        <p>Callers ask for a capability (<code>company_registration</code>, <code>vat_status</code>, <code>tax_compliance_status</code>, <code>driver_licence</code>, <code>id_verification</code>). Bureaus bundle data differently. Most return directors with the company enquiry, and PrDP usually comes with the licence record, so bundled data is modelled inside the parent capability's output. <code>provider_capabilities</code> holds the contracted wholesale price, volume tiers, any prepaid bundle balance, the timeout, and whether the provider is a <strong>live source</strong> (it queries CIPC or eNaTIS in real time) or serves a <strong>cached copy</strong>.</p>
+
+        <h3>Scoring: expected cost, not list price</h3>
+        <p>For every candidate provider:</p>
+<pre class="formula">score = marginal_price                              // 0 while a prepaid bundle has units (sunk cost)
+      + 150c × (1 − success_rate)                   // a failure costs a retry and latency
+      + 10c  × ewma_latency_seconds                 // user-facing latency has a price
+      + 500c × (needs_live_data ∧ ¬is_live_source)  // new companies, freshness=live</pre>
+        <ul>
+          <li><code>success_rate</code> is computed over the last 50 calls with a Beta(4,1) prior, so a new provider starts at an assumed 80% and is not starved of traffic.</li>
+          <li><code>marginal_price</code> uses the volume tier reached by month-to-date volume, read from a Redis counter. Moving the marginal call to whichever bureau's tier break is closest is free margin.</li>
+          <li>The constants live in <code>SCORING</code> and are deliberately simple. Tune them from <code>provider_calls</code>, which holds the outcome, latency and cost of every attempt.</li>
+        </ul>
+
+        <h3>Execution rules</h3>
+        <div class="table-wrap">
+          <table class="wide">
+            <thead><tr><th>Rule</th><th>Why</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Cost ceiling per request.</strong> The default company ceiling is R2.40, split 65/20/15% across registration, VAT and TCS.</td><td>Stops a cascade of failures from turning a R3.00 sale into a R9.00 cost. When the budget is exhausted the result is <code>unavailable</code>, which triggers stale-if-error and no charge.</td></tr>
+              <tr><td><strong>Overall deadline.</strong> Each attempt gets <code>min(timeout, remaining)</code>.</td><td>A sync API has a latency budget, and no attempt starts with less than 250 ms left.</td></tr>
+              <tr><td><strong>Circuit breaker per provider and capability.</strong> Opens after 5 consecutive failures or ≥50% failures over 20 calls. Cooldown 30 s, doubling to 5 min; half-open sends one probe.</td><td>State is shared through Redis, so all instances stop calling a dead bureau at once.</td></tr>
+              <tr><td><strong>4xx does not count against health.</strong></td><td>A rejected request is our fault, not the bureau's.</td></tr>
+              <tr><td><strong>Not-found confirmation.</strong> A "not found" from a cached-copy bureau, for a number captured this year or last year, is confirmed with a live source.</td><td>Bureau copies of CIPC lag. Reporting "fake company" for a company registered last week is the worst possible false positive. CIPC Notice 1 of 2026 also confirms that the year in the number can precede the incorporation year.</td></tr>
+              <tr><td><strong>Upstream-outage detection.</strong> If two or more providers fail on the same capability within 60 s, the capability is marked degraded.</td><td>CIPC, eNaTIS and eFiling have their own outages, and every bureau that proxies them fails together. Without this rule a request would pay for a tour of every bureau. While degraded, requests go straight to stale-if-error, 10% of requests probe, and <code>freshness=live</code> bypasses the rule.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Adding a bureau</h3>
+        <ol class="steps">
+          <li><div>Sign the contract <strong>and a POPIA <span class="cite">s21</span> operator agreement</strong>, then record its date in <code>providers.operator_agreement_signed_on</code>.</div></li>
+          <li><div>Add a <code>BureauSpec</code> in <code>src/providers/adapters/httpBureau.ts</code> with <code>request()</code> and <code>map()</code> per capability. Unit-test <code>map()</code> against anonymised recorded fixtures.</div></li>
+          <li><div>Insert <code>provider_capabilities</code> rows with the contracted price, tiers and prepaid units, then add the code to <code>ENABLED_PROVIDERS</code>.</div></li>
+        </ol>
+        <div class="note warn">
+          <span class="label">Placeholder mappings</span>
+          <p>The bureau endpoint paths and field names in <code>httpBureau.ts</code> are placeholders. Bureau APIs are contract-gated, and nothing here claims to reflect XDS, CPB, SearchWorks or VerifyID schemas. Confirm each bureau's product list before assuming it offers a capability. TCS and eNaTIS access in particular are not universal (see <a href="#modules">§1.7</a> and <a href="#tcs">§2.8</a>).</p>
+        </div>
+      </section>
+
+      <section id="caching">
+        <h2><span class="num">1.5</span>POPIA-compliant caching</h2>
+        <h3>Scope is decided by the data</h3>
+        <div class="table-wrap">
+          <table class="wide">
+            <thead><tr><th>Capability</th><th>Scope</th><th class="num">Fresh</th><th class="num">Stale-if-error</th><th class="num">Not-found TTL</th><th>Rationale</th></tr></thead>
+            <tbody>
+              <tr><td><code>company_registration</code> (incl. directors)</td><td><span class="scope global">global</span></td><td class="num">7 days</td><td class="num">+30 days</td><td class="num">6 h</td><td>Public register (CIPC, Companies Act 71 of 2008). Reuse across buyers is compatible further processing (<span class="cite">s15</span>), and collection from a public record is permitted (<span class="cite">s12(2)(a)</span>).</td></tr>
+              <tr><td><code>vat_status</code></td><td><span class="scope global">global</span></td><td class="num">7 days</td><td class="num">+30 days</td><td class="num">6 h</td><td>SARS VAT vendor search is public.</td></tr>
+              <tr><td><code>tax_compliance_status</code></td><td><span class="scope tenant">tenant</span></td><td class="num">24 h</td><td class="num">none</td><td class="num">1 h</td><td>Disclosed by the taxpayer to one buyer via the PIN. A stale "compliant" is worse than "unknown".</td></tr>
+              <tr><td><code>driver_licence</code></td><td><span class="scope tenant">tenant</span></td><td class="num">24 h</td><td class="num">none</td><td class="num">1 h</td><td>A natural person's record, disclosed for one engagement.</td></tr>
+              <tr><td><code>id_verification</code></td><td><span class="scope tenant">tenant</span></td><td class="num">30 days</td><td class="num">none</td><td class="num">1 h</td><td>DHA data.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>A vendor can choose to share its tenant-scoped results with another buyer through the <strong>Verified Vendor Passport</strong> (<code>vendor_passport_shares</code>). That is a separate flow based on the vendor's consent, with TshepoVet as the responsible party. It never happens through the cache.</p>
+
+        <h3>Mechanics</h3>
+        <ul>
+          <li><strong>Keys</strong> are <code>HMAC(cache_key_key[scope], capability|subject)</code>. They are tenant-keyed for tenant scope, so a cache key for one tenant cannot be computed or matched for another.</li>
+          <li><strong>Values</strong> are AES-256-GCM envelope-encrypted with AAD <code>cache:&lt;capability&gt;:&lt;scope&gt;:&lt;tenant&gt;</code>, so neither a Redis dump nor a DB snapshot exposes director ID numbers.</li>
+          <li><strong>Freshness control.</strong> <code>freshness: live</code> bypasses the cache and is billed as <code>COMPANY_CHECK_LIVE</code>. <code>max_age_seconds</code> lets a buyer require recency without paying for live data. Every check reports <code>source</code>, <code>data_as_of</code> and <code>stale</code>.</li>
+          <li><strong>Single-flight.</strong> Concurrent identical lookups share one bureau call: an in-process promise map plus a cross-instance Redis lock, with losers polling L1. A 5,000-row CSV upload containing the same supplier 40 times costs one bureau fee. The followers record zero cost.</li>
+          <li><strong>Negative caching.</strong> Typos in bulk uploads do not trigger repeated paid lookups.</li>
+          <li><strong>Purge.</strong> <code>purge_after = stale_until</code>, and <code>run_retention_purge()</code> deletes expired L2 rows. L1 TTLs equal the stale horizon.</li>
+        </ul>
+      </section>
+
+      <section id="economics">
+        <h2><span class="num">1.6</span>Unit economics</h2>
+        <p>This is a worked model, not a quote. Replace the bureau cost with your contracted rates. <code>provider_calls.cost_cents</code> and <code>verifications.bureau_cost_cents</code> give the real figures per check from day one.</p>
+<pre class="formula">cost_per_check ≈ (1 − h) · C_bureau + C_infra + C_kms + p_fail · C_retry</pre>
+
+        <div class="calc" id="calc" aria-labelledby="calc-title">
+          <div class="calc-in">
+            <h3 id="calc-title">Try your own numbers</h3>
+            <div class="field"><label for="c-price">Price per check (R, excl. VAT)</label><input id="c-price" type="number" min="0" step="0.10" value="3.00" inputmode="decimal"></div>
+            <div class="field"><label for="c-bureau">Bureau cost per cache miss (R)</label><input id="c-bureau" type="number" min="0" step="0.10" value="4.00" inputmode="decimal"></div>
+            <div class="field"><label for="c-infra">Infra, KMS and Redis per check (R)</label><input id="c-infra" type="number" min="0" step="0.01" value="0.05" inputmode="decimal"></div>
+            <div class="field"><label for="c-hit">Cache hit rate</label><output id="o-hit" for="c-hit">64%</output><input id="c-hit" type="range" min="0" max="100" step="1" value="64"></div>
+            <div class="field"><label for="c-target">Target gross margin</label><output id="o-target" for="c-target">50%</output><input id="c-target" type="range" min="0" max="90" step="5" value="50"></div>
+          </div>
+          <div class="calc-out" aria-live="polite">
+            <div class="readout">
+              <div><small>Cost per check</small><b id="r-cost">R1.49</b></div>
+              <div><small>Gross margin</small><b id="r-margin">50.3%</b></div>
+              <div><small>Break-even hit rate</small><b id="r-break">63.8%</b></div>
+            </div>
+            <div>
+              <div class="meter" role="img" id="meter" aria-label="Cache hit rate 64% against a break-even of 63.8%">
+                <div class="meter-fill" id="meter-fill" style="width:64%"></div>
+                <div class="meter-mark" id="meter-mark" style="left:63.8%"></div>
+              </div>
+              <div class="meter-legend"><span>0%</span><span>bar: hit rate · mark: break-even</span><span>100%</span></div>
+            </div>
+            <p class="verdict ok" id="verdict">At a 64% hit rate the check meets the 50% margin target.</p>
+          </div>
+        </div>
+
+        <p>With the defaults (R4.00 per miss, R0.05 overhead, 50% target): <code>(1 − h) · 4.00 + 0.05 ≤ 1.50</code>, so <strong>h ≥ 64%</strong>. How the product reaches that hit rate:</p>
+        <ol class="steps">
+          <li><div><strong>The passport network effect.</strong> Supplier overlap between buyers in the same metro and sector is high, and every passport makes the next buyer's check a hit.</div></li>
+          <li><div><strong>Monitoring re-checks are cache-aware.</strong> Re-check at <code>fresh_until</code>, not on a per-tenant timer: one refresh serves all tenants.</div></li>
+          <li><div><strong>Prepaid bundles and tier routing.</strong> The router burns sunk-cost units first and pushes volume towards the next tier break.</div></li>
+          <li><div><strong>A <code>COMPANY_CHECK_LIVE</code> SKU at R6.00</strong> makes buyers who demand freshness pay for it.</div></li>
+        </ol>
+        <p>Two cost lines do <strong>not</strong> fit inside R3.00 and should be priced or bundled deliberately:</p>
+        <ul>
+          <li><strong>TCS verification.</strong> There is no public SARS API (see <a href="#tcs">§2.8</a>). If fulfilment is assisted (an eFiler checks the PIN) or bought from a bureau at a premium, either bundle TCS only into <code>MONITORING_PER_VENDOR</code> at R15/month or add a TCS surcharge. The code already separates the TCS cost budget (15% of the ceiling), so the effect on margin is visible.</li>
+          <li><strong>LLM OCR on onboarding</strong>, roughly R0.50–R1.00 per document. That assumes about 3k input tokens (image, prompt and schema) and 1–2k output tokens including adaptive thinking, at Claude Opus 5.5 list prices of $4/$20 per MTok. Log usage per job and measure it. It is a one-off per vendor, amortised across every buyer through the passport. A cheaper first-pass model is a lever only if an eval on real SA documents shows field accuracy holds.</li>
+        </ul>
+      </section>
+
+      <section id="modules">
+        <h2><span class="num">1.7</span>Module notes</h2>
+        <ul>
+          <li><strong>Continuous monitoring and accounting lock (R15/vendor/month).</strong> <code>monitoring_enrolments</code> uses an exclusion constraint, so a vendor can't be billed twice. <code>expiry_schedules</code> drives T-30, T-14, T-7 and T-0 reminders, then <code>expire</code> and <code>lock</code> after <code>lock_grace_days</code>. On lock, the ERP adapter applies the closest available control and emits <code>vendor.payment_locked</code>. Neither Xero nor Sage Business Cloud exposes a universal "payment block" flag through its API, so the realistic controls are: archive or tag the contact (Xero contact groups), set the supplier to inactive or on hold where the product supports it (Sage 200 Evolution and Sage Intacct have supplier hold settings), and run a pre-payment-batch check through the API. Document which control each connector uses, because buyers will ask whether the lock truly blocks payment.</li>
+          <li><strong>B-BBEE scorecard (R5,000/month).</strong> Built on <code>vendor_bbbee_profiles</code>, with recognition levels and thresholds as data and the <code>is_51pct_black_owned</code> and <code>is_30pct_black_female_owned</code> generated columns. The Preferential Procurement indicators of the Amended Codes (TMPS-weighted spend with all Empowering Suppliers, QSEs, EMEs, ≥51% black-owned and ≥30% black-women-owned suppliers, plus the designated-group bonus) are aggregations over AP spend joined to these profiles. Sector-code thresholds must be loaded from the gazettes with <code>verified=true</code> before automatic classification is allowed.</li>
+          <li><strong>COI and ghost-supplier radar (R3,500/month).</strong> HR identifiers are blind-indexed with a tenant-specific key (<code>tenant_employees</code>). The worker projects vendor director IDs, bank accounts, phone numbers and addresses into <code>coi_vendor_index</code> with the same tenant key, so matching is a tenant-local join and identifiers cannot be linked across tenants (see the <span class="cite">s57</span> analysis in <a href="#prior-authorisation">§2.6</a>). Fuzzy name plus address matching uses <code>pg_trgm</code>.</li>
+          <li><strong>Industry add-ons.</strong> CIDB grading (grade 1–9 plus class of works, e.g. <code>7GB PE</code>) and COIDA Letters of Good Standing live in <code>vendor_credentials</code>. In construction, letters of good standing can come from the Compensation Fund or a licensed mutual such as FEM, so the issuer is stored. Driving licences and PrDP use the same table, and the logistics add-on gates the <code>required_codes</code> and <code>required_prdp</code> workflows.</li>
+        </ul>
+      </section>
+
+      <section id="security">
+        <h2><span class="num">1.8</span>Security architecture</h2>
+        <div class="table-wrap">
+          <table class="wide">
+            <thead><tr><th>Control</th><th>Implementation</th></tr></thead>
+            <tbody>
+              <tr><td>Tenant isolation</td><td>Postgres RLS with <code>FORCE ROW LEVEL SECURITY</code> on every tenant table. The API connects as a non-superuser in <code>tshepovet_app</code>, and context is set with <code>SET LOCAL app.tenant_id</code> inside each transaction. Cross-tenant entity resolution goes through <code>SECURITY DEFINER</code> functions that return IDs only.</td></tr>
+              <tr><td>Encryption at rest</td><td>AES-256-GCM envelope encryption: a per-record DEK wrapped by a versioned KEK (KMS in production), with AAD bound to table, column and row context. Disk and RDS encryption sit underneath.</td></tr>
+              <tr><td>Searchable identifiers</td><td>HMAC blind indexes, HKDF-derived per purpose and optionally per tenant.</td></tr>
+              <tr><td>API keys</td><td>256-bit random, stored as <code>HMAC(pepper, key)</code>, looked up by public prefix, compared in constant time, scoped (<code>verify:write</code>, <code>verify:read</code>) and split live/test. Test keys can only reach the mock provider.</td></tr>
+              <tr><td>Audit</td><td>Append-only (UPDATE and DELETE revoked, plus a trigger), hash-chained per tenant with a contiguous <code>chain_seq</code> assigned under a per-tenant row lock. <code>verify_audit_chain()</code> detects edits and deletions.</td></tr>
+              <tr><td>Ledger</td><td>Immutable entries, a deferred constraint trigger that forces each transaction to sum to zero, and a CHECK constraint against overspend.</td></tr>
+              <tr><td>Logging</td><td>pino with redaction paths. The code logs references, never values. Logs are assumed to leave South Africa, which makes them a <span class="cite">s72</span> concern.</td></tr>
+              <tr><td>Data residency</td><td>AWS af-south-1 (Cape Town) for compute, database, cache, object storage and KMS. Cross-border processors (LLM, observability SaaS) are listed in <code>processing_activities</code> with their <span class="cite">s72</span> basis.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="hardening">
+        <h2><span class="num">1.9</span>Production hardening still to do</h2>
+        <ul>
+          <li><strong>Async verifications run in-process.</strong> A crash mid-flight is covered (holds expire after 15 minutes and the purge job marks the verification <code>unable_to_verify</code>), but production should move <code>process()</code> onto a durable queue (SQS or BullMQ) with the existing function as the handler.</li>
+          <li><strong>KMS provider.</strong> <code>LocalKeyProvider</code> is for development and test. Implement <code>KeyProvider</code> with AWS KMS <code>GenerateDataKey</code> and <code>Decrypt</code>, plus DEK caching.</li>
+          <li><strong>Partitioning.</strong> <code>audit_log</code> is partitioned monthly. Partition <code>provider_calls</code> and <code>verification_checks</code> the same way once they pass about 50M rows.</li>
+          <li><strong>Secure TCS link endpoint and WhatsApp Flow handler.</strong> Designed in <a href="https://claude.ai/artifact/1ZUwVgHKksnCriUEyjua3o#meta">WhatsApp Onboarding §5</a> but not implemented.</li>
+        </ul>
+      </section>
+
+      <!-- ======================= PART 2 ======================= -->
+      <div class="part-head" id="part-2">
+        <span class="part-label">Part 2</span>
+        <h2>POPIA, SARS and FICA compliance workflow</h2>
+        <p>Section references are to the Protection of Personal Information Act 4 of 2013 (POPIA) unless stated otherwise.</p>
+      </div>
+      <div class="note legal">
+        <span class="label">Not legal advice</span>
+        <p>This is an engineering-grade compliance design. Have South African privacy counsel review the roles matrix (<a href="#roles">§2.1</a>), the <span class="cite">s57</span> assessment (<a href="#prior-authorisation">§2.6</a>) and the privacy notice wording before launch.</p>
+      </div>
+
+      <section id="roles">
+        <h2><span class="num">2.1</span>Who is who: roles decide obligations</h2>
+        <p>POPIA protects <strong>juristic persons as well as natural persons</strong> (<span class="cite">s1</span>, "data subject"), so a supplier company's own details are personal information, not just its directors' details. TshepoVet plays two different roles:</p>
+        <div class="table-wrap">
+          <table class="wide">
+            <thead><tr><th>Processing</th><th>Responsible party</th><th>Operator</th><th>Data subjects</th></tr></thead>
+            <tbody>
+              <tr><td>Buyer onboards a supplier (API, portal, WhatsApp invite)</td><td><strong>Buyer (tenant)</strong></td><td>TshepoVet; bureaus as sub-operators or third-party sources</td><td>Supplier entity, directors, representative, drivers</td></tr>
+              <tr><td>Verified Vendor Passport (vendor-owned profile shared with other buyers)</td><td><strong>TshepoVet</strong> (the vendor instructs sharing)</td><td>n/a</td><td>Supplier entity and its people</td></tr>
+              <tr><td>Global public-register cache (CIPC, VAT status)</td><td><strong>TshepoVet</strong> (own legitimate interest; collected from a public record, <span class="cite">s12(2)(a)</span>)</td><td>AWS (hosting)</td><td>Supplier entity, directors</td></tr>
+              <tr><td>COI and ghost-supplier radar</td><td><strong>Buyer</strong></td><td>TshepoVet</td><td>Buyer's employees, vendor directors</td></tr>
+              <tr><td>LLM OCR</td><td>Buyer (onboarding) or TshepoVet (passport)</td><td>Anthropic (<span class="cite">s20–21</span>)</td><td>Person on the document</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Contracts follow from this table:</p>
+        <ul>
+          <li><strong>Buyer and TshepoVet:</strong> a <span class="cite">s21</span> operator agreement in the MSA, covering security measures, breach notification to the buyer "immediately" (<span class="cite">s21(2)</span>), the sub-operator list, and deletion on termination.</li>
+          <li><strong>TshepoVet and each bureau, Anthropic, AWS and Meta:</strong> written operator or data-processing agreements. <code>providers.operator_agreement_signed_on</code> should block enabling a provider until it is populated; add that check to the release gate.</li>
+          <li><strong>Passport terms of use</strong> with the vendor, since TshepoVet is the responsible party there.</li>
+        </ul>
+      </section>
+
+      <section id="lawful-basis">
+        <h2><span class="num">2.2</span>Lawful basis per processing activity</h2>
+        <p>Consent is the weakest basis operationally: it can be withdrawn at any time (<span class="cite">s11(2)(b)</span>) and the burden of proof is on the responsible party (<span class="cite">s11(2)(a)</span>). Use it where it is genuinely needed.</p>
+        <div class="table-wrap">
+          <table class="wide">
+            <thead><tr><th>Activity</th><th>Basis</th><th>Why</th><th>Enforced in code</th></tr></thead>
+            <tbody>
+              <tr><td>CIPC registration, status, directors</td><td><span class="cite">s11(1)(f)</span> legitimate interest of the buyer, plus <span class="cite">s18</span> notice</td><td>Due diligence before contracting and paying; public register</td><td>No consent required unless <code>require_consent_for_all_checks</code> is set for the tenant</td></tr>
+              <tr><td>VAT vendor status</td><td><span class="cite">s11(1)(f)</span></td><td>Public SARS search; needed for valid tax invoices (VAT Act s20)</td><td>None</td></tr>
+              <tr><td>SARS TCS via PIN</td><td><strong>Consent</strong>, <span class="cite">s11(1)(a)</span></td><td>The PIN is the taxpayer's own disclosure, made voluntarily to a specific buyer</td><td><code>tax_compliance_verification</code> purpose asserted; otherwise <code>422 consent_required</code></td></tr>
+              <tr><td>Continuous monitoring</td><td><strong>Consent</strong></td><td>Ongoing processing beyond the original transaction; also a paid add-on</td><td><code>continuous_monitoring</code> purpose</td></tr>
+              <tr><td>Driving licence and PrDP</td><td><strong>Consent of the driver</strong></td><td>A natural person not party to the buyer's contract. Employer attestation is allowed with evidence (<code>on_behalf_of_subject</code>)</td><td>Always required. A consent subject that doesn't match the ID returns <code>consent_subject_mismatch</code></td></tr>
+              <tr><td>B-BBEE ownership data</td><td><span class="cite">s11(1)(c)</span> legal obligation or <span class="cite">s11(1)(f)</span>, plus <span class="cite">s29(b)</span> for race</td><td>See <a href="#special-pi">§2.4</a></td><td><code>special_pi_basis = 's29_bbbee_redress'</code></td></tr>
+              <tr><td>Document OCR (images)</td><td>Consent (onboarding flow)</td><td>Involves identity images and cross-border processing</td><td><code>document_ocr_processing</code> and <code>cross_border_processing</code></td></tr>
+              <tr><td>COI radar</td><td><span class="cite">s11(1)(f)</span> legitimate interest of the buyer (fraud prevention; PFMA and MFMA duties for public-sector buyers)</td><td>Needs a legitimate-interest assessment per tenant and an employee privacy notice</td><td>Tenant-keyed blind indexes</td></tr>
+              <tr><td>WhatsApp service messages</td><td>Consent (opt-in)</td><td>Meta policy; ECTA s45 and CPA s11 for anything promotional</td><td><code>whatsapp_service_messages</code></td></tr>
+              <tr><td>Direct marketing to vendors</td><td><strong>Opt-in consent</strong>, <span class="cite">s69</span></td><td>Unsolicited electronic marketing needs prior consent</td><td>Separate <code>direct_marketing</code> purpose, never bundled</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="consent">
+        <h2><span class="num">2.3</span>Consent capture, step by step</h2>
+        <h3>A. Inline API attestation (the buyer captured consent in its own process)</h3>
+        <ol class="steps">
+          <li><div><strong>Notice.</strong> The buyer shows the data subject the TshepoVet-provided notice text (<code>company_verification</code> or <code>driver_verification</code>). Notices are versioned and immutable, and <code>body_sha256</code> is the hash of the exact text.</div></li>
+          <li><div><strong>Capture.</strong> The buyer records the subject's agreement (signed form, e-signature, portal checkbox) and keeps the evidence.</div></li>
+          <li><div><strong>Attest.</strong> The API request carries <code>consent: {notice_code, subject_display, subject_role, on_behalf_of_subject, purposes[], captured_at, evidence_reference, attested_by}</code>.</div></li>
+          <li><div><strong>Record.</strong> <code>recordAttestation()</code> resolves the active notice version and stores a <code>consent_records</code> row with <code>capture_method = 'api_attestation'</code>, the evidence, the API key that attested, and <code>evidence_sha256 = sha256(canonical(evidence) ‖ notice_hash)</code>. That hash is tamper evidence over both what was agreed and the text agreed to.</div></li>
+          <li><div><strong>Granular purposes.</strong> One <code>consent_purposes</code> row per purpose, each with its own lawful basis. Purposes can be withdrawn individually.</div></li>
+          <li><div><strong>Assert.</strong> Before reserving funds, <code>assertPurposes()</code> checks that the consent belongs to the tenant, has not expired, and covers every purpose the request needs. If not, the response is <code>422</code> with <code>missing_purposes</code>, and nothing is charged or created.</div></li>
+          <li><div><strong>Audit.</strong> <code>verification.created</code> is logged with the <code>consent_id</code> in the hash-chained audit log.</div></li>
+        </ol>
+
+        <h3>B. WhatsApp (TshepoVet captures consent directly)</h3>
+        <ol class="steps">
+          <li><div>The buyer invites the vendor, which creates a conversation in the <code>INVITED</code> state.</div></li>
+          <li><div>The first message is the short notice with three buttons: <strong>I agree</strong>, <strong>More info</strong>, <strong>No thanks</strong>. "More info" shows the full <span class="cite">s18</span> elements: responsible party, purpose, whether supply is voluntary, consequences, recipients, cross-border transfers, rights and the Information Regulator.</div></li>
+          <li><div><strong>Only the button tap counts.</strong> Free text such as "yes ok" re-prompts. Consent must be a "voluntary, specific and informed expression of will" (<span class="cite">s1</span>), and a structured tap is unambiguous evidence.</div></li>
+          <li><div>The worker records <code>capture_method = 'whatsapp_button'</code> with the WhatsApp message id, a masked phone number, the timestamp, the purposes and the notice hash.</div></li>
+          <li><div><strong>STOP</strong> (or YEKA or HOU OP) in any state withdraws every purpose and moves the conversation to <code>OPTED_OUT</code>. This is the <span class="cite">s11(3)</span> objection path.</div></li>
+        </ol>
+
+        <h3>C. What withdrawal does</h3>
+        <ul>
+          <li>A future check that needs the purpose fails with <code>422</code>.</li>
+          <li>Monitoring stops: the monitoring period ends, the TCS PIN is marked revoked and crypto-shredded on the next purge run, and expiry schedules are cancelled.</li>
+          <li>Results already delivered stay with the buyer under its own retention basis. Withdrawal does not affect the lawfulness of processing before it (<span class="cite">s11(2)(b)</span>).</li>
+        </ul>
+      </section>
+
+      <section id="special-pi">
+        <h2><span class="num">2.4</span>Special personal information</h2>
+        <div class="table-wrap">
+          <table class="wide">
+            <thead><tr><th>Data</th><th>POPIA</th><th>Treatment</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Race, via B-BBEE ownership</strong> (black ownership %, black women ownership %)</td><td><span class="cite">s26</span> prohibition, with the <span class="cite">s29(b)</span> exemption for measures that advance persons disadvantaged by unfair discrimination</td><td>Only aggregate percentages are stored, never per-person race. Access is gated by <code>can_view_special_pi</code>. The OCR prompt forbids describing individuals' race.</td></tr>
+              <tr><td><strong>The SA ID number's 12th digit</strong> (historically race)</td><td><span class="cite">s26</span></td><td><strong>Ignored by the parser.</strong> Deriving race from it would be processing special personal information without a basis.</td></tr>
+              <tr><td><strong>Biometrics</strong> (selfie or face match, if added)</td><td><span class="cite">s26</span>; relies on <span class="cite">s27(1)(a)</span> consent</td><td>No liveness or face matching without explicit consent. Assess <span class="cite">s57(1)(d)</span> if biometric data is transferred offshore.</td></tr>
+              <tr><td><strong>Health</strong> (disability as a designated group)</td><td><span class="cite">s32</span></td><td>Store only the aggregate percentage printed on the affidavit.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="automated">
+        <h2><span class="num">2.5</span>Automated decisions</h2>
+        <p>Under <span class="cite">s71</span> a data subject may not be subject to a decision with legal consequences based <strong>solely</strong> on automated processing that profiles reliability or creditworthiness, unless appropriate measures apply. Supplier onboarding outcomes can amount to such a decision, so:</p>
+        <ul>
+          <li><code>outcome</code> and <code>risk_flags</code> are decision support. The API never rejects a vendor; the buyer decides.</li>
+          <li>OCR issues involving a person (ID mismatch, possible tampering) produce <code>needs_review</code>, a human queue, never an automatic rejection.</li>
+          <li>Vendors can make representations through the WhatsApp HELP/AGENT path and the portal correction flow.</li>
+          <li>Every flag is a stable, documented code with its source and <code>data_as_of</code>. That is the "sufficient information about the underlying logic" in <span class="cite">s71(3)(b)</span>.</li>
+        </ul>
+      </section>
+
+      <section id="prior-authorisation">
+        <h2><span class="num">2.6</span>Prior authorisation: assess before launch</h2>
+        <p><span class="cite">s57(1)(a)</span> requires prior authorisation from the Information Regulator before processing <strong>unique identifiers</strong> for a purpose other than the one they were collected for, <strong>with the aim of linking them</strong> with information processed by other responsible parties. Three features come close to that line:</p>
+        <div class="table-wrap">
+          <table class="wide">
+            <thead><tr><th>Feature</th><th>Risk</th><th>Mitigation in the design</th></tr></thead>
+            <tbody>
+              <tr><td>COI radar: employee ID numbers (collected for HR) matched against vendor director IDs</td><td>Identifiers used for another purpose and linked with another source</td><td>Tenant-specific blind-index keys: the match happens inside one responsible party's data, with no cross-tenant linkage. Per-tenant legitimate-interest assessment. Employees are notified through the HR privacy notice.</td></tr>
+              <tr><td>Passport: one vendor identity reused across buyers</td><td>Linking across responsible parties</td><td>Sharing happens only on the vendor's own instruction, backed by a consent record. Global data is limited to public-register facts.</td></tr>
+              <tr><td>Global director index ("one person directs 40 suppliers")</td><td>Linking public-register identifiers across buyers</td><td>Only public-register data is used, the index is computed by TshepoVet as responsible party, and it is never exposed to tenants as a raw cross-tenant join.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="note crit">
+          <span class="label">Recommendation</span>
+          <p>Get a written legal opinion on <span class="cite">s57(1)(a)</span> for the COI radar and the global director index <strong>before</strong> selling the R3,500 module. If counsel advises authorisation, file with the Information Regulator; processing may not start until the Regulator has responded or its statutory period has passed (<span class="cite">s58</span>). Record the outcome in <code>processing_activities.prior_authorisation</code>. The module can launch with tenant-local matching only while the application is pending.</p>
+        </div>
+      </section>
+
+      <section id="cross-border">
+        <h2><span class="num">2.7</span>Cross-border transfers</h2>
+        <ul>
+          <li><strong>The default region is af-south-1</strong> for compute, Postgres, Redis, S3 and KMS.</li>
+          <li><strong>LLM OCR</strong> is a transfer under <span class="cite">s72</span> if the API endpoint is offshore. Basis: <span class="cite">s72(1)(b)</span>, a binding agreement with adequate protection (DPA, zero-data-retention terms where available), with <span class="cite">s72(1)(a)</span> consent as a second basis. Minimise by cropping to the document, stripping EXIF metadata, and sending one document per request.</li>
+          <li><strong>Logs and APM</strong> are often offshore SaaS, which is why the code logs references rather than values and pino redacts known paths.</li>
+          <li><strong>Bureaus</strong> are South African. Confirm in each contract where their processing and backups sit.</li>
+        </ul>
+      </section>
+
+      <section id="tcs">
+        <h2><span class="num">2.8</span>SARS TCS PIN handling</h2>
+        <h3>How TCS works, and the edge cases that matter</h3>
+        <ul>
+          <li>Since 2016 SARS has issued a <strong>Tax Compliance Status PIN</strong> on eFiling instead of paper tax clearance certificates (Tax Administration Act s256). The taxpayer requests a TCS (Good Standing, Tender, Foreign Investment Allowance or Emigration) and shares the PIN.</li>
+          <li>A third party verifies the PIN <strong>on eFiling</strong>, using an eFiling profile, together with the taxpayer's tax reference number. The result shows the status <strong>at the moment of the check</strong>. A PIN that showed compliant yesterday can show non-compliant today if a return becomes overdue or a debt arises.</li>
+          <li><strong>The taxpayer chooses the expiry date</strong> when requesting the TCS, typically up to 12 months. Read it from the result; never assume 12 months.</li>
+          <li>The taxpayer can <strong>cancel</strong> a PIN at any time, which surfaces as <code>pin_status: revoked</code>.</li>
+        </ul>
+        <div class="note warn">
+          <span class="label">No public SARS API</span>
+          <p>SARS publishes no third-party TCS API. That leaves three fulfilment channels: (1) a bureau or partner with a lawful channel, verified contractually, with SARS's position in writing; (2) assisted eFiling verification, where a TshepoVet operator acting as an authorised eFiler checks PINs in a queue; (3) the National Treasury CSD report for suppliers on the Central Supplier Database. Do not automate eFiling by screen-scraping without SARS's written approval: it breaches eFiling terms and puts the whole channel at risk. The engine models TCS as an ordinary capability with a long timeout, so any channel can be plugged in without changing callers.</p>
+        </div>
+
+        <h3>PIN lifecycle</h3>
+        <figure class="diagram">
+<pre class="mermaid">
+flowchart TD
+  A[Vendor obtains PIN on eFiling] --&gt; B{Channel}
+  B --&gt;|WhatsApp| C[Secure single-use link&lt;br/&gt;or WhatsApp Flow]
+  B --&gt;|API| D[HTTPS POST, TLS 1.2+]
+  C &amp; D --&gt; E[Normalise, reject tax-number paste&lt;br/&gt;never logged or echoed]
+  E --&gt; F[HMAC fingerprint, tenant-keyed&lt;br/&gt;dedupe and cache key]
+  F --&gt; G[Verify via TCS channel]
+  G --&gt; H{monitor = true&lt;br/&gt;and PIN active?}
+  H --&gt;|no| I[Store RESULT only&lt;br/&gt;pin_enc = NULL]
+  H --&gt;|yes| J[Envelope-encrypt PIN&lt;br/&gt;AAD tcs_pin:tenant:vendor&lt;br/&gt;purge_after = PIN expiry]
+  J --&gt; K[Reminders at T-30, T-14, T-7]
+  J --&gt; L[Re-check weekly&lt;br/&gt;and before each payment run]
+  L --&gt;|status changes| M[vendor.compliance_changed&lt;br/&gt;ERP lock after grace]
+  K --&gt;|expired, revoked or monitoring ends| N[run_retention_purge&lt;br/&gt;pin_enc := NULL]
+</pre>
+        </figure>
+        <ol class="steps">
+          <li><div><strong>Collect over a channel that doesn't leave the PIN lying around.</strong> In WhatsApp, send a single-use 30-minute link or a WhatsApp Flow (encrypted end to end to our endpoint), so the PIN isn't in chat history. If the vendor types it in chat anyway, accept it (it is their own history), store it encrypted in Redis with a TTL, and tell them how to avoid it next time.</div></li>
+          <li><div><strong>Normalise and sanity-check.</strong> Strip spaces and dashes, uppercase, and require 6–20 alphanumerics. A 10-digit value starting 0–4 or 9 is probably the tax or VAT number pasted by mistake, so ask the vendor to confirm. The API rejects a PIN equal to the tax reference.</div></li>
+          <li><div><strong>Never log or echo it.</strong> It does not appear in responses, webhooks, idempotency records or audit details (only a mask showing the last two characters). The integration tests assert this.</div></li>
+          <li><div><strong>Fingerprint</strong> it with a tenant-keyed HMAC. The fingerprint deduplicates PINs and is part of the tenant-scoped cache key, so the plaintext is never a lookup key.</div></li>
+          <li><div><strong>Verify</strong>, then store the result: TCS status, PIN status, expiry, check time, and whether the taxpayer name matches CIPC (<code>tcs_taxpayer_name_mismatch</code>).</div></li>
+          <li><div><strong>Store the PIN only if the buyer enrolled the vendor in monitoring</strong> and the PIN is active. It is envelope-encrypted, bound to tenant and vendor, records the key version for rotation, and expires with the PIN. Each decryption for a re-check writes an audit event.</div></li>
+          <li><div><strong>Re-check</strong> on a schedule and before payment runs. A move to non-compliant fires <code>vendor.compliance_changed</code> and, after the grace period, <code>vendor.payment_locked</code>.</div></li>
+          <li><div><strong>Expiry.</strong> Reminders go out at T-30, T-14 and T-7, using a WhatsApp utility template if the 24-hour window has closed. At expiry the status becomes <code>unknown</code>, never "compliant", and the vendor is asked for a new PIN.</div></li>
+          <li><div><strong>Purge.</strong> At expiry, revocation, withdrawal of consent or the end of monitoring, the purge job deletes the encrypted PIN. The result history stays as due-diligence evidence.</div></li>
+        </ol>
+      </section>
+
+      <section id="purge">
+        <h2><span class="num">2.9</span>Auto-purge of expired personal information</h2>
+        <figure class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+  participant Cron as Hourly job (tshepovet_worker)
+  participant PG as Postgres
+  participant S3 as S3 (versioned)
+  Cron-&gt;&gt;PG: expire stale wallet holds, mark verifications unable_to_verify
+  Cron-&gt;&gt;PG: find documents past image_purge_after
+  loop each document
+    Cron-&gt;&gt;S3: DeleteObject (all versions)
+    Cron-&gt;&gt;PG: storage_key := NULL
+  end
+  Cron-&gt;&gt;PG: run_retention_purge(5000)
+  note right of PG: crypto-shred PINs, bureau payloads,&lt;br/&gt;director IDs. Delete cache, HR imports,&lt;br/&gt;WhatsApp metadata, idempotency keys.&lt;br/&gt;Write purge_runs and an audit event.
+  Cron-&gt;&gt;PG: ensure_audit_partitions(3)
+</pre>
+        </figure>
+        <ul>
+          <li><strong>Retention clocks</strong> run from creation, the end of the relationship, expiry or last activity. Recording the end of a buyer-vendor relationship starts the five-year clocks for due-diligence evidence.</li>
+          <li><strong>Statutory holds override purges.</strong> A buyer that is a FICA accountable institution keeps customer due diligence records for five years after the relationship ends (FIC Act s22–23). Tax records follow the Tax Administration Act s29 and company records the Companies Act s24. Configure these per tenant and never shorten them below the statutory minimum.</li>
+          <li><strong>Litigation or regulator hold:</strong> add a per-vendor hold date that the purge function respects (a recommended extension).</li>
+          <li><strong>Backups</strong> are handled by crypto-shredding. Live ciphertext is removed, and backup ciphertext becomes unrecoverable when the key version that wrapped it is retired after the backup window. Document this in the PAIA manual.</li>
+        </ul>
+      </section>
+
+      <section id="obligations">
+        <h2><span class="num">2.10</span>Operational obligations checklist</h2>
+        <div class="table-wrap">
+          <table class="wide">
+            <thead><tr><th>Obligation</th><th>Section</th><th>How</th></tr></thead>
+            <tbody>
+              <tr><td>Register an Information Officer, and designate deputies, with the Information Regulator</td><td><span class="cite">s55–56</span></td><td>Before go-live</td></tr>
+              <tr><td>PAIA manual (categories of data, recipients, cross-border, security)</td><td><span class="cite">PAIA s51</span></td><td>Publish; generate from <code>processing_activities</code></td></tr>
+              <tr><td>Record of processing</td><td><span class="cite">s17</span></td><td><code>processing_activities</code> table</td></tr>
+              <tr><td>Security safeguards: risk assessment, controls, regular verification</td><td><span class="cite">s19</span></td><td>This architecture, an annual penetration test, and a SOC 2 or ISO 27001 roadmap</td></tr>
+              <tr><td>Security compromise notification to the Regulator and data subjects as soon as reasonably possible</td><td><span class="cite">s22</span></td><td>Incident runbook. Notify the Information Regulator through its online portal, notify affected tenants immediately (<span class="cite">s21(2)</span>), and use the audit log and provider call records to scope the impact</td></tr>
+              <tr><td>Access and correction requests</td><td><span class="cite">s23–25</span></td><td>Data subject request queue with a 30-day due date; self-service correction of passport data in the vendor portal</td></tr>
+              <tr><td>Information quality</td><td><span class="cite">s16</span></td><td><code>data_as_of</code> on every check, monitoring re-checks, stale flags</td></tr>
+              <tr><td>Operator contracts</td><td><span class="cite">s20–21</span></td><td>MSA data processing agreement plus per-provider agreements (<a href="#roles">§2.1</a>)</td></tr>
+              <tr><td>Direct marketing</td><td><span class="cite">s69</span></td><td>Separate opt-in purpose, never in onboarding templates; WhatsApp marketing templates only to opted-in contacts</td></tr>
+              <tr><td>Children</td><td><span class="cite">s34–35</span></td><td>Not expected. The SA ID parser flags minors listed as directors; an unemancipated minor is ineligible to be a director (Companies Act s69(7))</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="sa-specifics">
+        <h2><span class="num">2.11</span>FICA, B-BBEE and entity edge cases</h2>
+        <h3>FICA, when the buyer is an accountable institution</h3>
+        <ul>
+          <li><strong>Beneficial ownership:</strong> collect a declaration for natural persons holding <strong>5% or more</strong> or exercising control. CIPC's beneficial ownership register (since the General Laws Amendment Act 22 of 2022) is not public, so rely on the vendor's declaration with a supporting share register.</li>
+          <li><strong>Sanctions and PEPs:</strong> screen against the Targeted Financial Sanctions list (FIC Act s26A–C) and domestic PEPs/DPIPs by adding a <code>sanctions_screening</code> capability to the waterfall. The engine is generic.</li>
+          <li>Keep customer due diligence records for five years after the relationship ends.</li>
+        </ul>
+
+        <h3>B-BBEE evidence</h3>
+        <div class="table-wrap">
+          <table class="wide">
+            <thead><tr><th>Size (generic codes)</th><th class="num">Turnover</th><th>Accepted evidence</th><th>Level from affidavit</th></tr></thead>
+            <tbody>
+              <tr><td><strong>EME</strong></td><td class="num">≤ R10m</td><td>Sworn affidavit, or a CIPC-issued EME certificate</td><td>Level 1 at 100% black ownership, Level 2 at ≥ 51%, otherwise Level 4</td></tr>
+              <tr><td><strong>QSE</strong></td><td class="num">R10m–R50m</td><td>Affidavit only if ≥ 51% black-owned; otherwise a SANAS-accredited verification certificate (<code>BVA###</code> accreditation numbers)</td><td>Level 1 at 100%, Level 2 at ≥ 51%</td></tr>
+              <tr><td><strong>Large</strong></td><td class="num">&gt; R50m</td><td>SANAS certificate only</td><td>n/a</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <ul>
+          <li><strong>Sector codes differ</strong> (Construction, Tourism, ICT, Financial, AgriBEE, Transport, MAC, Property, Forestry, Defence). Thresholds are data rows. Load them from the gazettes and mark them verified only after review; until then, vendors in those sectors go to manual review.</li>
+          <li>Validity is 12 months from the commissioning or issue date. Affidavits must be on the dtic template, deposed by a director or member, and commissioned by a Commissioner of Oaths. A missing commissioner block is a hard fail.</li>
+          <li>EMEs automatically qualify as <strong>Empowering Suppliers</strong>. For others, the certificate must state it.</li>
+          <li>Misrepresenting B-BBEE status is an offence (B-BBEE Act s13O), so suspicious affidavits (ownership inconsistent with the CIPC director list, turnover sitting on a threshold) go to review rather than being accepted silently.</li>
+        </ul>
+
+        <h3>Entity edge cases</h3>
+        <ul>
+          <li><strong>Sole proprietors</strong> are not on CIPC. The anchor is the owner's SA ID (DHA verification), with the income tax reference and bank account verification. There is a dedicated resolution function for them.</li>
+          <li><strong>Close corporations</strong> have members, not directors, and no new CCs have been registered since 1 May 2011, so a CC suffix on a later number is flagged.</li>
+          <li><strong>Trusts</strong> (Master's Office IT numbers) and <strong>unincorporated NPOs</strong> (DSD numbers) go to a human in the WhatsApp flow in v1.</li>
+          <li><strong>Public-sector buyers</strong> need a CSD number (<code>MAAA</code> plus 7 digits, checked by a database constraint) for every supplier.</li>
+        </ul>
+      </section>
+
+      <footer class="colophon">
+        <span>Compiled from <code>docs/01-architecture.md</code> and <code>docs/03-popia-sars-compliance.md</code> in the TshepoVet repository. The rest of the design set: <a href="https://claude.ai/artifact/1ZUwVgHKksnCriUEyjua3o">WhatsApp Onboarding</a>, <a href="https://claude.ai/artifact/FiCj3NRZZ1YG5DTcPG3Abb">Database Schema</a> and <a href="https://claude.ai/artifact/9zS9q39GCCbB5F8ysAVU9R">Verification API</a>.</span>
+        <span>Bureau costs in §1.6 are illustrative. Replace them with contracted rates before relying on the margin figures.</span>
+      </footer>
+    </main>
+  </div>
+</div>
+
+<script>
+(function () {
+  // ---- unit-economics calculator ----
+  var $ = function (id) { return document.getElementById(id); };
+  var inputs = ['c-price', 'c-bureau', 'c-infra', 'c-hit', 'c-target'].map($);
+  function num(el, fallback) { var v = parseFloat(el.value); return isFinite(v) && v >= 0 ? v : fallback; }
+  function pct(x) { return (Math.round(x * 1000) / 10).toFixed(1) + '%'; }
+  function rand(x) { return 'R' + x.toFixed(2); }
+
+  function update() {
+    var price = num($('c-price'), 0);
+    var bureau = num($('c-bureau'), 0);
+    var infra = num($('c-infra'), 0);
+    var hit = num($('c-hit'), 0) / 100;
+    var target = num($('c-target'), 0) / 100;
+
+    var cost = (1 - hit) * bureau + infra;
+    var margin = price > 0 ? (price - cost) / price : 0;
+    var allowed = price * (1 - target) - infra;          // max cost per check that still meets the target
+    var breakEven = bureau > 0 ? 1 - allowed / bureau : (allowed >= 0 ? 0 : Infinity);
+
+    $('o-hit').textContent = Math.round(hit * 100) + '%';
+    $('o-target').textContent = Math.round(target * 100) + '%';
+    $('r-cost').textContent = rand(cost);
+    $('r-margin').textContent = price > 0 ? pct(margin) : 'n/a';
+
+    var verdict = $('verdict');
+    var fill = $('meter-fill');
+    var mark = $('meter-mark');
+    fill.style.width = (hit * 100) + '%';
+    var reachable = breakEven <= 1;
+    var met = reachable && hit >= Math.max(0, breakEven) - 1e-9;
+
+    if (!reachable) {
+      $('r-break').textContent = 'none';
+      mark.hidden = true;
+      verdict.textContent = 'Even a 100% hit rate cannot reach a ' + Math.round(target * 100) + '% margin at these prices: the fixed cost per check is too high.';
+    } else {
+      var be = Math.max(0, breakEven);
+      $('r-break').textContent = pct(be);
+      mark.hidden = false;
+      mark.style.left = (be * 100) + '%';
+      verdict.textContent = met
+        ? 'At a ' + Math.round(hit * 100) + '% hit rate the check meets the ' + Math.round(target * 100) + '% margin target.'
+        : 'Short of target: the cache needs to serve at least ' + pct(be) + ' of checks.';
+    }
+    verdict.className = 'verdict ' + (met ? 'ok' : 'short');
+    fill.className = 'meter-fill' + (met ? '' : ' short');
+    $('meter').setAttribute('aria-label', 'Cache hit rate ' + Math.round(hit * 100) + '% against a break-even of ' + $('r-break').textContent);
+  }
+  inputs.forEach(function (el) { if (el) el.addEventListener('input', update); });
+  update();
+
+  // ---- contents: collapse on narrow screens, highlight the current section ----
+  var details = $('toc-details');
+  try {
+    var narrow = window.matchMedia('(max-width: 960px)');
+    var sync = function () { if (narrow.matches) details.removeAttribute('open'); else details.setAttribute('open', ''); };
+    sync();
+    narrow.addEventListener('change', sync);
+    details.addEventListener('click', function (e) {
+      if (narrow.matches && e.target.closest('a')) details.removeAttribute('open');
+    });
+  } catch (e) { /* keep it open */ }
+
+  var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+  var byId = {};
+  links.forEach(function (a) { byId[a.getAttribute('href').slice(1)] = a; });
+  if ('IntersectionObserver' in window) {
+    var current = null;
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting) {
+          if (current) current.classList.remove('active');
+          current = byId[en.target.id];
+          if (current) current.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-15% 0px -75% 0px' });
+    document.querySelectorAll('main section[id]').forEach(function (s) { io.observe(s); });
+  }
+})();
+</script>
+
+</body>
+</html>
