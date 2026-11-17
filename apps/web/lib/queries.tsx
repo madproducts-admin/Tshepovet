@@ -2,7 +2,10 @@
 
 import { QueryClient, QueryClientProvider, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createContext, type ReactNode, useContext, useEffect, useState } from 'react';
-import { can, type Permission, type SessionView } from '@tshepovet/contracts';
+import type { SessionView } from '@tshepovet/contracts';
+// The zod-free entry point: this module is on every page, and the package's index would bring
+// every schema and zod itself (44 KB compressed) to pages that validate nothing.
+import { can, type Permission } from '@tshepovet/contracts/rbac';
 import { toast } from '@/components/ui/toast';
 import { api, ApiProblem, setCsrfToken } from './api';
 

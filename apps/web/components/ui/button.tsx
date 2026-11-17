@@ -9,14 +9,15 @@ import { cn } from '@/lib/cn';
  * ink (violet) means "you can do this"; red is kept for what cannot be undone.
  */
 export const buttonVariants = cva(
-  'inline-flex min-h-11 items-center justify-center gap-2 rounded-control font-semibold whitespace-nowrap transition-[background-color,border-color,color,box-shadow] duration-[var(--motion-fast)] ease-[var(--motion-ease)] select-none disabled:cursor-not-allowed disabled:opacity-60 aria-busy:cursor-progress [&_svg]:size-[1.125rem] [&_svg]:shrink-0',
+  // Pressed: the button sinks a pixel, like a stamp meeting paper (not for reduced motion).
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-control font-semibold whitespace-nowrap transition-[background-color,border-color,color,box-shadow,transform] duration-[var(--motion-fast)] ease-[var(--motion-ease)] select-none motion-safe:active:translate-y-px disabled:cursor-not-allowed disabled:opacity-60 aria-busy:cursor-progress [&_svg]:size-[1.125rem] [&_svg]:shrink-0',
   {
     variants: {
       intent: {
-        primary: 'bg-violet text-on-violet hover:bg-violet-strong',
-        secondary: 'border border-edge bg-sheet text-ink hover:border-ink hover:bg-sheet-2',
-        quiet: 'text-violet hover:bg-violet-tint',
-        danger: 'bg-red text-sheet hover:opacity-90',
+        primary: 'bg-violet text-on-violet hover:bg-violet-strong active:bg-violet-strong',
+        secondary: 'border border-edge bg-sheet text-ink hover:border-ink hover:bg-sheet-2 active:bg-sheet-2',
+        quiet: 'text-violet hover:bg-violet-tint active:bg-violet-tint',
+        danger: 'bg-red text-sheet hover:opacity-90 active:opacity-90',
       },
       size: {
         md: 'px-5 text-base',

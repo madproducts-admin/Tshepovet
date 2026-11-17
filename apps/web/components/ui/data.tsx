@@ -5,7 +5,6 @@ import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ChevronsUpDown, Copy, Ey
 import { type ComponentProps, type ReactNode, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { formatCount, formatDay, formatInstant, formatMoney, formatRelative } from '@/lib/format';
-import { GLOSSARY, type GlossaryTerm } from '@/lib/glossary';
 import { Button } from './button';
 
 /**
@@ -38,16 +37,8 @@ export function When({ value, day, showExact }: { value: string | Date; day?: bo
   );
 }
 
-/** An abbreviation, expanded for screen readers; the title shows it on hover. */
-export function Term({ term, children }: { term: GlossaryTerm; children?: ReactNode }) {
-  const g = GLOSSARY[term];
-  return (
-    <>
-      <abbr title={g.expansion}>{children ?? term}</abbr>
-      <span className="sr-only"> ({g.expansion})</span>
-    </>
-  );
-}
+/** An abbreviation, expanded for screen readers (server-safe: see term.tsx). */
+export { Term } from './term';
 
 // --- Secrets ---------------------------------------------------------------------------------
 /** A secret shown once (API key, webhook signing secret): hidden until asked, then copyable. */

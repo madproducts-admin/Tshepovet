@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Term } from '@/components/ui/data';
+import { Term } from '@/components/ui/term';
 import { Callout } from '@/components/ui/feedback';
 import { formatMoney, formatPercent } from '@/lib/format';
 import { getMeta } from '@/lib/server';

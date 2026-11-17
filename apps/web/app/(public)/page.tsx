@@ -3,7 +3,7 @@ import Link from 'next/link';
 import type { PublicPassport } from '@tshepovet/contracts';
 import { PassportSheet } from '@/components/supplier/passport-sheet';
 import { Button } from '@/components/ui/button';
-import { Term } from '@/components/ui/data';
+import { Term } from '@/components/ui/term';
 import { formatMoney } from '@/lib/format';
 import { getMeta } from '@/lib/server';
 
