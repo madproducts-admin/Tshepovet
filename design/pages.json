@@ -1,0 +1,1107 @@
+{
+  "shells": [
+    {
+      "id": "public",
+      "name": "Public site",
+      "regions": [
+        "Skip link 'Skip to main content' (visible on focus)",
+        "Sandbox band (only when the API says sandbox): 'Specimen. This is the TshepoVet sandbox: checks use test data, top-ups are pretend money, and nothing here is a real verification.' with a guilloche pattern on the right",
+        "Top bar: brand link to / (seal + 'TshepoVet') on the left; 'Site' nav on the right: Pricing, API documentation (/docs/), Sign in, 'Create an account' (violet button)",
+        "Main: full width; each page sets its own centred column",
+        "Footer: links Words we use, Privacy notice, Terms of use, Check a supplier passport, Design system; line 'TshepoVet checks South African suppliers. Information is processed in line with POPIA.'",
+        "Print: top bar and footer hidden, sandbox band kept"
+      ],
+      "nav": [
+        {
+          "group": "Top bar",
+          "items": [
+            "Pricing",
+            "API documentation",
+            "Sign in",
+            "Create an account"
+          ]
+        },
+        {
+          "group": "Footer",
+          "items": [
+            "Words we use",
+            "Privacy notice",
+            "Terms of use",
+            "Check a supplier passport",
+            "Design system"
+          ]
+        }
+      ],
+      "phone": "No hamburger: the brand and the four top-bar links wrap onto extra lines; footer links wrap; content columns stack."
+    },
+    {
+      "id": "auth",
+      "name": "Account (sign-in and recovery)",
+      "regions": [
+        "Skip link",
+        "Sandbox band (sandbox only)",
+        "Header: brand link to / (seal + 'TshepoVet'), nothing else",
+        "Main: one narrow column (max-w-md) holding the form",
+        "Footer 'Help' nav: Words we use, Privacy notice, API documentation"
+      ],
+      "nav": [
+        {
+          "group": "Footer (Help)",
+          "items": [
+            "Words we use",
+            "Privacy notice",
+            "API documentation"
+          ]
+        }
+      ],
+      "phone": "Already a single narrow column; identical on phones, footer links wrap."
+    },
+    {
+      "id": "portal",
+      "name": "Buyer portal",
+      "regions": [
+        "Skip link",
+        "Sandbox band (sandbox only), above everything",
+        "Phones/tablets only: top bar with brand (seal, 'TshepoVet', organisation legal name) and a 'Menu' button",
+        "Desktop (lg and up): sticky left sidebar 17rem wide: brand at top (seal, 'TshepoVet', organisation legal name, links to /app); 'Portal' nav list with icons; account button at the bottom (initials avatar, full name, email, chevron) opening a menu: organisation name label, 'Your account', separator, 'Sign out'",
+        "Main: content column up to 90rem wide, no page footer",
+        "Nav items are filtered by the user's permissions: Overview, Suppliers, Checks, Monitoring need suppliers:read; Wallet wallet:read; Developers developers:manage; Team team:read; Compliance compliance:read; Modules and Settings always shown",
+        "While loading the session: full-screen spinner 'Opening TshepoVet'; signed-out visitors go to /sign-in?next=...",
+        "If the session stage is mfa_setup: the nav is hidden and every page except /app/mfa-setup redirects there (spinner 'Opening two-step verification setup')"
+      ],
+      "nav": [
+        {
+          "group": "Sidebar (one ungrouped list)",
+          "items": [
+            "Overview",
+            "Suppliers",
+            "Checks",
+            "Monitoring",
+            "Modules",
+            "Wallet",
+            "Developers",
+            "Team",
+            "Compliance",
+            "Settings"
+          ]
+        },
+        {
+          "group": "Account menu (bottom of sidebar)",
+          "items": [
+            "Your account",
+            "Sign out"
+          ]
+        }
+      ],
+      "phone": "Below 1024px the sidebar is hidden; a top bar shows the brand and a 'Menu' button that opens a dialog titled 'Menu' with the same nav list and, under a rule, the account button/menu. Content is single-column; tables scroll sideways."
+    },
+    {
+      "id": "supplier",
+      "name": "Supplier self-service",
+      "regions": [
+        "Skip link",
+        "Sandbox band (sandbox only)",
+        "Header bar: brand link to / (seal + 'TshepoVet') followed by the words 'for suppliers'; no nav and no sign-out in the shell",
+        "Main: column up to max-w-6xl",
+        "Footer 'Help' nav: Privacy notice, Words we use, Check a supplier passport"
+      ],
+      "nav": [
+        {
+          "group": "Footer (Help)",
+          "items": [
+            "Privacy notice",
+            "Words we use",
+            "Check a supplier passport"
+          ]
+        }
+      ],
+      "phone": "Header wraps; the page's two-column grid stacks into one column; footer links wrap."
+    },
+    {
+      "id": "staff",
+      "name": "Staff console",
+      "regions": [
+        "Skip link",
+        "Sandbox band (sandbox only)",
+        "Phones/tablets only: top bar with brand (seal, 'TshepoVet', 'Staff console' in petrol) and a 'Menu' button",
+        "Desktop: sticky left sidebar 17rem: brand (links to /staff, always labelled 'Staff console'); 'Staff console' nav list with icons (active item tinted petrol, not violet); bottom block with the staff member's name, 'email, role' and a 'Sign out' button",
+        "Main: content column up to 90rem, no footer",
+        "Nav items filtered by staff role (support, reviewer, admin): Overview all; Review queue reviewer+admin; Tenants, Data requests, Mail outbox support+admin; WhatsApp simulator all; Bureaus and prices, Purge runs admin only",
+        "While loading: full-screen spinner 'Opening the staff console'; 401 or MFA not enrolled sends the browser to /staff/sign-in"
+      ],
+      "nav": [
+        {
+          "group": "Sidebar (one ungrouped list)",
+          "items": [
+            "Overview",
+            "Review queue",
+            "Tenants",
+            "Data requests",
+            "WhatsApp simulator",
+            "Mail outbox",
+            "Bureaus and prices",
+            "Purge runs"
+          ]
+        },
+        {
+          "group": "Bottom of sidebar",
+          "items": [
+            "Sign out"
+          ]
+        }
+      ],
+      "phone": "Same pattern as the portal: below 1024px a top bar with brand and 'Menu' button; the dialog holds the nav and the name/role/Sign out block."
+    },
+    {
+      "id": "staff-auth",
+      "name": "Staff sign-in",
+      "basedOn": "auth",
+      "regions": [
+        "Skip link",
+        "Sandbox band (sandbox only)",
+        "Header: seal + 'TshepoVet' with 'Staff console' underneath in petrol; not a link",
+        "Main: one narrow column (max-w-md)",
+        "No footer"
+      ],
+      "nav": [],
+      "phone": "Single narrow column, identical on phones."
+    },
+    {
+      "id": "bare",
+      "name": "Bare (root layout only)",
+      "regions": [
+        "Root layout only: <html lang='en-ZA'> with the theme cookie, Atkinson Hyperlegible fonts, data providers and the toast area; no header, nav or footer",
+        "The page draws its own chrome (the design system page: skip link, a header that always shows the sandbox band, seal + 'TshepoVet' not linked)"
+      ],
+      "nav": [],
+      "phone": "Whatever the page does; the design system page is a single max-w-6xl column whose grids stack."
+    }
+  ],
+  "pages": [
+    {
+      "route": "/",
+      "name": "Know who you are paying.",
+      "area": "Public site",
+      "shell": "public",
+      "status": "built",
+      "access": "Anyone",
+      "purpose": "A visitor learns what a TshepoVet check answers and starts an account or looks at prices.",
+      "regions": [
+        "Hero (two columns on large screens): h1 'Know who you are paying.', lead paragraph, buttons 'Create an account' and 'See the prices', line giving the company-check price and 'no subscription'",
+        "Specimen passport beside the hero: a sample Verified Vendor Passport for 'Specimen Trading (Pty) Ltd', overprinted 'Specimen', tilted slightly",
+        "Section 'What one check answers': 5 question/answer pairs in two columns (registered and still in business; directors; tax compliant today; B-BBEE level; can its driver drive your load)",
+        "Section 'How it works' (tinted band): 3 numbered steps 'Add a supplier', 'Check it, or let it onboard itself', 'Hear before anything lapses'",
+        "Two columns: 'Invited by a customer?' with links 'Sign in as a supplier' and 'Check a printed passport'; 'For developers' with three API endpoints in mono and 'Read the API documentation'"
+      ],
+      "states": [
+        "Company-check price is read from the API at render time"
+      ],
+      "file": "apps/web/app/(public)/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/pricing",
+      "name": "Pricing",
+      "area": "Public site",
+      "shell": "public",
+      "status": "built",
+      "access": "Anyone",
+      "purpose": "A visitor sees what each check and module costs from a prepaid rand wallet.",
+      "regions": [
+        "Header: h1 'Pricing', paragraph on topping up a wallet in rand, no subscription, VAT rate",
+        "Callout 'This is the sandbox' (sandbox only): pretend money, sample data, same prices",
+        "Section 'Checks': price list of 4 rows, name and description left, price and unit right: Company check; Company check, fresh from the bureau; Driving licence check; Monitoring (a supplier a month)",
+        "Note: onboarding costs a supplier nothing, checks are charged to the inviting customer",
+        "Section 'Modules' (only when modules exist): monthly price rows with description and 'Not available yet: reason'",
+        "Buttons: 'Create an account', 'Read the API documentation'"
+      ],
+      "states": [
+        "Sandbox callout",
+        "Prices and modules come from the API"
+      ],
+      "file": "apps/web/app/(public)/pricing/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/glossary",
+      "name": "Words we use",
+      "area": "Public site",
+      "shell": "public",
+      "status": "built",
+      "access": "Anyone",
+      "purpose": "A reader looks up an abbreviation or compliance term in plain words.",
+      "regions": [
+        "Header: h1 'Words we use', description 'South African compliance has its own vocabulary. Here is what each term means, in plain words.'",
+        "Definition list, A to Z, divided by rules: each term in bold with its expansion in brackets, then a plain explanation (AVS, B-BBEE, CIDB, CIPC, COIDA, CSD, DSR, EME, KYB, PAIA, POPIA, PrDP, QSE, SARS, TCS, VAT)",
+        "Each entry carries an anchor id (the term in lower case) so it can be linked directly"
+      ],
+      "states": [],
+      "file": "apps/web/app/(public)/glossary/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/legal/[doc]",
+      "name": "Privacy notice / Terms of use",
+      "area": "Public site",
+      "shell": "public",
+      "status": "built",
+      "access": "Anyone",
+      "purpose": "A reader reads the privacy notice (/legal/privacy) or the terms of use (/legal/terms).",
+      "regions": [
+        "Header: h1 the document title ('Privacy notice' or 'Terms of use')",
+        "Callout (caution) 'Draft': 'This text is waiting for legal review and may change before TshepoVet goes live.'",
+        "Sections, each an h2 with paragraphs. Privacy: Who we are; What we process, and why; How long we keep it; Where it is kept; Your rights. Terms: The sandbox; Your account; Checks; Charges"
+      ],
+      "states": [
+        "Only 'privacy' and 'terms' exist; any other value is a 404"
+      ],
+      "file": "apps/web/app/(public)/legal/[doc]/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/passport/[id]",
+      "name": "<supplier legal name> (Verified Vendor Passport)",
+      "area": "Supplier",
+      "shell": "public",
+      "status": "built",
+      "access": "Anyone with the link (not indexed); shown only while the supplier keeps it published",
+      "purpose": "A buyer opens or prints a supplier's published Verified Vendor Passport.",
+      "regions": [
+        "Passport sheet header: guilloche band, large verified seal, 'Verified Vendor Passport', h1 legal name, registration number in mono",
+        "Facts grid (only the fields the supplier chose): Status on the CIPC register (stamp), Tax compliance (SARS) stamp with PIN validity and check date, VAT, B-BBEE level with evidence validity, Directors (initials), Verified date",
+        "Sheet footer: QR code that opens this page, verification code in groups of four, how to check a printed copy",
+        "Actions (hidden when printing): 'Print or save as PDF' button, 'Check a printed copy' link",
+        "Disclaimer: the facts describe the company on the verified date"
+      ],
+      "states": [
+        "Withdrawn: sheet with 'Withdrawn' stamp and h1 'This passport was withdrawn'",
+        "API unreachable: caution callout 'The passport could not be loaded'",
+        "Unknown id: 404",
+        "Print layout"
+      ],
+      "file": "apps/web/app/(public)/passport/[id]/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/verify-passport",
+      "name": "Check a supplier passport",
+      "area": "Public site",
+      "shell": "public",
+      "status": "built",
+      "access": "Anyone",
+      "purpose": "A buyer types the code from a printed passport to see whether it is genuine and current.",
+      "regions": [
+        "Header: h1 'Check a supplier passport', paragraph explaining the printed passport and its code",
+        "Form: 'Verification code' field (mono; hint 'Printed at the bottom of the passport, in groups of four'), 'Check the code' button",
+        "Result callout (live region): 'Genuine and current', 'Genuine, but out of date', 'Genuine, but the passport was withdrawn' or 'TshepoVet did not issue this code'; 'Open the current passport' link when there is one"
+      ],
+      "states": [
+        "Validation error for a short code",
+        "Network error message"
+      ],
+      "file": "apps/web/app/(public)/verify-passport/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/onboard",
+      "name": "Supplier onboarding for <buyer>",
+      "area": "Supplier",
+      "shell": "public",
+      "status": "built",
+      "access": "Anyone holding a valid onboarding link (token in the URL fragment, kept in sessionStorage for the tab); links come from a buyer's 'Invite to onboard' email",
+      "purpose": "A supplier invited by a buyer agrees to the checks and adds its company, identity, B-BBEE, bank and tax details step by step.",
+      "regions": [
+        "Header: h1 'Supplier onboarding for {buyer}', supplier legal name with registration number",
+        "Steps bar: Agree, Company, Identity, B-BBEE, Bank, Tax, Review (numbered, current step highlighted)",
+        "Step sheet 'Before you start': what happens to the information, link to the privacy notice, sandbox callout, 'Your full name', 'Your role at the company' (optional), consent checkbox, 'Agree and continue'",
+        "Step sheet 'Is this your company?': registered name, status, directors as the CIPC register has them; 'Yes, this is my company' / 'No, something is wrong'",
+        "Step sheets 'Your identity document' and 'B-BBEE evidence': retake/wrong-document callouts, sandbox radio list of sample documents (live: 'Uploads open when TshepoVet goes live'), 'Add the document'; B-BBEE also 'My customer does not need this'",
+        "Step sheet 'Bank details': Bank select, Account number, Account type radios; 'Add bank details' / 'Skip for now'",
+        "Step sheet 'Tax compliance': Income tax reference number, Tax compliance status PIN; 'Check with SARS' / 'Skip for now'",
+        "Step sheet 'Check and submit': stamp per item (Company, Identity document, B-BBEE, Bank details, Tax compliance); 'Publish a Verified Vendor Passport' checkbox for directors, otherwise an info callout; 'Submit to {buyer}'",
+        "Done sheet 'Submitted': seal, '{buyer} has your details', link to sign in as a supplier (directors only)"
+      ],
+      "states": [
+        "Loading: 'Opening your invitation'",
+        "Expired or withdrawn link: 'This link has expired or was withdrawn'",
+        "Company disputed: caution callout, flow stops",
+        "Error callout on a failed step",
+        "Sandbox: sample documents instead of uploads"
+      ],
+      "file": "apps/web/app/(public)/onboard/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/sign-in",
+      "name": "Sign in to TshepoVet",
+      "area": "Account",
+      "shell": "auth",
+      "status": "built",
+      "access": "Anyone (buyer accounts)",
+      "purpose": "A buyer user signs in with email and password, then an authenticator code if two-step verification is on.",
+      "regions": [
+        "Header: h1 'Sign in to TshepoVet'",
+        "Error summary and problem callout, with 'Send the confirmation email again' (unverified email) or 'Reset your password' (wrong password / locked)",
+        "Form: Email address, Password with show/hide button, full-width 'Sign in'",
+        "Links: 'Forgot your password?', 'New to TshepoVet? Create an account'",
+        "Second step on the same page: h1 'Two-step verification', 'Code' field (or 'Recovery code'), 'Sign in', toggle 'I cannot use my authenticator app' / 'Use a code from the app instead'"
+      ],
+      "states": [
+        "Code step",
+        "Expired challenge returns to the password step",
+        "After sign-in goes to ?next= inside /app, or /app/mfa-setup"
+      ],
+      "file": "apps/web/app/(auth)/sign-in/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/sign-up",
+      "name": "Create your TshepoVet account",
+      "area": "Account",
+      "shell": "auth",
+      "status": "built",
+      "access": "Anyone",
+      "purpose": "A new buyer organisation creates its workspace and owner account.",
+      "regions": [
+        "Header: h1 'Create your TshepoVet account', 'Your organisation gets its own workspace, a wallet for checks, and you as its owner.'",
+        "Error summary and problem callout",
+        "Form: Organisation (registered name), Your full name, Work email address, Password with show/hide and hint, checkbox 'I accept the terms of use and have read the privacy notice', full-width 'Create account'",
+        "Link: 'Already have an account? Sign in'",
+        "After submit: h1 'Check your email', 'Nothing arrived?' info callout, 'Back to sign in'"
+      ],
+      "states": [],
+      "file": "apps/web/app/(auth)/sign-up/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/verify-email",
+      "name": "Confirm your email address",
+      "area": "Account",
+      "shell": "auth",
+      "status": "built",
+      "access": "Anyone with the emailed link (token in fragment), or ?resend=email from sign-in",
+      "purpose": "A new user confirms their email address, or asks for a new confirmation link.",
+      "regions": [
+        "While checking the link: spinner 'Confirming your email address'",
+        "Success: h1 'Email address confirmed', 'You can sign in now.', 'Sign in' button",
+        "Expired link or resend: h1 'This link has expired or was already used' (or 'Confirm your email address'), Email address field, 'Send a new link'",
+        "After resending: h1 'Check your email' with 'Nothing arrived?' callout and 'Back to sign in'"
+      ],
+      "states": [],
+      "file": "apps/web/app/(auth)/verify-email/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/forgot-password",
+      "name": "Reset your password",
+      "area": "Account",
+      "shell": "auth",
+      "status": "built",
+      "access": "Anyone",
+      "purpose": "A user asks for a password-reset link by email.",
+      "regions": [
+        "Header: h1 'Reset your password', 'Enter the email address you sign in with...'",
+        "Form: Email address, full-width 'Send reset link'",
+        "Link: 'Back to sign in'",
+        "After submit: h1 'Check your email' with 'Nothing arrived?' callout"
+      ],
+      "states": [],
+      "file": "apps/web/app/(auth)/forgot-password/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/reset-password",
+      "name": "Choose a new password",
+      "area": "Account",
+      "shell": "auth",
+      "status": "built",
+      "access": "Anyone with the emailed reset link (token in fragment)",
+      "purpose": "A user sets a new password from the reset email.",
+      "regions": [
+        "Header: h1 'Choose a new password'",
+        "Problem callout with 'Ask for a new link'",
+        "Form: New password with show/hide and hint, full-width 'Change password'",
+        "Done: h1 'Password changed', 'You were signed out everywhere...', 'Sign in' button"
+      ],
+      "states": [
+        "No token: h1 'This link is not complete' with 'Ask for a new link'"
+      ],
+      "file": "apps/web/app/(auth)/reset-password/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/accept-invite",
+      "name": "Join <organisation>",
+      "area": "Account",
+      "shell": "auth",
+      "status": "built",
+      "access": "Anyone with a team invitation link (token in fragment)",
+      "purpose": "An invited colleague sets their name and password and joins the organisation.",
+      "regions": [
+        "Header: h1 'Join {organisation}', 'You were invited as a {role}. You will sign in with {email}.'",
+        "Error summary and problem callout",
+        "Form: Your full name, Choose a password with show/hide and hint, full-width 'Join {organisation}'"
+      ],
+      "states": [
+        "Loading: 'Opening your invitation'",
+        "Expired: h1 'This invitation has expired or was already used'",
+        "After joining goes to /app or /app/mfa-setup"
+      ],
+      "file": "apps/web/app/(auth)/accept-invite/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/app",
+      "name": "Good to see you, <first name> (Overview)",
+      "area": "Buyer portal",
+      "shell": "portal",
+      "status": "built",
+      "access": "Signed-in buyer (no page guard; the nav item needs suppliers:read)",
+      "purpose": "A buyer sees this month's checks, suppliers, expiries and wallet at a glance.",
+      "regions": [
+        "Header: h1 'Good to see you, {first name}', organisation name, 'Run a check' button (checks:run)",
+        "Callouts: 'Your wallet is running low' with 'Top up the wallet' (wallet:read); '{n} things need attention' with 'See the alerts'",
+        "Section 'This month': 4 stat tiles - Checks run (% verified, 'See all checks'), Suppliers (approved / in progress), Expiring in 30 days ('See the calendar'), Wallet available (held amount, 'Open the wallet')",
+        "Sheet 'Latest checks': list of supplier link, check type and time, outcome stamp; empty state 'No checks yet' with 'Run your first check'",
+        "Sheet 'Recent activity' (audit:read) with 'Audit log' link: action, actor, time"
+      ],
+      "states": [
+        "Loading skeleton",
+        "Error callout with 'Try again'"
+      ],
+      "file": "apps/web/app/app/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/app/suppliers",
+      "name": "Suppliers",
+      "area": "Buyer portal",
+      "shell": "portal",
+      "status": "built",
+      "access": "Signed-in buyer with suppliers:read",
+      "purpose": "A buyer searches, filters and opens the suppliers they pay, and adds new ones.",
+      "regions": [
+        "Header: h1 'Suppliers', description, buttons 'Add a supplier' (suppliers:write) and 'Run a check' (checks:run)",
+        "Filter bar: Search (name, registration number or your reference), Status select, Risk select, Monitoring select, 'Views' menu (saved views, 'Save this view', delete a view), 'Export CSV'",
+        "Table (sortable): Supplier (name, registration number, your reference), Status stamp, Last check (outcome stamp and time), Risk, Monitoring (with 'Payments locked' stamp), Next expiry",
+        "Pagination, 25 per page",
+        "Dialog 'Add a supplier': Registration number, Your reference (optional), Industry; 'already on your list' callout with link",
+        "Dialog 'Save this view': Name"
+      ],
+      "states": [
+        "Empty: 'No suppliers yet...' or 'No suppliers match these filters.'",
+        "Filters, sort and page kept in the URL",
+        "No permission: 'You cannot open this page'"
+      ],
+      "file": "apps/web/app/app/suppliers/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/app/suppliers/[id]",
+      "name": "<supplier legal name>",
+      "area": "Buyer portal",
+      "shell": "portal",
+      "status": "built",
+      "access": "Signed-in buyer with suppliers:read (changes need suppliers:write, monitoring:manage, checks:run; audit tab audit:read)",
+      "purpose": "A buyer reviews everything known about one supplier and approves, monitors, invites or locks payments to it.",
+      "regions": [
+        "Header: breadcrumbs Suppliers > name; h1 legal name; status stamp, latest outcome stamp, registration number; buttons 'Run a check', 'Invite to onboard', 'Change status' menu (Approve, Send for review, Reject, Suspend, Offboard), 'Edit'",
+        "Callout 'Payments to this supplier are locked' (when locked)",
+        "Tabs: Facts, People, B-BBEE and bank, Documents, Onboarding, Monitoring, Checks, Audit trail (audit:read)",
+        "Facts tab: 'The company' record (registered and trading name, registration no, entity type, CIPC status, incorporated, annual return due, VAT, CSD) and 'Your relationship' (status, risk, your reference, industry, approved, added)",
+        "People tab: 'Directors and members' table and 'Beneficial owners' table; B-BBEE and bank tab: 'B-BBEE status' record and 'Bank accounts' (last four digits, verified stamp)",
+        "Documents tab: 'Documents' and 'Licences and permits' tables; Onboarding tab: 'Onboarding invitations' table (Sent to, Status, Sent, Link works until, Withdraw)",
+        "Monitoring tab: 'Continuous monitoring' (Start/Stop monitoring, Lock/Unlock/Override payments) and 'What expires when' list; Checks tab: list of checks with outcome stamps; Audit trail tab: timeline with 'Show older entries'",
+        "Dialogs: 'Invite the supplier to onboard', '{Action} this supplier?' with Reason, 'Edit supplier details' (reference, risk rating, industry), 'Start monitoring' (accounting lock, consent), lock/unlock with Reason, 'Withdraw the invitation?'"
+      ],
+      "states": [
+        "Loading skeleton / error with retry",
+        "Payments locked callout"
+      ],
+      "file": "apps/web/app/app/suppliers/[id]/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/app/checks",
+      "name": "Checks",
+      "area": "Buyer portal",
+      "shell": "portal",
+      "status": "built",
+      "access": "Signed-in buyer with suppliers:read",
+      "purpose": "A buyer browses every company and driver check run through the portal or the API.",
+      "regions": [
+        "Header: h1 'Checks', description, 'Run a check' button (checks:run)",
+        "Filter bar: Search (supplier name, registration number or reference), Type select (All checks / Company / Driver), Result select (Any result, Verified, Verified with warnings, Failed checks, Not found, Could not verify)",
+        "Table (sortable): Checked (name or subject, check type), Result stamp, When, By, Cost (or 'Not charged')",
+        "Pagination, 25 per page"
+      ],
+      "states": [
+        "Empty: 'No checks match. Run one: the result appears here.'",
+        "Filters kept in the URL"
+      ],
+      "file": "apps/web/app/app/checks/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/app/checks/new",
+      "name": "Run a check",
+      "area": "Buyer portal",
+      "shell": "portal",
+      "status": "built",
+      "access": "Signed-in buyer with checks:run",
+      "purpose": "A buyer runs a paid company or driver check from the wallet.",
+      "regions": [
+        "Header: breadcrumbs Checks > Run a check, h1 'Run a check'",
+        "Radio 'What do you want to check?': A company / A driver, each with its price",
+        "Company form: Registration number; 'What to check' checkboxes (Registration always, Directors, VAT registration, Tax compliance with SARS); VAT number, Income tax reference and TCS PIN fields when ticked; 'How fresh must the answer be?' radios; 'Keep monitoring this supplier'; Your reference",
+        "Driver form: Driver's ID number, Licence number (optional), Surname (optional), licence code checkboxes, PrDP category checkboxes (G, P, D)",
+        "Consent fieldset when needed: agreement checkbox, 'Where the evidence is kept'",
+        "Price line, or caution callout 'Your wallet does not have enough for this check'; submit 'Run the check for R...'",
+        "Side panel (sticky on wide screens): 'Your wallet' available balance with 'Top up the wallet'; sandbox callout listing test-data numbers"
+      ],
+      "states": [
+        "Prefilled from ?registration= and ?type=driver",
+        "Submit disabled when the wallet is short",
+        "Redirects to the check result"
+      ],
+      "file": "apps/web/app/app/checks/new/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/app/checks/[id]",
+      "name": "<supplier name or check subject>",
+      "area": "Buyer portal",
+      "shell": "portal",
+      "status": "built",
+      "access": "Signed-in buyer with suppliers:read",
+      "purpose": "A buyer reads the result of one check, part by part, with anything to act on.",
+      "regions": [
+        "Header: breadcrumbs Checks > name; h1 supplier name (or 'Company {reg}' / 'Driver {id}'); outcome stamp, check type, requester and exact time; 'Open the supplier' button",
+        "Callout 'Still checking' while processing (page polls every 2 seconds)",
+        "Sheet 'One thing to look at' / '{n} things to look at' listing risk flags with advice, or callout 'Nothing to look at'",
+        "Grid of one sheet per part (Registration (CIPC), Directors, VAT registration, Tax compliance (SARS), Driving licence, Professional driving permit, Identity): source and as-of date, status stamp, result facts or director list, warnings",
+        "Billing line: 'Charged R... (excluding VAT) from the wallet.' or 'Not charged.'"
+      ],
+      "states": [
+        "Processing (auto-refresh)",
+        "Loading / error with retry"
+      ],
+      "file": "apps/web/app/app/checks/[id]/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/app/monitoring",
+      "name": "Monitoring",
+      "area": "Buyer portal",
+      "shell": "portal",
+      "status": "built",
+      "access": "Signed-in buyer with suppliers:read",
+      "purpose": "A buyer sees what is lapsing, what has lapsed and whose payments are locked.",
+      "regions": [
+        "Header: h1 'Monitoring', description",
+        "4 stat tiles: Monitored suppliers, Expiring in 30 days, Expired, Payments locked",
+        "Sheet 'Needs attention': alerts (supplier link, what lapses and when, stamp '{n} days left' / 'Expired' / 'Locked'), or an all-clear sentence",
+        "Sheet 'Expiry calendar': three-month window label, 'Earlier' / 'Later' buttons, items grouped by month (date, supplier link, what expires)",
+        "Sheet 'Monitored suppliers' table: Supplier, Monitored since, Accounting lock, Payments stamp, Next expiry; empty state 'No suppliers are monitored yet' with 'Go to suppliers'"
+      ],
+      "states": [],
+      "file": "apps/web/app/app/monitoring/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/app/modules",
+      "name": "Modules",
+      "area": "Buyer portal",
+      "shell": "portal",
+      "status": "built",
+      "access": "Any signed-in buyer (switching needs settings:manage; the scorecard needs modules:use)",
+      "purpose": "A buyer turns paid monthly modules on or off.",
+      "regions": [
+        "Header: h1 'Modules', description about monthly charges from the wallet",
+        "Grid of module sheets (2 columns): name, stamp On / 'Ends {date}' / Off, description, '{price} a month, excluding VAT', 'Not available yet' callout",
+        "Sheet buttons: 'Open the scorecard' (B-BBEE module when on), 'Turn on' / 'Turn off' / 'Keep it on'",
+        "Confirm dialogs: 'Turn on {module}?' (first month charged now), 'Turn off {module}?' (stays on to month end), 'Keep {module} on?'"
+      ],
+      "states": [
+        "Insufficient funds error callout"
+      ],
+      "file": "apps/web/app/app/modules/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/app/modules/bbbee",
+      "name": "Preferential procurement (B-BBEE scorecard)",
+      "area": "Buyer portal",
+      "shell": "portal",
+      "status": "built",
+      "access": "Signed-in buyer with modules:use",
+      "purpose": "A buyer records spend per supplier and sees how much counts towards its own B-BBEE scorecard.",
+      "regions": [
+        "Header: breadcrumbs Modules > B-BBEE scorecard, h1 'Preferential procurement', description",
+        "Sheet 'Measurement period': From and To date fields (default March to February)",
+        "4 stat tiles: Measured spend, Recognised spend (% of measured), Spend with EMEs and QSEs, Unverified spend",
+        "Sheet 'Targets that count ownership': spend with 51% black-owned, 30% black women-owned and empowering suppliers",
+        "Sheet 'By supplier' table: Supplier, Level, Spend, Recognised at, Recognised spend, Evidence stamp",
+        "Sheet 'Record spend' form: Supplier, Amount in rand, From, To, Description, 'Record spend' (empty state 'Add suppliers first')",
+        "Sheet 'Spend lines in this period': list with amount and 'Delete' (confirm 'Delete this spend line?')"
+      ],
+      "states": [
+        "Reached only from the Modules page while the B-BBEE module is on"
+      ],
+      "file": "apps/web/app/app/modules/bbbee/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/app/wallet",
+      "name": "Wallet",
+      "area": "Buyer portal",
+      "shell": "portal",
+      "status": "built",
+      "access": "Signed-in buyer with wallet:read (top-up and warning level need wallet:topup)",
+      "purpose": "A buyer checks the prepaid balance, tops it up and downloads tax invoices.",
+      "regions": [
+        "Header: h1 'Wallet', description, 'Top up' button",
+        "Two sheets side by side: 'Balance' (available now, Balance, Held for checks in progress, Warn me below with 'Change', Status; low-balance callout) and 'Held right now' (company/driver holds with amounts)",
+        "Sheet 'Movements': Show filter, 'Export CSV', table When / What / Details / Amount, pagination (20)",
+        "Sheet 'Top-ups and tax invoices': each top-up with invoice number, time, provider, 'Download the tax invoice (PDF)', paid amount with credit + VAT",
+        "Dialog 'Top up the wallet': amount radios R500, R1 000, R2 500, R10 000, Another amount; VAT breakdown; 'Pay R...'; then 'Wallet topped up' with credit, VAT, paid, invoice number, new balance",
+        "Dialog 'Warn me when the balance is low': Amount in rand"
+      ],
+      "states": [
+        "Sandbox top-up moves no money",
+        "Low-balance callout",
+        "Frozen wallet status"
+      ],
+      "file": "apps/web/app/app/wallet/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/app/developers",
+      "name": "Developers",
+      "area": "Buyer portal",
+      "shell": "portal",
+      "status": "built",
+      "access": "Signed-in buyer with developers:manage",
+      "purpose": "A developer makes API keys, adds webhook endpoints and tries the API with a test key.",
+      "regions": [
+        "Header: h1 'Developers', description with 'Read the API documentation' link",
+        "Tabs: API keys, Webhooks, Try the API",
+        "API keys tab: sheet 'API keys' with 'Make a key'; table Name, Key starts, Kind (Test/Live), Last used, State stamp, 'Revoke'",
+        "Webhooks tab: sheet 'Webhook endpoints' with 'Add endpoint'; list of URLs (link to the endpoint page), event count, failures, Sending/Paused stamp; code block 'Check a signature (Node.js)'",
+        "Try the API tab: sheet 'Call the API' (Test key, Scenario select, Registration number, 'Send request') beside the response code block",
+        "Dialogs: 'Make an API key' (Name, Kind) then 'Your new key' secret reveal; 'Add a webhook endpoint' (Address, Description, 'Events to send' checkboxes) then signing secret; 'Revoke {key}?' confirm"
+      ],
+      "states": [],
+      "file": "apps/web/app/app/developers/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/app/developers/webhooks/[id]",
+      "name": "<webhook endpoint URL>",
+      "area": "Buyer portal",
+      "shell": "portal",
+      "status": "built",
+      "access": "Signed-in buyer with developers:manage",
+      "purpose": "A developer watches deliveries to one webhook endpoint, pauses it, rotates its secret or resends events.",
+      "regions": [
+        "Header: breadcrumbs Developers > Webhook endpoint; h1 endpoint URL in mono; Sending/Paused stamp; buttons 'Pause'/'Resume' and 'Rotate the secret'",
+        "Sheet 'New signing secret' with secret reveal (only after rotating)",
+        "Sheet 'Deliveries' table: Event, Sent, Result stamp (Delivered, Retrying, Gave up, Queued), Answer (HTTP status or error), Attempts, 'Send again'; pagination (20)",
+        "Confirm dialog 'Make a new signing secret?' (both secrets sign for 24 hours)"
+      ],
+      "states": [],
+      "file": "apps/web/app/app/developers/webhooks/[id]/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/app/team",
+      "name": "Team",
+      "area": "Buyer portal",
+      "shell": "portal",
+      "status": "built",
+      "access": "Signed-in buyer with team:read (changes need team:manage)",
+      "purpose": "An administrator invites colleagues, changes their roles and removes them.",
+      "regions": [
+        "Header: h1 'Team', description, 'Invite someone' button (team:manage)",
+        "Sheet 'Members' table: Name with email and '(you)', Role (inline select for managers), Two-step verification stamp, Last signed in, 'Remove'",
+        "Sheet 'Waiting to accept' (only when invitations exist): email, role, expiry, 'Withdraw'",
+        "Sheet 'What each role may do': Owner, Admin, Compliance officer, Procurement, AP clerk, Viewer with a hint and permission count",
+        "Dialogs: 'Invite someone' (Email address, Role), confirm 'Remove {name}?', confirm 'Withdraw the invitation to {email}?'"
+      ],
+      "states": [],
+      "file": "apps/web/app/app/team/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/app/compliance",
+      "name": "Compliance",
+      "area": "Buyer portal",
+      "shell": "portal",
+      "status": "built",
+      "access": "Signed-in buyer with compliance:read (changes need compliance:manage)",
+      "purpose": "A compliance officer shows POPIA records: consents, data-subject requests, privacy notices and the record of processing.",
+      "regions": [
+        "Header: h1 'Compliance', POPIA description, 'Audit log' button (audit:read)",
+        "Tabs: Consents, Data-subject requests, Privacy notices, What we process",
+        "Consents tab: Show filter (All consents, Still in force, Fully withdrawn); table Who agreed, For (purposes with lawful basis, struck through when withdrawn), How, When, 'Record withdrawal'; pagination",
+        "Data-subject requests tab: sheet 'DSRs' with 'Log a request'; Show filter (Open, Closed, All); rows with request type and requester, received/due dates, status, days-left stamp, 'Update'",
+        "Privacy notices tab: one sheet per notice version with channel, dates and text; What we process tab: 'Record of processing' table (Processing, Lawful basis, Information, Special information, Kept for)",
+        "Dialogs: 'Record a withdrawal of consent' (purposes, how they told you), 'Log a data-subject request' (They asked to, Who asked, Notes), 'Update the request' (Status, identity confirmed, What was done)"
+      ],
+      "states": [],
+      "file": "apps/web/app/app/compliance/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/app/compliance/audit",
+      "name": "Audit log",
+      "area": "Buyer portal",
+      "shell": "portal",
+      "status": "built",
+      "access": "Signed-in buyer with audit:read",
+      "purpose": "A compliance officer reads every change made in the organisation and checks the hash chain is intact.",
+      "regions": [
+        "Header: breadcrumbs Compliance > Audit log, h1 'Audit log', description of the fingerprint chain, 'Check the chain' button",
+        "Result callout: 'The chain is intact' (entries checked) or 'The chain is broken' (entry number)",
+        "Filter bar: 'Action starts with' text field, 'Done by' select (Anyone, People, API keys, TshepoVet, TshepoVet support)",
+        "Table: When (exact), What happened, Who, On (entity type), From (IP)",
+        "Paging buttons 'Newer entries' / 'Older entries'"
+      ],
+      "states": [
+        "Empty: 'No entries match.'"
+      ],
+      "file": "apps/web/app/app/compliance/audit/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/app/settings",
+      "name": "Settings",
+      "area": "Buyer portal",
+      "shell": "portal",
+      "status": "built",
+      "access": "Any signed-in buyer (editing needs settings:manage)",
+      "purpose": "An administrator edits the organisation's details and organisation-wide preferences.",
+      "regions": [
+        "Header: h1 'Settings', description",
+        "Sheet 'Organisation': form Registered name, Registration number, VAT number, Information officer's email, checkbox 'We are a public-sector buyer', 'Save changes' (read-only list for users without settings:manage)",
+        "Sheet 'How TshepoVet works for you': switches 'Ask for consent on every check', 'Email me when the wallet runs low', 'Email me before documents expire'"
+      ],
+      "states": [
+        "Read-only for roles without settings:manage"
+      ],
+      "file": "apps/web/app/app/settings/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/app/account",
+      "name": "Your account",
+      "area": "Account",
+      "shell": "portal",
+      "status": "built",
+      "access": "Any signed-in buyer",
+      "purpose": "A user manages their own two-step verification, password, theme and signed-in devices.",
+      "regions": [
+        "Header: h1 'Your account', '{name}, {email}'",
+        "Sheet 'You': Name, Email address, Role, Organisation; theme switch (Light, Dark, Device)",
+        "Sheet 'Two-step verification' with On/Off stamp: 'New recovery codes' and 'Turn off' (not offered to owners/admins), or 'Turn on two-step verification'",
+        "Sheet 'Password': Current password, New password, 'Change password'",
+        "Sheet 'Where you are signed in': 'Sign out everywhere else' button, sessions list (device, IP, last active, 'Sign out')",
+        "Dialogs: 'New recovery codes' (password, then codes with 'Copy the codes'), 'Turn off two-step verification?' (password and app code)"
+      ],
+      "states": [],
+      "file": "apps/web/app/app/account/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/app/mfa-setup",
+      "name": "Set up two-step verification",
+      "area": "Account",
+      "shell": "portal",
+      "status": "built",
+      "access": "Any signed-in buyer; forced for roles that require it (session stage mfa_setup)",
+      "purpose": "A user links an authenticator app and saves recovery codes.",
+      "regions": [
+        "Header: h1 'Set up two-step verification', description (forced users are told their role requires it)",
+        "Error callout",
+        "Sheet '1. Get an authenticator app'",
+        "Sheet '2. Add TshepoVet to it': QR code and the setup key in groups of four",
+        "Sheet '3. Enter the code it shows': 6-digit code field, 'Turn on two-step verification'",
+        "'Sign out instead' with confirm dialog (forced users only)",
+        "Done view: h1 'Two-step verification is on', 'Save these codes now' callout, recovery codes grid, 'Copy the codes', 'Continue to TshepoVet'"
+      ],
+      "states": [
+        "Shell nav hidden while forced",
+        "Already enrolled: redirects to /app/account"
+      ],
+      "file": "apps/web/app/app/mfa-setup/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/supplier/sign-in",
+      "name": "Sign in as a supplier",
+      "area": "Supplier",
+      "shell": "supplier",
+      "status": "built",
+      "access": "Anyone; sign-in works only for supplier directors whose ID matched the register",
+      "purpose": "A supplier director asks for a one-time sign-in link by email.",
+      "regions": [
+        "Header: h1 'Sign in as a supplier', 'Manage your passport, see which customers hold your details, and withdraw consent.'",
+        "Form: Email address (hint: the address the invitation went to), full-width 'Email me a sign-in link'",
+        "Link: 'Buying from suppliers? Sign in to the buyer portal'",
+        "After submit: h1 'Check your email' with 'Nothing arrived?' callout"
+      ],
+      "states": [
+        "Link token in fragment: spinner 'Signing you in', then /supplier",
+        "Used/expired link: h1 'This link has expired or was already used'"
+      ],
+      "file": "apps/web/app/supplier/sign-in/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/supplier",
+      "name": "<company legal name> (Your company's record)",
+      "area": "Supplier",
+      "shell": "supplier",
+      "status": "built",
+      "access": "Supplier session (magic-link sign-in); without the session cookie redirected to /supplier/sign-in",
+      "purpose": "A supplier director controls the public passport, consents given to customers and POPIA requests to them.",
+      "regions": [
+        "Header: h1 company legal name, registration number, 'Signed in as {name} ({email})', 'Sign out' button",
+        "Left column: sheet 'Your Verified Vendor Passport' with status stamp; 'Open your passport' link; 'What it shows' checkboxes (8 fields); 'Publish the passport' or 'Save what it shows' + 'Withdraw the passport'",
+        "Sheet 'Customers who hold your details' table: Customer, Where it stands, Monitoring you, Since",
+        "Sheet 'Consents you gave': per customer, its purposes with 'Withdraw' buttons or 'Withdrawn' stamps",
+        "Sheet 'Your requests to customers' with 'Send a request': table Request, To, Status, Sent, Answer due",
+        "Right column: sheet 'Your company' (registered and trading name, registration no, entity type, CIPC status, VAT number) and sheet 'Documents on your record'",
+        "Dialogs: 'Withdraw your passport?', 'Withdraw consent to ...?', 'Send a request to a customer' (Customer, What you are asking radios, Details)"
+      ],
+      "states": [
+        "Passport suspended by TshepoVet callout",
+        "'Your company has not been verified yet' callout",
+        "Loading / error"
+      ],
+      "file": "apps/web/app/supplier/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/staff/sign-in",
+      "name": "Staff sign-in",
+      "area": "Staff console",
+      "shell": "staff-auth",
+      "status": "built",
+      "access": "Anyone (TshepoVet staff accounts); not indexed",
+      "purpose": "A TshepoVet staff member signs in with password and a mandatory authenticator code.",
+      "regions": [
+        "Header: h1 'Staff sign-in', 'For TshepoVet staff. Customers sign in at the portal.'",
+        "Error callout",
+        "Form: Email address, Password with show/hide, full-width 'Sign in'",
+        "Code step: '6-digit code' field, 'Continue'",
+        "Enrol step (staff without two-step yet): h1 'Set up two-step verification', QR code, setup key, '6-digit code', 'Turn on two-step verification'"
+      ],
+      "states": [],
+      "file": "apps/web/app/staff/sign-in/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/staff",
+      "name": "Staff console (Overview)",
+      "area": "Staff console",
+      "shell": "staff",
+      "status": "built",
+      "access": "Any staff role (support, reviewer, admin)",
+      "purpose": "Staff see what is waiting for them across all tenants.",
+      "regions": [
+        "Header: h1 'Staff console', 'Signed in as {name} ({role}).'",
+        "Callout 'This is the sandbox' (sandbox only): mail held in the outbox, WhatsApp in the simulator, mock bureau",
+        "4 stat tiles: Waiting for review (documents, WhatsApp hand-offs), Open data requests (overdue, due within 7 days), Tenants (suspended), Checks in the last 24 hours (failed, running); links only for roles that can open them",
+        "Sheet 'Housekeeping': mail held in the sandbox outbox, last retention purge"
+      ],
+      "states": [
+        "Refreshes every 30 seconds"
+      ],
+      "file": "apps/web/app/staff/(console)/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/staff/review",
+      "name": "Review queue",
+      "area": "Staff console",
+      "shell": "staff",
+      "status": "built",
+      "access": "Staff with role reviewer or admin",
+      "purpose": "A reviewer decides on documents the software could not judge and picks up WhatsApp hand-offs.",
+      "regions": [
+        "Header: h1 'Review queue', description",
+        "Sheet 'Documents' table: Supplier, Document, Why it waits, Buyer, Waiting since, 'Decide'",
+        "Sheet 'WhatsApp hand-offs' table: Buyer, Supplier, Why, Waiting since, 'Open it' (to the simulator)",
+        "Dialog '{document}: {supplier}': Decision radios (Accept it / Reject it), Reason, 'Record the decision'"
+      ],
+      "states": [
+        "Other roles: 'Your staff role cannot open this page'",
+        "Empty tables: 'No documents are waiting.' / 'No conversation is waiting for a person.'"
+      ],
+      "file": "apps/web/app/staff/(console)/review/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/staff/tenants",
+      "name": "Tenants",
+      "area": "Staff console",
+      "shell": "staff",
+      "status": "built",
+      "access": "Staff with role support or admin",
+      "purpose": "Support staff find a buyer organisation.",
+      "regions": [
+        "Header: h1 'Tenants', 'Opening a tenant is recorded in its audit log as a support view.'",
+        "Filters: 'Search by name', Status select (Any, Active, Suspended, Closed)",
+        "Table: Tenant (link), Status stamp, Users, Suppliers, Wallet, Joined",
+        "Pagination (25)"
+      ],
+      "states": [
+        "Empty: 'No tenant matches.'"
+      ],
+      "file": "apps/web/app/staff/(console)/tenants/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/staff/tenants/[id]",
+      "name": "<tenant legal name>",
+      "area": "Staff console",
+      "shell": "staff",
+      "status": "built",
+      "access": "Staff with role support or admin; suspend/reinstate admin only",
+      "purpose": "Support staff inspect one tenant, unlock users, verify its audit chain or suspend it.",
+      "regions": [
+        "Header: breadcrumbs Tenants > name, h1 name, status stamp, 'Verify the audit chain', 'Suspend the tenant' / 'Reinstate the tenant' (admin)",
+        "Callout 'This view is on the tenant's record' (support view written to its audit log)",
+        "Chain result callout (intact with entry count, or broken)",
+        "Sheet 'Account': Wallet balance (held), Suppliers (monitored), Checks in 30 days, Joined",
+        "Sheet 'Users' table: Name, Email, Role, Two-step, State stamp, 'Unlock'",
+        "Sheet 'Recent activity' table: last 20 audit entries (What, By, When)",
+        "Dialog suspend/reinstate with Reason"
+      ],
+      "states": [],
+      "file": "apps/web/app/staff/(console)/tenants/[id]/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/staff/requests",
+      "name": "Data requests",
+      "area": "Staff console",
+      "shell": "staff",
+      "status": "built",
+      "access": "Staff with role support or admin",
+      "purpose": "Support staff watch POPIA data-subject requests across all tenants against their 30-day deadline.",
+      "regions": [
+        "Header: h1 'Data requests', description",
+        "Table: Request, Buyer, Supplier, Status, Answer due stamp (date and days left, or days overdue)",
+        "Empty state text 'No open requests.'"
+      ],
+      "states": [],
+      "file": "apps/web/app/staff/(console)/requests/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/staff/whatsapp",
+      "name": "WhatsApp simulator",
+      "area": "Staff console",
+      "shell": "staff",
+      "status": "built",
+      "access": "Any staff role (no role guard); sandbox only",
+      "purpose": "Staff play a supplier's phone to test the WhatsApp onboarding bot.",
+      "regions": [
+        "Header: h1 'WhatsApp simulator', 'Play the supplier's phone in the sandbox. The real bot answers.'",
+        "Left column, sheet 'Start an onboarding': Inviting buyer select, Supplier's mobile number, 'Send the invitation'",
+        "Left column, sheet 'Conversations': selectable list (+number, tenant: state); empty 'No conversations yet'",
+        "Right: phone sheet (+number, 'Invited by {tenant}', state stamp) with a scrolling chat log of bot and supplier bubbles and reply buttons",
+        "Under the chat: 'Message' field + 'Send'; 'Send a photo of a sample document' select + 'Send the photo'"
+      ],
+      "states": [
+        "Outside the sandbox: 'The simulator is only in the sandbox'",
+        "Polls every 2 seconds",
+        "?c= preselects a conversation (from the review queue)"
+      ],
+      "file": "apps/web/app/staff/(console)/whatsapp/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/staff/mail",
+      "name": "Mail outbox",
+      "area": "Staff console",
+      "shell": "staff",
+      "status": "built",
+      "access": "Staff with role support or admin",
+      "purpose": "Staff read the emails the sandbox would have sent.",
+      "regions": [
+        "Header: h1 'Mail outbox', description (reading a message is recorded)",
+        "Search: 'Search by address or subject'",
+        "Table: Subject, To, Tenant, When, 'Read'",
+        "Pagination (25)",
+        "Dialog: subject, 'To {address}, {time}', plain-text body"
+      ],
+      "states": [
+        "Empty: 'No messages match.'"
+      ],
+      "file": "apps/web/app/staff/(console)/mail/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/staff/bureaus",
+      "name": "Bureaus and prices",
+      "area": "Staff console",
+      "shell": "staff",
+      "status": "built",
+      "access": "Staff with role admin",
+      "purpose": "An admin switches bureau capabilities on or off, watches their health and sets prices.",
+      "regions": [
+        "Header: h1 'Bureaus and prices', description",
+        "One sheet per bureau (name, operator agreement date): capabilities table Check, Cost to us, Source, Health (Healthy / Recovering / Failing stamp, success rate, latency), 'In use' switch",
+        "Sheet 'Price book' with 'Set a new price': table SKU, What, Price, From, Until",
+        "Dialog 'Set a new price': What select, New price in rand, From date"
+      ],
+      "states": [
+        "Bureau health refreshes every 30 seconds"
+      ],
+      "file": "apps/web/app/staff/(console)/bureaus/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/staff/purge",
+      "name": "Purge runs",
+      "area": "Staff console",
+      "shell": "staff",
+      "status": "built",
+      "access": "Staff with role admin",
+      "purpose": "An admin checks what the hourly POPIA retention purge deleted.",
+      "regions": [
+        "Header: h1 'Purge runs', 'The hourly retention purge (POPIA s14): what it deleted, run by run.'",
+        "Table: Started, Finished (or 'Still running'), Deleted (counts per kind, or 'Nothing due')",
+        "Empty state: 'No purge has run yet' - 'The worker runs it every hour.'"
+      ],
+      "states": [],
+      "file": "apps/web/app/staff/(console)/purge/page.tsx",
+      "notes": ""
+    },
+    {
+      "route": "/design-system",
+      "name": "Design system",
+      "area": "Reference",
+      "shell": "bare",
+      "status": "built",
+      "access": "Anyone (linked from the public footer)",
+      "purpose": "A designer or developer sees every component TshepoVet screens are built from.",
+      "regions": [
+        "Own header: sandbox band shown always (not only in the sandbox), seal + 'TshepoVet'",
+        "Header: breadcrumbs TshepoVet > Design system, h1 'Design system', WCAG 2.2 AAA description",
+        "'The seal' (three sizes), 'Colour' (8 swatches with use and contrast ratio), 'Type' (8 size samples with px and use)",
+        "'Stamps' (outcome and supplier-status stamps) and 'Messages' (verified, caution, refused, info callouts)",
+        "'Records': 3 stat tiles, a sample supplier record sheet, Steps, Timeline, Progress (meters, spinner, skeleton), an empty state",
+        "Interactive 'Buttons' (variants, toasts, tooltip) and 'Forms' (fields, select, radios, checkbox, switch, search, validation errors)",
+        "'Dialogs and menus' (dialog, confirm, menu, popover), 'Tables' (sortable demo with pagination), 'Tabs'",
+        "'Secrets and code' (secret reveal, curl code block) and 'Theme' switch"
+      ],
+      "states": [],
+      "file": "apps/web/app/design-system/page.tsx",
+      "notes": ""
+    }
+  ]
+}

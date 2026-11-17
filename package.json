@@ -35,7 +35,11 @@
     "web:dev": "npm run dev --workspace @tshepovet/web",
     "web:build": "npm run build --workspace @tshepovet/web",
     "web:typecheck": "npm run typecheck --workspace @tshepovet/web",
-    "web:test": "playwright test -c apps/web/playwright.config.ts"
+    "web:test": "playwright test -c apps/web/playwright.config.ts",
+    "design:pull": "node tools/design-sync.mjs pull",
+    "design:push": "node tools/design-sync.mjs push",
+    "design:check": "node tools/design-sync.mjs check",
+    "design:css": "node tools/design-sync.mjs css"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",

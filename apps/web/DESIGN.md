@@ -14,7 +14,26 @@ printing gives the vocabulary, used sparingly:
   the sheet print, in light colours whatever the screen theme.
 - Everything else is quiet: cool security paper, petrol ink, records with their "as of" dates.
 
-## Tokens (`app/globals.css`)
+## Where the design lives
+
+The design system and the page map are edited in the owner's project dashboard (`dashboard.html`,
+kept out of git: its Design system and User interface tabs). `npm run design:pull` carries them
+into the repository as `design/tokens.json` and `design/pages.json` and generates
+`app/tokens.css` (never edit that file by hand); `npm run design:push` sends the repository's
+copy back to the dashboard. `npm run design:check` (run before every browser test run and deploy)
+fails when:
+
+- `app/tokens.css` was not generated from `design/tokens.json`;
+- a pair in `tokens.json`'s `contrast` list is under its minimum (7:1 text, 3:1 control edges),
+  in either theme (`pull` refuses such colours outright);
+- `tokens.json` names a font that `app/layout.tsx` does not load through `next/font`;
+- a page is added to or removed from `app/` without `design/pages.json` (pages there are
+  `built` or `planned`; the owner's notes on a page are printed as change requests).
+
+When a change starts in code instead (a new page, a new token), update `design/*.json` in the
+same commit and run `npm run design:push` so the dashboard shows it.
+
+## Tokens (`design/tokens.json`, generated into `app/tokens.css`)
 
 | Role | Light | Dark | Text pair (measured) |
 |---|---|---|---|

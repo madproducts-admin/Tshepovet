@@ -30,6 +30,10 @@ $env:TEST_REDIS_URL = "redis://:$($S['TSV_REDIS_PASSWORD'])@127.0.0.1:$($p.Redis
 $rand = { $b = New-Object byte[] 32; (New-Object Security.Cryptography.RNGCryptoServiceProvider).GetBytes($b); [Convert]::ToBase64String($b) }
 
 $ErrorActionPreference = 'Continue'
+# The design reference (design/*.json, the dashboard's Design system and User interface tabs):
+# generated tokens, AAA contrast, fonts and the page map must agree with the app.
+& node tools\design-sync.mjs check
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 if (-not $SkipBuild) {
   & npx.cmd tsc -b packages/core packages/contracts apps/api
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

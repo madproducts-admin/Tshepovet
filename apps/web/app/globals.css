@@ -1,180 +1,22 @@
 @import 'tailwindcss';
+/* The colours, type scale and radii: generated from design/tokens.json (the dashboard's Design
+   system tab) by tools/design-sync.mjs. */
+@import './tokens.css';
 
 /*
- * TshepoVet design tokens. "The specimen and the seal": the vocabulary of official documents
- * (security paper, stamp ink, the guilloche seal), used sparingly. Every text pair meets
- * WCAG 2.2 AAA (7:1; tools/contrast check in apps/web/DESIGN.md), every control edge 3:1.
+ * TshepoVet. "The specimen and the seal": the vocabulary of official documents (security paper,
+ * stamp ink, the guilloche seal), used sparingly. Every text pair meets WCAG 2.2 AAA (7:1),
+ * every control edge 3:1: `npm run design:check` measures each pair listed in tokens.json.
  *
  * Themes: data-theme="light" | "dark" on <html>, else the system preference.
  */
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
-:root {
-  --paper: #f3f6f4; /* security paper: the page */
-  --sheet: #ffffff; /* a record lifted off the page */
-  --sheet-2: #eaf0ed; /* table heads, hovered rows, wells */
-  --ink: #10242c; /* text */
-  --ink-2: #3a4f57; /* secondary text (7.9:1 on paper) */
-  --rule: #c6d2ce; /* separators (decorative) */
-  --edge: #687c83; /* control borders (3:1+) */
-  --violet: #4b2a8c; /* stamp ink: what you can do */
-  --violet-strong: #3a1f70;
-  --violet-tint: #ece6f7;
-  --on-violet: #ffffff;
-  --green: #084f2e; /* verified */
-  --green-tint: #e4f2e9;
-  --amber: #6b3f00; /* needs attention */
-  --amber-tint: #f8ebd3;
-  --red: #8e1b26; /* refused, failed, destructive */
-  --red-tint: #f8e1e3;
-  --petrol: #18506a; /* pending, information */
-  --petrol-tint: #e0eef4;
-  --specimen: #fbf3de; /* the sandbox band */
-  --seal-1: #4b2a8c;
-  --seal-2: #0f6b5a;
-  --shadow: 0 1px 0 rgb(16 36 44 / 0.06), 0 8px 24px -12px rgb(16 36 44 / 0.18);
-  color-scheme: light;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --paper: #0c161b;
-    --sheet: #13212a;
-    --sheet-2: #1b2c36;
-    --ink: #eaf1ef;
-    --ink-2: #b5c5c8;
-    --rule: #2b3d47;
-    --edge: #7f959d;
-    --violet: #c9b8f7;
-    --violet-strong: #ddd2fb;
-    --violet-tint: #2a2346;
-    --on-violet: #1a0f3a;
-    --green: #86dcab;
-    --green-tint: #13302a;
-    --amber: #f2cb7e;
-    --amber-tint: #33280f;
-    --red: #f8a9b1;
-    --red-tint: #3a1a20;
-    --petrol: #93cde6;
-    --petrol-tint: #14303d;
-    --specimen: #2a2414;
-    --seal-1: #c9b8f7;
-    --seal-2: #7fd3c0;
-    --shadow: 0 1px 0 rgb(0 0 0 / 0.4), 0 8px 24px -12px rgb(0 0 0 / 0.6);
-    color-scheme: dark;
-  }
-}
-
-:root[data-theme='dark'] {
-  --paper: #0c161b;
-  --sheet: #13212a;
-  --sheet-2: #1b2c36;
-  --ink: #eaf1ef;
-  --ink-2: #b5c5c8;
-  --rule: #2b3d47;
-  --edge: #7f959d;
-  --violet: #c9b8f7;
-  --violet-strong: #ddd2fb;
-  --violet-tint: #2a2346;
-  --on-violet: #1a0f3a;
-  --green: #86dcab;
-  --green-tint: #13302a;
-  --amber: #f2cb7e;
-  --amber-tint: #33280f;
-  --red: #f8a9b1;
-  --red-tint: #3a1a20;
-  --petrol: #93cde6;
-  --petrol-tint: #14303d;
-  --specimen: #2a2414;
-  --seal-1: #c9b8f7;
-  --seal-2: #7fd3c0;
-  --shadow: 0 1px 0 rgb(0 0 0 / 0.4), 0 8px 24px -12px rgb(0 0 0 / 0.6);
-  color-scheme: dark;
-}
-
-/* Paper is light whatever the screen theme: the light tokens again, specific enough to win. */
-@media print {
-  :root:root:root {
-  --paper: #f3f6f4; /* security paper: the page */
-  --sheet: #ffffff; /* a record lifted off the page */
-  --sheet-2: #eaf0ed; /* table heads, hovered rows, wells */
-  --ink: #10242c; /* text */
-  --ink-2: #3a4f57; /* secondary text (7.9:1 on paper) */
-  --rule: #c6d2ce; /* separators (decorative) */
-  --edge: #687c83; /* control borders (3:1+) */
-  --violet: #4b2a8c; /* stamp ink: what you can do */
-  --violet-strong: #3a1f70;
-  --violet-tint: #ece6f7;
-  --on-violet: #ffffff;
-  --green: #084f2e; /* verified */
-  --green-tint: #e4f2e9;
-  --amber: #6b3f00; /* needs attention */
-  --amber-tint: #f8ebd3;
-  --red: #8e1b26; /* refused, failed, destructive */
-  --red-tint: #f8e1e3;
-  --petrol: #18506a; /* pending, information */
-  --petrol-tint: #e0eef4;
-  --specimen: #fbf3de; /* the sandbox band */
-  --seal-1: #4b2a8c;
-  --seal-2: #0f6b5a;
-  --shadow: 0 1px 0 rgb(16 36 44 / 0.06), 0 8px 24px -12px rgb(16 36 44 / 0.18);
-  color-scheme: light;
-}
-}
-
+/* The fonts are loaded by next/font in app/layout.tsx; design/tokens.json names them and
+   `npm run design:check` fails if the two disagree. */
 @theme inline {
-  --color-paper: var(--paper);
-  --color-sheet: var(--sheet);
-  --color-sheet-2: var(--sheet-2);
-  --color-ink: var(--ink);
-  --color-ink-2: var(--ink-2);
-  --color-rule: var(--rule);
-  --color-edge: var(--edge);
-  --color-violet: var(--violet);
-  --color-violet-strong: var(--violet-strong);
-  --color-violet-tint: var(--violet-tint);
-  --color-on-violet: var(--on-violet);
-  --color-green: var(--green);
-  --color-green-tint: var(--green-tint);
-  --color-amber: var(--amber);
-  --color-amber-tint: var(--amber-tint);
-  --color-red: var(--red);
-  --color-red-tint: var(--red-tint);
-  --color-petrol: var(--petrol);
-  --color-petrol-tint: var(--petrol-tint);
-  --color-specimen: var(--specimen);
-  --color-seal-1: var(--seal-1);
-
   --font-sans: var(--font-atkinson), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-atkinson-mono), ui-monospace, monospace;
-
-  /* Type scale: a 1.25 ratio from a 16px body (AAA readability), with line heights set per
-     step so long headings never collide. */
-  --text-xs: 0.8125rem;
-  --text-xs--line-height: 1.5;
-  --text-sm: 0.9375rem;
-  --text-sm--line-height: 1.55;
-  --text-base: 1rem;
-  --text-base--line-height: 1.6;
-  --text-lg: 1.125rem;
-  --text-lg--line-height: 1.55;
-  --text-xl: 1.375rem;
-  --text-xl--line-height: 1.35;
-  --text-2xl: 1.75rem;
-  --text-2xl--line-height: 1.25;
-  --text-3xl: 2.25rem;
-  --text-3xl--line-height: 1.15;
-  --text-4xl: 3rem;
-  --text-4xl--line-height: 1.05;
-  --text-5xl: 4rem;
-  --text-5xl--line-height: 1;
-
-  /* Radii by hierarchy: a stamp is sharp, a control softer, a record sheet the softest. */
-  --radius-stamp: 3px;
-  --radius-control: 6px;
-  --radius-sheet: 10px;
-
-  --shadow-sheet: var(--shadow);
 }
 
 @layer base {
