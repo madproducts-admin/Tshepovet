@@ -80,6 +80,8 @@ const ConfigSchema = z.object({
   // --- Jobs (docs/PLAN.md M7) ------------------------------------------------------------
   /** Where documents are kept, encrypted (the stand-in for S3 + KMS, PLAN §6). */
   DOCUMENT_STORE_DIR: z.string().default('D:/madproducts-data/tshepovet/documents'),
+  /** The deployed release (set by deploy/app/deploy-app.ps1), sent as X-TshepoVet-Release. */
+  TSV_RELEASE: z.string().regex(/^[0-9A-Za-z._-]{1,64}$/).optional(),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

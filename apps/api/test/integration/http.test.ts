@@ -31,6 +31,16 @@ describe('HTTP pipeline', () => {
     expect(res.headers['x-powered-by']).toBeUndefined();
   });
 
+  it('sends its own security headers, since IIS adds only HSTS and X-Robots-Tag', async () => {
+    for (const path of ['/healthz', '/v1/no-such-endpoint', '/api/no-such-route']) {
+      const res = await request(t.app).get(path);
+      expect(res.headers['x-content-type-options']).toBe('nosniff');
+      expect(res.headers['x-frame-options']).toBe('DENY');
+      expect(res.headers['referrer-policy']).toBe('no-referrer');
+      expect(res.headers['content-security-policy']).toBe("default-src 'none'; frame-ancestors 'none'");
+    }
+  });
+
   it('echoes a well-formed X-Request-Id and replaces a malformed one', async () => {
     const ok = await request(t.app).get('/healthz').set('x-request-id', 'req-client-12345678');
     expect(ok.headers['x-request-id']).toBe('req-client-12345678');

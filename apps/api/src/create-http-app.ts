@@ -34,6 +34,17 @@ export async function createHttpApp(c: Container): Promise<INestApplication> {
   const server = express();
   server.disable('x-powered-by');
   server.set('trust proxy', 1);
+  // The API's own security headers: it answers JSON, never pages. IIS adds only what the API
+  // and the web app share (HSTS, X-Robots-Tag), so no header arrives twice.
+  const release = c.config.TSV_RELEASE;
+  server.use((_req: Request, res: express.Response, next: express.NextFunction) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
+    if (release) res.setHeader('X-TshepoVet-Release', release);
+    next();
+  });
 
   const app = await NestFactory.create(AppModule.register(c), new ExpressAdapter(server), {
     bodyParser: false,

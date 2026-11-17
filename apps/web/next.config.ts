@@ -7,6 +7,9 @@ import type { NextConfig } from 'next';
  * harmless fallback behind IIS.
  */
 const api = process.env.TSV_API_ORIGIN ?? 'http://127.0.0.1:9131';
+// The deploy sets the release name (<stamp>-<sha>) as the build id and sends it on every page
+// (X-TshepoVet-Build), so a deploy can prove which build answers.
+const build = /^[0-9A-Za-z._-]{1,64}$/.test(process.env.TSV_BUILD_ID ?? '') ? process.env.TSV_BUILD_ID : undefined;
 
 const config: NextConfig = {
   output: 'standalone',
@@ -15,6 +18,7 @@ const config: NextConfig = {
   outputFileTracingRoot: path.join(__dirname, '..', '..'),
   turbopack: { root: path.join(__dirname, '..', '..') },
   poweredByHeader: false,
+  generateBuildId: async () => build ?? null,
   reactStrictMode: true,
   async rewrites() {
     return [
@@ -32,6 +36,7 @@ const config: NextConfig = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'Permissions-Policy', value: 'camera=(self), microphone=(), geolocation=(), payment=(), usb=()' },
           { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+          ...(build ? [{ key: 'X-TshepoVet-Build', value: build }] : []),
         ],
       },
     ];

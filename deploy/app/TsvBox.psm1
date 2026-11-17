@@ -9,11 +9,16 @@ function Get-TsvPaths {
         Database      = 'tshepovet'
         TestDatabase  = 'tshepovet_test'
         ApiPort       = 9131
+        WebPort       = 9132   # tshepovet-web (Next.js), behind IIS
+        RehearsalApiPort = 9197  # deploy-app.ps1's rehearsal of a staged release: loopback,
+        RehearsalWebPort = 9198  # the test database, never routed
         RedisPort     = 6391
         SecretsDir    = 'C:\ProgramData\MADProducts\tshepovet'
         SecretsFile   = 'C:\ProgramData\MADProducts\tshepovet\secrets.env'
         SandboxFile   = 'C:\ProgramData\MADProducts\tshepovet\sandbox-tenant.json'
         DataRoot      = 'D:\madproducts-data\tshepovet'
+        DocumentsDir  = 'D:\madproducts-data\tshepovet\documents'
+        BackupDir     = 'D:\madproducts-data\tshepovet\backups'
         ReleaseRoot   = 'D:\releases\tshepovet'
         CurrentFile   = 'D:\releases\tshepovet\current.txt'
         SiteDir       = 'D:\sites\tshepovet'
@@ -24,10 +29,14 @@ function Get-TsvPaths {
         RedisBin      = 'C:\madproducts\bin\tshepovet-redis-8.10.2' # our own copy
         NodeExe       = 'C:\Program Files\nodejs\node.exe'
         PsqlExe       = 'C:\Program Files\PostgreSQL\18\bin\psql.exe'
+        PgDumpExe     = 'C:\Program Files\PostgreSQL\18\bin\pg_dump.exe'
         PgService     = 'postgresql-x64-18'
         PgHba         = 'D:\PostgreSQL\18\data\pg_hba.conf'
+        PublicIp      = '209.58.145.5'       # the box's own address: webhook targets never dial it
         ApiService    = 'tshepovet-api'
-        JobsService   = 'tshepovet-webhooks'
+        WorkerService = 'tshepovet-worker'   # the full app's jobs (apps/api/dist/worker.js)
+        WebService    = 'tshepovet-web'      # the web app (the Next.js standalone server)
+        JobsService   = 'tshepovet-webhooks' # the first release's dispatcher: disabled, kept for a rollback
         RedisService  = 'tshepovet-redis'
         PurgeTask     = 'MADProducts tshepovet retention purge'
         LockFile      = 'D:\releases\tshepovet\.deploy.lock'
@@ -188,6 +197,50 @@ function Get-AppEnv([hashtable]$S, [string]$Login) {
     }
 }
 
+# The environment of one of the full app's services (deploy-app.ps1). Sandbox only: test keys
+# reach the mock bureau, top-ups are pretend, mail is held for the staff console.
+#   api     tshepovet-api: the tenant-scoped login, and the jobs login for the staff console
+#   worker  tshepovet-worker: the jobs login (BYPASSRLS) for every job
+#   web     tshepovet-web: no database and no keys; it calls the API on loopback
+function Get-ServiceEnv([hashtable]$S, [string]$Role, [string]$Release) {
+    $p = Get-TsvPaths
+    $apiDb = "postgres://tshepovet_api:$($S['TSV_DB_API_PASSWORD'])@127.0.0.1:5432/$($p.Database)"
+    $jobsDb = "postgres://tshepovet_jobs:$($S['TSV_DB_JOBS_PASSWORD'])@127.0.0.1:5432/$($p.Database)"
+    if ($Role -eq 'web') {
+        return [ordered]@{
+            NODE_ENV                = 'production'
+            HOSTNAME                = '127.0.0.1'
+            PORT                    = "$($p.WebPort)"
+            TSV_API_ORIGIN          = "http://127.0.0.1:$($p.ApiPort)"
+            TSV_PUBLIC_ORIGIN       = "https://$($p.Host)"
+            NEXT_TELEMETRY_DISABLED = '1'
+        }
+    }
+    $e = [ordered]@{
+        NODE_ENV             = 'production'
+        HOST                 = '127.0.0.1'
+        PORT                 = "$($p.ApiPort)"
+        REDIS_URL            = "redis://:$($S['TSV_REDIS_PASSWORD'])@127.0.0.1:$($p.RedisPort)/0"
+        KEK_KEYS             = $S['TSV_KEK_KEYS']
+        BLIND_INDEX_ROOT_KEY = $S['TSV_BLIND_INDEX_ROOT_KEY']
+        API_KEY_PEPPER       = $S['TSV_API_KEY_PEPPER']
+        ENABLED_PROVIDERS    = 'mock'
+        SANDBOX              = 'true'
+        WEBHOOK_DENY_IPS     = $p.PublicIp
+        APP_URL              = "https://$($p.Host)"
+        DOCUMENT_STORE_DIR   = ($p.DocumentsDir -replace '\\', '/')
+        TSV_RELEASE          = (Split-Path $Release -Leaf)
+    }
+    if ($Role -eq 'api') {
+        $e['DATABASE_URL'] = $apiDb
+        $e['STAFF_DATABASE_URL'] = $jobsDb
+    } elseif ($Role -eq 'worker') {
+        $e['DATABASE_URL'] = $jobsDb
+        $e['WORKER_DATABASE_URL'] = $jobsDb
+    } else { throw "unknown service role '$Role'" }
+    $e
+}
+
 # Runs a native command, returns @{ Code; Out }, never throws: for checks where failing is
 # the expected answer (a refused login, a refused password-less PING).
 function Test-Native([string]$Exe, [string[]]$Arguments = @()) {
@@ -204,4 +257,4 @@ function ConvertTo-EnvXml($Envs) {
 
 Export-ModuleMember -Function Get-TsvPaths, Get-WinSWSha256, Get-RedisFileHashes, Step, Ok, Note, Invoke-Native,
     Invoke-PgAdmin, Invoke-Icacls, Write-Utf8NoBom, Assert-NoLinks, Lock-Folder, Grant-Folder, Assert-SameHash,
-    Read-SecretsFile, New-Base64Key, New-HexPassword, Get-AppEnv, Test-Native, ConvertTo-EnvXml
+    Read-SecretsFile, New-Base64Key, New-HexPassword, Get-AppEnv, Get-ServiceEnv, Test-Native, ConvertTo-EnvXml

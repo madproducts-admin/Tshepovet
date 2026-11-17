@@ -5,7 +5,7 @@ One host, two parts:
 | Path | Served by | Deploy |
 |---|---|---|
 | `/docs*`, `/robots.txt` | Cloudflare Worker `tshepovet-site`: the five design pages from `docs/pages/`, static, on Worker **routes** | `npm run deploy` (tools/deploy.mjs) |
-| everything else | IIS site `tshepovet` on the MADPRODUCTS box, which proxies to the Windows service `tshepovet-api` (Express, `127.0.0.1:9131`). `/` redirects to `/docs/`. | `deploy\app\deploy-app.ps1` |
+| everything else | IIS site `tshepovet` on the MADPRODUCTS box. Before the M10 switch: the first release's Express API (`tshepovet-api`, `127.0.0.1:9131`), with `/` redirecting to `/docs/`. After it: `/api`, `/v1`, `/webhooks`, `/healthz`, `/readyz` go to the API (NestJS, `127.0.0.1:9131`) and every other path, `/` included, to the web app (`tshepovet-web`, Next.js, `127.0.0.1:9132`). | `deploy\app\deploy-app.ps1` |
 
 **The API is a sandbox.** The owner chose this on 2026-11-16, for three reasons:
 
@@ -60,16 +60,19 @@ It prints the Worker version id at the end.
 - **Expiry.** The token lasts an hour, and running wrangler doesn't renew it while it's still valid. The script refuses a token with less than 15 minutes left. Wait for it to expire, refresh it, then deploy.
 - **Account id.** It comes from `CLOUDFLARE_ACCOUNT_ID`, or else from that same `old/v1/.env`. Only that line is read. `TSV_CF_ENV` overrides the file.
 
-## The API (everything else, on the box)
+## The app (everything else, on the box)
 
 | Piece | Where |
 |---|---|
-| IIS site | `tshepovet`, binding `https/*:443:tshepovet.madproducts.ai` (SNI), `*.madproducts.ai` Let's Encrypt certificate, no `:80` binding, folder `D:\sites\tshepovet` (only [`deploy/app/web.config`](app/web.config), proxy-only via ARR) |
-| API | Windows service `tshepovet-api` (WinSW), `NT SERVICE\tshepovet-api`, `127.0.0.1:9131`. It runs `D:\releases\tshepovet\<stamp>-<sha>\dist\server.js`. Config `C:\madproducts\services\tshepovet-api\tshepovet-api.xml`, logs `D:\madproducts-data\tshepovet\api\logs` |
-| Webhook dispatcher | service `tshepovet-webhooks` (WinSW), `NT SERVICE\tshepovet-webhooks`, no port. It runs `dist\workers\webhookDispatcher.js`. Logs `D:\madproducts-data\tshepovet\webhooks\logs` |
-| Retention purge | scheduled task `MADProducts tshepovet retention purge`, hourly at :17, SYSTEM. It runs `dist\workers\retentionPurge.js` from the live release. Log `D:\madproducts-data\tshepovet\purge\purge.log` |
-| Database | PostgreSQL 18 service `postgresql-x64-18` (multisciple-new's instance), database `tshepovet`. Logins: `tshepovet_owner` runs migrations (BYPASSRLS, not superuser); `tshepovet_api` is the API, in `tshepovet_app`, under RLS; `tshepovet_jobs` runs the dispatcher and purge (BYPASSRLS, in `tshepovet_worker`). The test database `tshepovet_test` has its own `tshepovet_test_owner` and `tshepovet_test_api`. A delimited `pg_hba.conf` block keeps every one of them out of all other databases |
-| Redis | service `tshepovet-redis` (WinSW), `NT SERVICE\tshepovet-redis`, `127.0.0.1:6391`, Redis 8.10.2. It uses its own hash-checked copy of the binaries in `C:\madproducts\bin\tshepovet-redis-8.10.2`, with a password and no persistence (cache, locks, rate limits). Data in `D:\madproducts-data\tshepovet\redis` |
+| IIS site | `tshepovet`, binding `https/*:443:tshepovet.madproducts.ai` (SNI), `*.madproducts.ai` Let's Encrypt certificate, no `:80` binding, folder `D:\sites\tshepovet`: only a `web.config` (proxy-only via ARR). The routing belongs to the live release: each release carries its [`web.config`](app/web.config), written to the site on every switch and rollback. IIS adds only `Strict-Transport-Security` and `X-Robots-Tag`; each backend sends its own other security headers |
+| API | Windows service `tshepovet-api` (WinSW), `NT SERVICE\tshepovet-api`, `127.0.0.1:9131`. It runs `D:\releases\tshepovet\<stamp>-<sha>\apps\api\dist\main.js` as `tshepovet_api`, with `tshepovet_jobs` for the staff console. Every response carries `X-TshepoVet-Release: <stamp>-<sha>`. Logs `D:\madproducts-data\tshepovet\api\logs` |
+| Worker | service `tshepovet-worker`, `NT SERVICE\tshepovet-worker`, no port: `apps\api\dist\worker.js` as `tshepovet_jobs`. Verifications, webhooks, mail (held in the sandbox), the monitoring sweep, sandbox WhatsApp and the retention purge. Logs `D:\madproducts-data\tshepovet\worker\logs` |
+| Web | service `tshepovet-web`, `NT SERVICE\tshepovet-web`, `127.0.0.1:9132`: the Next.js standalone server `web\apps\web\server.js`, with no database login and no keys. Every page carries `X-TshepoVet-Build: <stamp>-<sha>`. Logs `D:\madproducts-data\tshepovet\web\logs` |
+| Documents | `D:\madproducts-data\tshepovet\documents`, encrypted at rest, written by the API and the worker only |
+| Backups | `D:\madproducts-data\tshepovet\backups`: a `pg_dump -Fc` before every migration (Administrators only) |
+| The first release | its `tshepovet-webhooks` service and hourly `MADProducts tshepovet retention purge` task are disabled at the switch, not removed, so `-Rollback` to it can turn them back on |
+| Database | PostgreSQL 18 service `postgresql-x64-18` (multisciple-new's instance), database `tshepovet`. Logins: `tshepovet_owner` runs migrations (BYPASSRLS, not superuser); `tshepovet_api` is the API, in `tshepovet_app`, under RLS; `tshepovet_jobs` runs the worker and the staff console (BYPASSRLS, in `tshepovet_worker`). The test database `tshepovet_test` has its own `tshepovet_test_owner` and `tshepovet_test_api`. A delimited `pg_hba.conf` block keeps every one of them out of all other databases |
+| Redis | service `tshepovet-redis` (WinSW), `NT SERVICE\tshepovet-redis`, `127.0.0.1:6391`, Redis 8.10.2. It uses its own hash-checked copy of the binaries in `C:\madproducts\bin\tshepovet-redis-8.10.2`, with a password, an append-only file (fsync each second) and `noeviction`: sessions, the BullMQ queues, the WhatsApp stream, caches. Data in `D:\madproducts-data\tshepovet\redis` |
 | Secrets | `C:\ProgramData\MADProducts\tshepovet\secrets.env` (Administrators and SYSTEM only): database and Redis passwords, plus `TSV_KEK_KEYS`, `TSV_BLIND_INDEX_ROOT_KEY` and `TSV_API_KEY_PEPPER`. **Never regenerate the last three:** data encrypted or blind-indexed under them would become unreadable. The sandbox tenant's keys are in `sandbox-tenant.json` next to it. The service XML files carry the connection strings; only Administrators, SYSTEM and that service's account can read each one |
 
 PostgreSQL admin work runs as `postgres` over SSPI: `pg_ident.conf` maps the Windows `Administrator` to `postgres`, so no superuser password exists on disk.
@@ -77,33 +80,39 @@ PostgreSQL admin work runs as `postgres` over SSPI: `pg_ident.conf` maps the Win
 ### Commands (elevated Windows PowerShell 5.1)
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File deploy\app\install-box.ps1             # box setup; safe to re-run
-powershell -NoProfile -ExecutionPolicy Bypass -File deploy\app\deploy-app.ps1              # deploy
-powershell -NoProfile -ExecutionPolicy Bypass -File deploy\app\deploy-app.ps1 -Rollback    # previous release
+powershell -NoProfile -ExecutionPolicy Bypass -File deploy\app\install-box.ps1                    # box setup; safe to re-run
+powershell -NoProfile -ExecutionPolicy Bypass -File deploy\app\deploy-app.ps1 -StageOnly          # build, stage, rehearse; nothing live changes
+powershell -NoProfile -ExecutionPolicy Bypass -File deploy\app\deploy-app.ps1 -Release <name>     # switch to a rehearsed release
+powershell -NoProfile -ExecutionPolicy Bypass -File deploy\app\deploy-app.ps1                     # all in one go
+powershell -NoProfile -ExecutionPolicy Bypass -File deploy\app\deploy-app.ps1 -Rollback           # the release live before this one
 ```
 
 `deploy-app.ps1` runs these steps in order. Nothing live changes before step 6.
 
-1. **Clean tree.** It refuses uncommitted changes.
-2. **Gates.** Typecheck, then the **full** 82-test suite against `tshepovet_test` and Redis db 15, as the test logins.
-3. **Build and stage.** It builds, then stages `D:\releases\tshepovet\<stamp>-<sha>`. Production `node_modules` is copied from the live release when `package-lock.json` is unchanged, and `npm ci --omit=dev` runs otherwise.
-4. **Migrate.** Forward-only migrations, as `tshepovet_owner`.
-5. **Seed (`-SeedSandbox`, once).** The sandbox tenant.
-6. **Switch.** Both services move to the new release. If `/healthz` isn't up within 60 seconds, both go back.
-7. **Through Cloudflare.** It checks `https://tshepovet.madproducts.ai/healthz`, then runs `tests/smoke/api.smoke.ts` there, including a real sandbox company check with the sandbox key.
-8. **Prune.** It keeps the newest three releases.
+1. **Clean tree.** It refuses uncommitted changes (the owner's `dashboard.html` is excluded in `.git/info/exclude`).
+2. **Gates.** The design check (`tools/design-sync.mjs check`), the typecheck, then the **full** API and core suite (`run-tests.ps1`) against `tshepovet_test` and Redis db 15, as the test logins.
+3. **Build.** `tsc` for core, contracts and the API; `next build` (standalone) with the release name as its build id.
+4. **Stage** `D:\releases\tshepovet\<stamp>-<sha>`: each workspace's `package.json` and `dist`, production `node_modules` for the API (`npm ci --omit=dev --workspace @tshepovet/api`), the standalone web server under `web\` with its static files, the release's `web.config` and `COMMIT`.
+5. **Rehearse.** The staged API, worker and web app run from the release folder on `127.0.0.1:9197`/`9198` against the test database: the release and build headers, the policies, `/v1` refusing an unkeyed call, the public pages, `/pricing` reading prices from the API, a redirect that keeps the visitor's host, and a `/_next/static` script. `-StageOnly` stops here and marks the release `REHEARSED`.
+6. **Back up** the live database (`pg_dump -Fc`).
+7. **Migrate.** Forward-only migrations, as `tshepovet_owner`.
+8. **Seed (`-SeedSandbox`, once).** The sandbox tenant.
+9. **Switch.** The worker, API and web services move to the release (the first release's dispatcher and purge task are disabled). If the API and the web app do not both answer within 90 seconds, or the worker stops, everything goes back. Only then does the release's `web.config` reach the IIS site.
+10. **Through Cloudflare.** `/healthz` with the release header, `/` with the build header, the certificate, then `tests/smoke/api.smoke.ts`, `web.smoke.ts` and `site.smoke.ts`.
+11. **Prune.** It keeps the newest three releases and the last two that were live.
 
-`-SkipTests` skips step 2. `-SkipEdgeCheck` skips step 7.
+`-SkipTests` skips the typecheck and the suite. `-SkipEdgeCheck` skips step 10.
 
-Migrations are forward-only. A rollback runs the older code against the newer schema.
+Migrations are forward-only. A rollback (to the release live before, from `history.txt`) runs the older code against the newer schema; the step-6 dump is the way back to the older schema (`pg_restore`, by hand).
 
 ### Checks
 
 ```powershell
-curl.exe -s https://tshepovet.madproducts.ai/healthz                          # {"ok":true}, through Cloudflare
+curl.exe -sI https://tshepovet.madproducts.ai/healthz                         # 200 and X-TshepoVet-Release, through Cloudflare
+curl.exe -sI https://tshepovet.madproducts.ai/                                # 200 and X-TshepoVet-Build: the web app
 curl.exe -s --resolve tshepovet.madproducts.ai:443:127.0.0.1 https://tshepovet.madproducts.ai/healthz   # at the origin
-curl.exe -s http://127.0.0.1:9131/healthz                                     # the service itself
-Get-Service tshepovet-api, tshepovet-webhooks, tshepovet-redis
+curl.exe -s http://127.0.0.1:9131/healthz                                     # the API service itself
+Get-Service tshepovet-api, tshepovet-worker, tshepovet-web, tshepovet-redis
 ```
 
 From the repo, a sandbox call:

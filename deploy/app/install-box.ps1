@@ -12,11 +12,19 @@
                  PostgreSQL 18 (multisciple-new's instance), and a pg_hba block that keeps
                  these logins to their own databases. Admin access is SSPI as postgres.
     3. Redis     service tshepovet-redis on 127.0.0.1:6391, its own virtual account, its own
-                 hash-checked copy of the Redis 8.10.2 binaries, no persistence.
-    4. IIS       site tshepovet: https://tshepovet.madproducts.ai with the *.madproducts.ai
-                 wildcard certificate, proxy only (deploy/app/web.config), no :80 binding.
-    5. purge     scheduled task, hourly, SYSTEM: the POPIA retention purge (run-purge.ps1).
-  The two Node services (tshepovet-api, tshepovet-webhooks) are installed by deploy-app.ps1.
+                 hash-checked copy of the Redis 8.10.2 binaries; append-only file (fsync each
+                 second) and noeviction, since BullMQ's queues live there (owner-approved
+                 2026-11-17, docs/PLAN.md M10).
+    4. folders   D:\madproducts-data\tshepovet: logs per service, the encrypted documents
+                 (API and worker), the database backups (Administrators only).
+    5. IIS       site tshepovet: https://tshepovet.madproducts.ai with the *.madproducts.ai
+                 wildcard certificate, proxy only, no :80 binding, and the X-Forwarded-Host
+                 and X-Forwarded-Proto server variables allowed. The routing (web.config)
+                 belongs to the live release: deploy-app.ps1 writes it on every switch, so
+                 this script writes deploy/app/web.config only into a new, empty site.
+  The services (tshepovet-api, tshepovet-worker, tshepovet-web) are installed by
+  deploy-app.ps1. The first release's hourly purge task is no longer registered here: the
+  worker purges, and deploy-app.ps1 disables the task when it switches to the full app.
   No secret is ever printed.
 #>
 #Requires -RunAsAdministrator
@@ -28,20 +36,22 @@ $p = Get-TsvPaths
 $redisAcct = "NT SERVICE\$($p.RedisService)"
 $apiAcct = "NT SERVICE\$($p.ApiService)"
 $jobsAcct = "NT SERVICE\$($p.JobsService)"
+$workerAcct = "NT SERVICE\$($p.WorkerService)"
+$webAcct = "NT SERVICE\$($p.WebService)"
 
 # -- 0. Prerequisites ----------------------------------------------------------------------
 Step 'prerequisites'
 foreach ($f in $p.WinSW, $p.NodeExe, $p.PsqlExe, $p.PgHba) { if (-not (Test-Path -LiteralPath $f)) { throw "$f not found" } }
 Assert-SameHash $p.WinSW (Get-WinSWSha256)
 if ((Get-Service $p.PgService).Status -ne 'Running') { throw "$($p.PgService) is not running" }
-foreach ($port in $p.ApiPort, $p.RedisPort) {
+foreach ($port in $p.ApiPort, $p.WebPort, $p.RedisPort) {
     $l = @(Get-NetTCPConnection -State Listen -LocalPort $port -ErrorAction SilentlyContinue)
     if ($l.Count) {
         $cmd = (Get-CimInstance Win32_Process -Filter "ProcessId=$($l[0].OwningProcess)").CommandLine
         if ($cmd -notmatch 'tshepovet') { throw "port $port is already in use by: $cmd" }
     }
 }
-Ok 'WinSW pinned, PostgreSQL running, ports 9131/6391 free or ours'
+Ok 'WinSW pinned, PostgreSQL running, ports 9131/9132/6391 free or ours'
 
 # -- 1. Secrets ----------------------------------------------------------------------------
 Step 'secrets'
@@ -182,15 +192,17 @@ foreach ($f in $hashes.Keys) {
 }
 Lock-Folder $p.RedisBin @($redisAcct)
 
-Lock-Folder $p.DataRoot @($redisAcct, $apiAcct, $jobsAcct) -Shallow
+Lock-Folder $p.DataRoot @($redisAcct, $apiAcct, $jobsAcct, $workerAcct, $webAcct) -Shallow
 $redisDir = Join-Path $p.DataRoot 'redis'
 Lock-Folder $redisDir @($redisAcct)
 New-Item -ItemType Directory (Join-Path $redisDir 'data'), (Join-Path $redisDir 'logs') -Force | Out-Null
 $confPath = Join-Path $redisDir 'redis.conf'
 $conf = @"
 # TshepoVet Redis. Written by deploy/app/install-box.ps1 (TshepoVet repo); edits are overwritten.
-# Cache, locks, rate limits and provider health only: nothing here has to survive a restart,
-# so there is no persistence (and WinSW's stop, which kills the process, loses nothing).
+# Sessions, the BullMQ job queues, the WhatsApp stream, caches, locks and rate limits. The
+# queues must survive a restart and never lose a key: an append-only file, fsync'd each
+# second (WinSW's stop kills the process, so at most that second is lost), and noeviction
+# (a full Redis refuses writes rather than drop a queue; sessions and caches expire by TTL).
 bind 127.0.0.1
 protected-mode yes
 port $($p.RedisPort)
@@ -206,9 +218,11 @@ databases 16
 requirepass $($S['TSV_REDIS_PASSWORD'])
 dir $((Join-Path $redisDir 'data') -replace '\\', '/')
 save ""
-appendonly no
+appendonly yes
+appendfsync everysec
+appenddirname appendonlydir
 maxmemory 256mb
-maxmemory-policy volatile-lru
+maxmemory-policy noeviction
 maxclients 200
 enable-debug-command no
 enable-module-command no
@@ -227,7 +241,7 @@ $xml = @"
 <service>
   <id>$($p.RedisService)</id>
   <name>TshepoVet Redis</name>
-  <description>Redis 8.10.2 for TshepoVet on 127.0.0.1:$($p.RedisPort): cache, locks, rate limits, no persistence. Managed by deploy/app/install-box.ps1 (TshepoVet repo).</description>
+  <description>Redis 8.10.2 for TshepoVet on 127.0.0.1:$($p.RedisPort): sessions, job queues, caches; append-only, noeviction. Managed by deploy/app/install-box.ps1 (TshepoVet repo).</description>
   <executable>$(Join-Path $p.RedisBin 'redis-server.exe')</executable>
   <arguments>redis.conf</arguments>
   <workingdirectory>$redisDir</workingdirectory>
@@ -266,9 +280,31 @@ try {
 if ($pong.Out -ne 'PONG') { throw "Redis did not answer PING: $($pong.Out)" }
 $anon = Test-Native $cli @('-h', '127.0.0.1', '-p', "$($p.RedisPort)", 'ping')
 if ($anon.Out -match 'PONG') { throw 'Redis answers without a password' }
-Ok 'running; answers PING with the password and refuses without it'
+$env:REDISCLI_AUTH = $S['TSV_REDIS_PASSWORD']
+try {
+    $aof = Test-Native $cli @('-h', '127.0.0.1', '-p', "$($p.RedisPort)", 'config', 'get', 'appendonly')
+    $policy = Test-Native $cli @('-h', '127.0.0.1', '-p', "$($p.RedisPort)", 'config', 'get', 'maxmemory-policy')
+} finally { Remove-Item Env:\REDISCLI_AUTH -ErrorAction SilentlyContinue }
+if ($aof.Out -notmatch 'yes' -or $policy.Out -notmatch 'noeviction') { throw "Redis runs with appendonly '$($aof.Out)' and policy '$($policy.Out)'" }
+Ok 'running; answers PING with the password and refuses without it; append-only, noeviction'
 
-# -- 4. IIS --------------------------------------------------------------------------------
+# -- 4. Folders ----------------------------------------------------------------------------
+Step 'folders: logs, documents, backups'
+foreach ($svc in @(@($p.ApiService, $apiAcct), @($p.WorkerService, $workerAcct), @($p.WebService, $webAcct))) {
+    $logRoot = Join-Path $p.DataRoot ($svc[0] -replace '^tshepovet-', '')
+    Lock-Folder $logRoot @($svc[1])
+    New-Item -ItemType Directory (Join-Path $logRoot 'logs') -Force | Out-Null
+    Grant-Folder $logRoot $svc[1] 'M'
+}
+# The encrypted documents: written by the API (uploads) and the worker (WhatsApp media).
+Lock-Folder $p.DocumentsDir @($apiAcct, $workerAcct)
+Grant-Folder $p.DocumentsDir $apiAcct 'M'
+Grant-Folder $p.DocumentsDir $workerAcct 'M'
+# Database backups before each migration (deploy-app.ps1): Administrators and SYSTEM only.
+Lock-Folder $p.BackupDir
+Ok "$($p.DocumentsDir) (API and worker), $($p.BackupDir) (Administrators only), a log folder per service"
+
+# -- 5. IIS --------------------------------------------------------------------------------
 Step "IIS: site $($p.SiteName) for https://$($p.Host)"
 Import-Module WebAdministration
 $poolPath = "IIS:\AppPools\$($p.SiteName)"
@@ -276,14 +312,26 @@ if (-not (Test-Path $poolPath)) { New-WebAppPool -Name $p.SiteName | Out-Null; O
 Set-ItemProperty $poolPath -Name managedRuntimeVersion -Value ''
 $poolAcct = "IIS AppPool\$($p.SiteName)"
 Lock-Folder $p.SiteDir @($poolAcct)
-$webConfig = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'web.config') -Raw
+# The routing belongs to the live release (deploy-app.ps1 writes it on every switch): only a
+# new, empty site gets the repository's copy.
 $target = Join-Path $p.SiteDir 'web.config'
-if (-not (Test-Path -LiteralPath $target) -or ((Get-Content -LiteralPath $target -Raw) -ne $webConfig)) {
-    Write-Utf8NoBom $target $webConfig
-    Ok 'web.config written'
+if (-not (Test-Path -LiteralPath $target)) {
+    Write-Utf8NoBom $target (Get-Content -LiteralPath (Join-Path $PSScriptRoot 'web.config') -Raw)
+    Ok 'web.config written (a new site)'
+} else {
+    Note 'web.config left as it is: it belongs to the live release'
 }
 Lock-Folder $p.SiteDir @($poolAcct)
 Grant-Folder $p.SiteDir $poolAcct 'RX'
+# web.config's rewrite rules set these two: IIS refuses unless the site allows them.
+foreach ($var in 'HTTP_X_FORWARDED_HOST', 'HTTP_X_FORWARDED_PROTO') {
+    $have = Get-WebConfigurationProperty -PSPath 'MACHINE/WEBROOT/APPHOST' -Location $p.SiteName -Filter 'system.webServer/rewrite/allowedServerVariables' -Name '.' |
+        Select-Object -ExpandProperty Collection | Where-Object { $_.name -eq $var }
+    if (-not $have) {
+        Add-WebConfigurationProperty -PSPath 'MACHINE/WEBROOT/APPHOST' -Location $p.SiteName -Filter 'system.webServer/rewrite/allowedServerVariables' -Name '.' -Value @{ name = $var }
+        Ok "allowed server variable $var"
+    }
+}
 
 $cert = Get-ChildItem Cert:\LocalMachine\WebHosting |
     Where-Object { $_.HasPrivateKey -and $_.NotAfter -gt (Get-Date).AddDays(7) -and ($_.DnsNameList | ForEach-Object { $_.Unicode }) -contains '*.madproducts.ai' } |
@@ -305,21 +353,8 @@ if ($current -ne $cert.Thumbprint) {
 }
 if ((Get-Website -Name $p.SiteName).State -ne 'Started') { Start-Website -Name $p.SiteName }
 $code = & curl.exe -s -o NUL -w '%{http_code} %{redirect_url}' --max-time 20 --resolve "$($p.Host):443:127.0.0.1" "https://$($p.Host)/"
-if ($code -notmatch '^302 .*/docs/$') { throw "the origin answered '$code' for /, expected a 302 to /docs/" }
+# The first release redirects / to the docs; the full app answers it with the landing page.
+if ($code -notmatch '^302 .*/docs/$' -and $code -notmatch '^200 ') { throw "the origin answered '$code' for /" }
 Ok "origin answers / with $code"
 
-# -- 5. Retention purge task ---------------------------------------------------------------
-Step "scheduled task: $($p.PurgeTask)"
-$purgeDir = Join-Path $p.ServicesRoot 'tshepovet-purge'
-Lock-Folder $purgeDir
-foreach ($f in 'run-purge.ps1', 'TsvBox.psm1') { Copy-Item -LiteralPath (Join-Path $PSScriptRoot $f) (Join-Path $purgeDir $f) -Force }
-Lock-Folder $purgeDir
-$action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$(Join-Path $purgeDir 'run-purge.ps1')`""
-$trigger = New-ScheduledTaskTrigger -Once -At ((Get-Date).Date.AddMinutes(17)) -RepetitionInterval (New-TimeSpan -Hours 1)
-$settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 30) -MultipleInstances IgnoreNew -StartWhenAvailable
-$principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
-Register-ScheduledTask -TaskName $p.PurgeTask -Action $action -Trigger $trigger -Settings $settings -Principal $principal `
-    -Description 'TshepoVet POPIA retention purge (node dist/workers/retentionPurge.js in the live release). deploy/app/install-box.ps1, TshepoVet repo.' -Force | Out-Null
-Ok 'registered: hourly at :17, as SYSTEM (does nothing until the first app deploy)'
-
-Write-Host "`nBox setup complete. Next: deploy\app\deploy-app.ps1" -ForegroundColor Green
+Write-Host "`nBox setup complete. Next: deploy\app\deploy-app.ps1 -StageOnly, then deploy-app.ps1 -Release <name>" -ForegroundColor Green
