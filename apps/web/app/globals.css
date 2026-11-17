@@ -1,0 +1,95 @@
+@import 'tailwindcss';
+/* The colours, type scale and radii: generated from design/tokens.json (the dashboard's Design
+   system tab) by tools/design-sync.mjs. */
+@import './tokens.css';
+
+/*
+ * TshepoVet. "The specimen and the seal": the vocabulary of official documents (security paper,
+ * stamp ink, the guilloche seal), used sparingly. Every text pair meets WCAG 2.2 AAA (7:1),
+ * every control edge 3:1: `npm run design:check` measures each pair listed in tokens.json.
+ *
+ * Themes: data-theme="light" | "dark" on <html>, else the system preference.
+ */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/* The fonts are loaded by next/font in app/layout.tsx; design/tokens.json names them and
+   `npm run design:check` fails if the two disagree. */
+@theme inline {
+  --font-sans: var(--font-atkinson), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-atkinson-mono), ui-monospace, monospace;
+}
+
+@layer base {
+  html {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-feature-settings: 'tnum' 0;
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    min-height: 100dvh;
+    font-size: var(--text-base);
+    line-height: 1.6;
+  }
+  /* AAA 1.4.8: never justified; paragraphs keep a readable measure. */
+  p {
+    text-align: start;
+    max-width: 72ch;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
+    letter-spacing: -0.012em;
+    font-weight: 700;
+  }
+  a {
+    color: var(--violet);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+  a:hover {
+    text-decoration-thickness: 2px;
+  }
+  /* AAA 2.4.13 focus appearance: a 3px ring, offset, in stamp ink (9.6:1 on paper). */
+  :focus-visible {
+    outline: 3px solid var(--violet);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+  ::selection {
+    background: var(--violet-tint);
+    color: var(--ink);
+  }
+  abbr[title] {
+    text-decoration: underline dotted;
+    text-underline-offset: 3px;
+    cursor: help;
+  }
+  /* Tabular figures wherever numbers are compared in columns. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+  /* Paper copies (the passport): light colours whatever the screen theme, no page chrome. */
+  @media print {
+    body {
+      background: #fff;
+    }
+    @page {
+      margin: 14mm;
+    }
+  }
+}

@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Page not found · TshepoVet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Site-only page (not one of the docs/pages design pages): served by Cloudflare for any path
+   that has no file, with status 404. Same tokens and type as the design set. Every link is
+   root-relative, because this page is served at any depth under /docs/. */
+:root {
+  --bg: #f4f5f8;
+  --surface: #ffffff;
+  --ink: #151922;
+  --muted: #586174;
+  --rule: #d9dce3;
+  --accent: #2b3796;
+  --accent-ink: #ffffff;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --measure: 70ch;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1117; --surface: #151922; --ink: #e5e8ee; --muted: #9aa3b5; --rule: #2a303c;
+    --accent: #a3adff; --accent-ink: #0e1117;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1117; --surface: #151922; --ink: #e5e8ee; --muted: #9aa3b5; --rule: #2a303c;
+  --accent: #a3adff; --accent-ink: #0e1117;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+.page {
+  max-width: 1080px; margin: 0 auto; padding-block: 40px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.masthead { display: grid; gap: 20px; padding-bottom: 32px; border-bottom: 2px solid var(--ink); margin-bottom: 12px; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.eyebrow span:first-child { color: var(--accent); font-weight: 500; }
+h1 { font-family: var(--font-display); font-stretch: 115%; font-weight: 800; font-size: clamp(2.1rem, 5.4vw, 3.6rem); line-height: 1.02; letter-spacing: -0.015em; margin: 0; text-wrap: balance; }
+.lede { max-width: 66ch; margin: 0; color: var(--muted); font-size: 1.08rem; }
+a { color: var(--accent); text-underline-offset: 2px; }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pages { list-style: none; margin: 8px 0 0; padding: 0; border-top: 1px solid var(--rule); display: grid; max-width: var(--measure); }
+.pages li { border-bottom: 1px solid var(--rule); }
+.pages a { display: grid; grid-template-columns: 2.4em minmax(0, 1fr); gap: 6px 18px; padding: 16px 0; text-decoration: none; color: var(--ink); }
+.pages a:hover b { color: var(--accent); }
+.pages .n { font-family: var(--font-mono); font-size: 0.85rem; font-weight: 500; color: var(--accent); padding-top: 3px; }
+.pages b { display: block; font-family: var(--font-display); font-stretch: 105%; font-weight: 650; font-size: 1.08rem; }
+.pages small { display: block; color: var(--muted); font-size: 0.93rem; }
+h2 { font-family: var(--font-display); font-stretch: 108%; font-weight: 700; font-size: 1.25rem; margin: 40px 0 6px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="masthead">
+    <div class="eyebrow"><span>404</span><span>TshepoVet design pages</span></div>
+    <h1>Page not found</h1>
+    <p class="lede">There is no page at this address. The TshepoVet design pages are listed below; the API itself is at /v1.</p>
+  </header>
+
+  <main>
+    <h2>Pages</h2>
+    <ul class="pages">
+      <li><a href="/docs/"><span class="n">0</span><span><b>README</b><small>Product, pricing, the five deliverables, quick start and known gaps</small></span></a></li>
+      <li><a href="/docs/architecture-compliance"><span class="n">1</span><span><b>Architecture &amp; Compliance</b><small>System design, unit economics, POPIA and SARS compliance</small></span></a></li>
+      <li><a href="/docs/database-schema"><span class="n">2</span><span><b>Database Schema</b><small>Tables, row-level security, the ledger and the audit chain</small></span></a></li>
+      <li><a href="/docs/whatsapp-onboarding"><span class="n">3</span><span><b>WhatsApp Onboarding</b><small>The conversation, document OCR and post-validation</small></span></a></li>
+      <li><a href="/docs/verification-api"><span class="n">4</span><span><b>Verification API</b><small>Endpoints, idempotency, webhooks and the sandbox</small></span></a></li>
+    </ul>
+  </main>
+</div>
+</body>
+</html>

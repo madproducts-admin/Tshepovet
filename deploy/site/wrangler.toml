@@ -1,0 +1,45 @@
+# TshepoVet docs: the five design pages from docs/pages/, served as static
+# files at https://tshepovet.madproducts.ai/docs. Same deploy pattern as Mia's
+# Crowns (D:\applications\MiasCrowns.com\deploy\site\wrangler.toml), minus
+# everything only the shop needs: there is no Worker code at all (no `main`),
+# no KV, R2, Hyperdrive, Durable Objects or crons.
+#
+# The rest of the host is the TshepoVet API on the box (IIS -> the
+# tshepovet-api service; deploy/app/deploy-app.ps1). The host's DNS is the
+# zone's proxied *.madproducts.ai wildcard, which points at the box; these two
+# routes take /docs* and /robots.txt to this Worker instead.
+#
+# Deploy:    npm run deploy        (npm run deploy:dry stops before wrangler)
+# Rollback:  npx wrangler rollback --name tshepovet-site
+# Runbook:   deploy/README.md
+#
+# Static assets: deploy/dist, assembled by tools/assemble-deploy.mjs from
+# build/site (tools/build-site.mjs). Security and caching headers come from the
+# _headers file the assemble step writes there.
+
+name = "tshepovet-site"
+compatibility_date = "2026-11-01"
+
+# The routes below are the only public addresses: no *.workers.dev URL and no
+# per-version preview URLs.
+workers_dev = false
+preview_urls = false
+
+[assets]
+directory = "../dist"
+# A multi-page site, not an SPA: an unknown /docs path gets docs/404.html with
+# status 404.
+not_found_handling = "404-page"
+# /docs/database-schema serves docs/database-schema.html, and the .html path
+# redirects to it. /docs redirects to /docs/, which serves docs/index.html.
+html_handling = "auto-trailing-slash"
+
+# Plain routes, not a custom domain: a custom domain would take the whole host
+# away from the API. Keep these in step with "routes" in tools/lib/site.json.
+[[routes]]
+pattern = "tshepovet.madproducts.ai/docs*"
+zone_name = "madproducts.ai"
+
+[[routes]]
+pattern = "tshepovet.madproducts.ai/robots.txt"
+zone_name = "madproducts.ai"

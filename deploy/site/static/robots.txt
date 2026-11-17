@@ -1,0 +1,4 @@
+# TshepoVet design pages: not for search engines until the service is live.
+# Every response also carries X-Robots-Tag: noindex, nofollow.
+User-agent: *
+Disallow: /

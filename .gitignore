@@ -1,7 +1,17 @@
 node_modules/
 dist/
+.next/
+next-env.d.ts
+*.tsbuildinfo
 .env
 .env.*
 !.env.example
 coverage/
 *.log
+
+# docs site (tools/build-site.mjs, tools/assemble-deploy.mjs, Playwright, wrangler)
+build/
+deploy/dist/
+test-results/
+playwright-report/
+.wrangler/

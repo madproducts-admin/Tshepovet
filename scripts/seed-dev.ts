@@ -1,5 +1,5 @@
 import { Client } from 'pg';
-import { generateApiKey, hashApiKey } from '../src/middleware/auth';
+import { generateApiKey, hashApiKey } from '../packages/core/src/auth/apiKeys';
 
 /** Creates a demo buyer tenant, a wallet with R1,000 credit and live+test API keys. */
 async function main() {

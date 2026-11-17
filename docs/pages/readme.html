@@ -160,7 +160,7 @@ footer.colophon { margin-top: 72px; padding-top: 18px; border-top: 1px solid var
     <p class="lede">TshepoVet is a low-cost B2B vendor onboarding, KYB and continuous-compliance platform for South Africa. A company legitimacy check (CIPC registration, active directors, VAT, SARS tax compliance) costs <strong>R3.00</strong> and a driving licence or PrDP check costs <strong>R2.50</strong>. Every verified supplier gets a free, shareable <strong>Verified Vendor Passport</strong>.</p>
     <div class="facts">
       <div class="fact"><b>5</b><small>deliverables: architecture, schema, compliance, WhatsApp/OCR, API</small></div>
-      <div class="fact"><b>81</b><small>unit and integration tests, run against real PostgreSQL and Redis</small></div>
+      <div class="fact"><b>82</b><small>unit and integration tests, run against real PostgreSQL and Redis</small></div>
       <div class="fact"><b>TypeScript</b><small>Node.js, Express, PostgreSQL 16, Redis</small></div>
       <div class="fact"><b>af-south-1</b><small>target region: Cape Town</small></div>
     </div>
@@ -285,7 +285,7 @@ curl -s localhost:8080/v1/verify/company \
       <h2><span class="num">4</span>Tests</h2>
       <div class="code-block">
         <div class="code-head"><span>Shell</span><button class="copy" type="button">Copy</button></div>
-<pre>npm test            <span class="c"># 81 tests: unit + integration</span>
+<pre>npm test            <span class="c"># 82 tests: unit + integration</span>
 npm run typecheck</pre>
       </div>
       <p>The integration suite rebuilds a real PostgreSQL database from <code>db/migrations/</code> and connects as the <strong>non-superuser app role</strong>, so every test runs under row-level security. It exercises the HTTP API end to end:</p>
@@ -322,7 +322,10 @@ src/
   whatsapp/           <span class="c">Meta webhook receiver, pure state machine, worker, Graph client</span>
   ocr/                <span class="c">Claude structured extraction, deterministic post-validation</span>
   workers/            <span class="c">webhook dispatcher, retention purge</span>
-tests/unit, tests/integration</pre>
+tests/unit, tests/integration
+docs/pages/           <span class="c">the design pages (HTML); also the docs site's source</span>
+deploy/site/          <span class="c">docs site: wrangler.toml + site-only files (404, robots.txt)</span>
+tools/                <span class="c">docs site: build, assemble, deploy; tests/smoke is its Playwright suite</span></pre>
     </section>
 
     <section id="gaps">

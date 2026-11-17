@@ -1,0 +1,17 @@
+/* Site-only rules for tshepovet.madproducts.ai, linked after each page's own styles.
+ *
+ * The mermaid diagrams are rendered to inline SVG at build time (tools/build-site.mjs) with
+ * one light palette, so each one sits on a light canvas, in dark mode too, rather than
+ * shipping a second, dark copy of every diagram. */
+.diagram-canvas {
+  background: #ffffff;
+  color: #151922;
+  color-scheme: light;
+  border-radius: 3px;
+  padding: 12px;
+}
+.diagram-canvas > svg {
+  display: block;
+  margin: 0 auto;
+  height: auto;
+}

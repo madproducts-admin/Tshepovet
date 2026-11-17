@@ -6,11 +6,11 @@ This repository contains the architecture, the full PostgreSQL schema, the POPIA
 
 | # | Deliverable | Where |
 |---|---|---|
-| 1 | System architecture and waterfall API engine (cost/uptime routing, POPIA-aware caching, unit economics) | [docs/01-architecture.md](docs/01-architecture.md) · `src/waterfall/` · `src/cache/` |
+| 1 | System architecture and waterfall API engine (cost/uptime routing, POPIA-aware caching, unit economics) | [docs/01-architecture.md](docs/01-architecture.md) · `packages/core/src/waterfall/` · `packages/core/src/cache/` |
 | 2 | Database schema: multi-tenant RLS, Vendor Passports, consent, audit chain, wallet ledger, expiry schedules | [db/migrations/](db/migrations/) · [docs/02-database-schema.md](docs/02-database-schema.md) |
-| 3 | POPIA and SARS workflow: consent capture, TCS PIN handling, auto-purge | [docs/03-popia-sars-compliance.md](docs/03-popia-sars-compliance.md) · `src/consent/` · `run_retention_purge()` |
-| 4 | WhatsApp and AI OCR onboarding | [docs/04-whatsapp-ocr-onboarding.md](docs/04-whatsapp-ocr-onboarding.md) · `src/whatsapp/` · `src/ocr/` |
-| 5 | OpenAPI spec and Express handlers for `POST /v1/verify/company` and `POST /v1/verify/driver-license` | [openapi/openapi.yaml](openapi/openapi.yaml) · [docs/05-api.md](docs/05-api.md) · `src/routes/verify.ts` |
+| 3 | POPIA and SARS workflow: consent capture, TCS PIN handling, auto-purge | [docs/03-popia-sars-compliance.md](docs/03-popia-sars-compliance.md) · `packages/core/src/consent/` · `run_retention_purge()` |
+| 4 | WhatsApp and AI OCR onboarding | [docs/04-whatsapp-ocr-onboarding.md](docs/04-whatsapp-ocr-onboarding.md) · `packages/core/src/whatsapp/` · `packages/core/src/ocr/` |
+| 5 | OpenAPI spec and NestJS handlers for `POST /v1/verify/company` and `POST /v1/verify/driver-license` | [openapi/openapi.yaml](openapi/openapi.yaml) · [docs/05-api.md](docs/05-api.md) · `apps/api/src/http/v1.controller.ts` |
 
 Designed HTML versions of this README and the docs are in [docs/pages/](docs/pages/), with links to the published pages.
 
@@ -47,7 +47,7 @@ With `ENABLED_PROVIDERS=mock` (the default outside production), live keys hit th
 ## Tests
 
 ```bash
-npm test            # 81 tests: unit + integration
+npm test            # unit + integration tests (the integration suite needs PostgreSQL and Redis)
 npm run typecheck
 ```
 
@@ -55,25 +55,37 @@ The integration suite rebuilds a real PostgreSQL database from `db/migrations/` 
 
 ## Repository layout
 
+npm workspaces. [docs/PLAN.md](docs/PLAN.md) is the master plan for the complete application.
+
 ```
 db/migrations/        0001 schema (RLS, ledger, audit chain, purge), 0002 reference data
-openapi/openapi.yaml  OpenAPI 3.1 contract
-src/
-  app.ts, server.ts   container + Express wiring
-  domain/sa/          CIPC numbers & statuses, SA ID (Luhn), SARS ids/TCS, licences/PrDP, B-BBEE rules
-  waterfall/          router (expected-cost scoring, ceilings, deadlines) + Redis health/circuit breakers
-  providers/          canonical capability model, mock bureau, generic HTTP bureau adapter
-  cache/              tiered, encrypted, scope-by-data cache with single-flight
-  services/           check resolver, company + driver services, verification lifecycle
-  billing/            wallet holds over a double-entry ledger, price book
-  consent/            lawful-basis/consent assertion and attestation recording
-  webhooks/           transactional outbox, signing, dispatcher
-  middleware/         API-key auth, idempotency, rate limit, problem+json errors
-  whatsapp/           Meta webhook receiver, pure state machine, worker, Graph client
-  ocr/                Claude structured extraction, deterministic post-validation
-  workers/            webhook dispatcher, retention purge
-tests/unit, tests/integration
+openapi/openapi.yaml  OpenAPI 3.1 contract of the public /v1 API
+packages/core/        the framework-free domain (@tshepovet/core)
+  src/domain/sa/      CIPC numbers & statuses, SA ID (Luhn), SARS ids/TCS, licences/PrDP, B-BBEE rules
+  src/waterfall/      router (expected-cost scoring, ceilings, deadlines) + Redis health/circuit breakers
+  src/providers/      canonical capability model, mock bureau, generic HTTP bureau adapter
+  src/cache/          tiered, encrypted, scope-by-data cache with single-flight
+  src/services/       check resolver, company + driver services, verification lifecycle
+  src/billing/        wallet holds over a double-entry ledger, price book
+  src/consent/        lawful-basis/consent assertion and attestation recording
+  src/webhooks/       transactional outbox, signing, dispatcher
+  src/whatsapp/       inbound types + signature check, pure state machine, worker, Graph client
+  src/ocr/            Claude structured extraction, deterministic post-validation
+  src/auth/           API-key format and hashing
+  test/               unit tests
+packages/contracts/   request schemas shared by the API and the web app (@tshepovet/contracts)
+apps/api/             NestJS (Express adapter): src/main.ts (HTTP), src/worker.ts (background jobs)
+  src/http/           /v1 controller, WhatsApp webhook, health, middleware, problem+json errors
+  test/integration/   the HTTP API end to end against PostgreSQL and Redis
+docs/pages/           the design pages (HTML); also the source of the docs at /docs
+deploy/site/          docs Worker: wrangler.toml + site-only files (404, robots.txt)
+deploy/app/           the API on the box: setup, deploy, rollback, test runner
+tools/                docs: build, assemble, deploy; tests/smoke has the Playwright suites
 ```
+
+## Running on tshepovet.madproducts.ai
+
+The API runs as a **sandbox** at https://tshepovet.madproducts.ai (mock bureaus, `tv_test_` keys only), with the design pages at `/docs`. Hosting, deploys and rollback are in [deploy/README.md](deploy/README.md). The complete application (portal, passports, staff console, background jobs) is planned in [docs/PLAN.md](docs/PLAN.md).
 
 ## Known gaps before production
 
