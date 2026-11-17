@@ -81,6 +81,8 @@ const SANDBOX_CONFIG = new StaticCapabilityConfig(
 export function buildContainer(config: Config, pool: Pool, redis: RedisClient, log: Logger, o: ContainerOverrides = {}): Container {
   const crypto = new Crypto(new LocalKeyProvider(config.KEK_KEYS), Buffer.from(config.BLIND_INDEX_ROOT_KEY, 'base64'));
   const cache = new VerificationCache(pool, redis, crypto);
+  // The mock bureau's answers (tv_test_ keys, the sandbox portal) live in a cache of their own.
+  const testCache = new VerificationCache(pool, redis, crypto, undefined, 'test');
 
   const enabled = new Set(config.ENABLED_PROVIDERS.split(',').map((s) => s.trim()).filter(Boolean));
   const liveAdapters =
@@ -92,7 +94,7 @@ export function buildContainer(config: Config, pool: Pool, redis: RedisClient, l
 
   const liveEngine = new WaterfallEngine(liveAdapters, o.liveCapabilityConfig ?? new PgCapabilityConfig(pool), new HealthTracker(redis, 'tv:health:live'), log);
   const testEngine = new WaterfallEngine([new MockProvider('mock')], SANDBOX_CONFIG, new HealthTracker(redis, 'tv:health:test'), log);
-  const resolvers = { live: new CheckResolver(cache, liveEngine), test: new CheckResolver(cache, testEngine) };
+  const resolvers = { live: new CheckResolver(cache, liveEngine), test: new CheckResolver(testCache, testEngine) };
   const consent = new ConsentService();
 
   const company = new CompanyVerificationService({
@@ -104,6 +106,7 @@ export function buildContainer(config: Config, pool: Pool, redis: RedisClient, l
     syncDeadlineMs: config.SYNC_DEADLINE_MS,
     costCeilingCents: config.COMPANY_CHECK_COST_CEILING_CENTS,
     jobs: o.jobs,
+    sharedRecordsFromTest: config.SANDBOX === 'true',
   });
   const driver = new DriverLicenceVerificationService({
     pool,
@@ -114,6 +117,7 @@ export function buildContainer(config: Config, pool: Pool, redis: RedisClient, l
     syncDeadlineMs: config.SYNC_DEADLINE_MS,
     costCeilingCents: config.DRIVER_CHECK_COST_CEILING_CENTS,
     jobs: o.jobs,
+    sharedRecordsFromTest: config.SANDBOX === 'true',
   });
   const accounts = new AccountStore(pool);
   const sessions = new SessionStore(redis, { idleSeconds: config.SESSION_IDLE_MINUTES * 60, absoluteSeconds: config.SESSION_ABSOLUTE_HOURS * 3600 });

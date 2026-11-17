@@ -201,11 +201,13 @@ export class AuthService {
     }
     if (u.tenant_status !== 'active') throw new ApiError(403, 'account_suspended', 'This organisation’s account is suspended. Contact TshepoVet support.');
     if (!u.email_verified_at) throw new ApiError(403, 'email_unverified', 'Confirm your email address first. We can send the link again.');
-    await this.c.accounts.recordLogin(u.user_id, true, max, lockMin);
-
+    // The failure count is cleared only by a complete sign-in. With two-step verification the
+    // password alone is half of one: clearing it here would let anyone who has the password
+    // guess codes for ever, four at a time between sign-ins (security review, M9).
     if (u.mfa_enrolled) {
       return { mfa_required: true, challenge: await this.c.mfa.create('user', u.user_id) };
     }
+    await this.c.accounts.recordLogin(u.user_id, true, max, lockMin);
     const stage = this.mfaRequired(u.role) ? 'mfa_setup' : 'full';
     const s = await this.startSession(req, res, 'user', u.user_id, u.tenant_id, u.role, stage);
     await this.audit({ tenantId: u.tenant_id, actorType: 'user', actorId: u.user_id, action: 'account.signed_in', entityType: 'user', entityId: u.user_id, details: { mfa: false } }, req);
@@ -247,6 +249,7 @@ export class AuthService {
       }
       throw new ApiError(401, 'invalid_code', 'That code is not right. Check your authenticator app and try again.');
     }
+    await this.c.accounts.recordLogin(u.user_id, true, this.c.config.AUTH_MAX_FAILURES, this.c.config.AUTH_LOCK_MINUTES);
     await this.c.mfa.consume(b.challenge);
     const s = await this.startSession(req, res, 'user', u.user_id, u.tenant_id, u.role, 'full');
     await this.audit(
@@ -435,8 +438,9 @@ export class AuthService {
       await this.audit({ tenantId: null, actorType: 'tshepovet_staff', actorId: st.staff_id, action: 'staff.sign_in_failed', entityType: 'staff', entityId: st.staff_id }, req);
       throw invalidCredentials();
     }
-    await this.c.accounts.staffRecordLogin(st.staff_id, true, max, lockMin);
+    // As for buyers: only a complete sign-in clears the failure count.
     if (st.mfa_enrolled) return { mfa_required: true, challenge: await this.c.mfa.create('staff', st.staff_id) };
+    await this.c.accounts.staffRecordLogin(st.staff_id, true, max, lockMin);
     const s = await this.startSession(req, res, 'staff', st.staff_id, null, st.role, 'mfa_setup');
     await this.audit({ tenantId: null, actorType: 'tshepovet_staff', actorId: st.staff_id, action: 'staff.signed_in', entityType: 'staff', entityId: st.staff_id, details: { mfa: false } }, req);
     return { mfa_required: false, session: (await this.staffView(s.data))! };
@@ -457,6 +461,7 @@ export class AuthService {
       await this.audit({ tenantId: null, actorType: 'tshepovet_staff', actorId: st.staff_id, action: 'staff.mfa_failed', entityType: 'staff', entityId: st.staff_id }, req);
       throw new ApiError(401, 'invalid_code', 'That code is not right.');
     }
+    await this.c.accounts.staffRecordLogin(st.staff_id, true, this.c.config.AUTH_MAX_FAILURES, this.c.config.AUTH_LOCK_MINUTES);
     await this.c.mfa.consume(b.challenge);
     const s = await this.startSession(req, res, 'staff', st.staff_id, null, st.role, 'full');
     await this.audit({ tenantId: null, actorType: 'tshepovet_staff', actorId: st.staff_id, action: 'staff.signed_in', entityType: 'staff', entityId: st.staff_id, details: { mfa: true } }, req);

@@ -1,13 +1,14 @@
 import { randomUUID } from 'node:crypto';
-import { Controller, Get, HttpCode, Inject, Patch, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, HttpCode, Inject, Param, Patch, Post, Req, Res, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import { ApiError, settleSandboxTopup } from '@tshepovet/core';
+import { ApiError, settleSandboxTopup, VAT_RATE } from '@tshepovet/core';
 import { LedgerQuerySchema, TopupRequestSchema, UpdateWalletSchema } from '@tshepovet/contracts';
 import { CONTAINER, type Container } from '../container';
 import { PortalGuard, RequirePermission } from './guards';
-import { auditBy, inTenant, me, pageOf, sendCsv, Where } from './tenant';
+import { renderTaxInvoice } from './invoice';
+import { auditBy, inTenant, me, notFound, pageOf, sendCsv, uuidParam, Where } from './tenant';
 
 const TOPUP_COLUMNS = `id, credit_cents, vat_cents, gross_cents, status, payment_provider, tax_invoice_number, created_at`;
 
@@ -92,6 +93,49 @@ export class WalletController {
       );
       return { items: rows.rows, total: total.rows[0]!.n, page: q.page, page_size: q.page_size };
     });
+  }
+
+  /**
+   * A top-up's tax invoice as a PDF. In the sandbox it is a marked specimen (nothing was paid);
+   * outside it, it needs TshepoVet's own registered details in the configuration, and is never
+   * issued with made-up ones.
+   */
+  @Get('topups/:id/invoice.pdf')
+  @RequirePermission('wallet:read')
+  async invoice(@Req() req: Request, @Param('id') raw: string, @Res() res: Response) {
+    const id = uuidParam(raw, 'That top-up');
+    const cfg = this.c.config;
+    const specimen = cfg.SANDBOX === 'true';
+    if (!specimen && !(cfg.SELLER_LEGAL_NAME && cfg.SELLER_ADDRESS && cfg.SELLER_VAT_NUMBER)) {
+      throw new ApiError(409, 'invoice_unavailable', 'Tax invoices cannot be downloaded yet. Ask TshepoVet for a copy.');
+    }
+    const row = await inTenant(this.c, req, async (client) =>
+      (
+        await client.query<{ tax_invoice_number: string | null; credit_cents: number; vat_cents: number; gross_cents: number; status: string; created_at: Date; legal_name: string; vat_number: string | null }>(
+          `SELECT w.tax_invoice_number, w.credit_cents, w.vat_cents, w.gross_cents, w.status, w.created_at, t.legal_name, t.vat_number
+             FROM wallet_topups w JOIN tenants t ON t.id = w.tenant_id WHERE w.id = $1`,
+          [id],
+        )
+      ).rows[0],
+    );
+    if (!row) throw notFound('That top-up');
+    if (row.status !== 'succeeded' || !row.tax_invoice_number) throw new ApiError(409, 'no_invoice', 'This top-up was not paid, so it has no tax invoice.');
+    const pdf = await renderTaxInvoice({
+      number: row.tax_invoice_number,
+      issuedAt: row.created_at,
+      seller: specimen
+        ? { name: cfg.SELLER_LEGAL_NAME ?? 'TshepoVet (sandbox)', address: cfg.SELLER_ADDRESS ?? 'Sandbox: no seller address', vatNumber: cfg.SELLER_VAT_NUMBER ?? 'not registered (sandbox)' }
+        : { name: cfg.SELLER_LEGAL_NAME!, address: cfg.SELLER_ADDRESS!, vatNumber: cfg.SELLER_VAT_NUMBER! },
+      buyer: { name: row.legal_name, vatNumber: row.vat_number },
+      creditCents: row.credit_cents,
+      vatCents: row.vat_cents,
+      grossCents: row.gross_cents,
+      vatRate: VAT_RATE,
+      specimen,
+    });
+    res.setHeader('content-type', 'application/pdf');
+    res.setHeader('content-disposition', `attachment; filename="tshepovet-${row.tax_invoice_number}.pdf"`);
+    res.send(Buffer.from(pdf));
   }
 
   @Get('ledger.csv')

@@ -45,6 +45,8 @@ export interface DriverServiceDeps {
   prdpImplies?: Partial<Record<PrdpCategory, PrdpCategory[]>>;
   /** Durable completion in a worker (docs/PLAN.md M7). Without it, checks finish in this process. */
   jobs?: VerificationJobs;
+  /** As CompanyServiceDeps: test-environment checks write shared records only in the sandbox. */
+  sharedRecordsFromTest?: boolean;
 }
 
 /** What a worker needs to run a driver check again (stored encrypted until final). */
@@ -109,6 +111,7 @@ export class DriverLicenceVerificationService {
           WHERE document_type IN ('driver_licence_card','prdp') AND valid_until >= current_date`,
       );
 
+      const graceList = graces.rows.map((g) => ({ expiredFrom: g.expired_from, expiredTo: g.expired_to, validUntil: g.valid_until, gazetteReference: g.gazette_reference }));
       const v = await createVerification(client, {
         auth,
         requestId,
@@ -120,26 +123,22 @@ export class DriverLicenceVerificationService {
         vendorId: input.vendorId,
         tenantVendorId,
         consentId,
+      }, async (created) => {
+        // A worker can finish it after a restart; this process claims it while it runs it.
+        const resume: DriverResume = {
+          auth,
+          input: { ...input, consentId, consentAttestation: null },
+          idNumber: id.normalised,
+          ageYears: id.ageYears,
+          subjectBidx: subjectBidx.toString('hex'),
+          subjectFingerprint: subjectFingerprint.toString('hex'),
+          created: { ...created, tenantVendorId, graces: graceList },
+          requestId,
+        };
+        const runHere = !(input.mode === 'async' && this.d.jobs);
+        await storeResume(client, this.d.crypto, created.verificationId, { kind: 'driver_licence', payload: resume }, runHere ? this.backgroundMs + 30_000 : null);
       });
-      const out = {
-        ...v,
-        tenantVendorId,
-        graces: graces.rows.map((g) => ({ expiredFrom: g.expired_from, expiredTo: g.expired_to, validUntil: g.valid_until, gazetteReference: g.gazette_reference })),
-      };
-      // A worker can finish it after a restart; this process claims it while it runs it.
-      const resume: DriverResume = {
-        auth,
-        input: { ...input, consentId, consentAttestation: null },
-        idNumber: id.normalised,
-        ageYears: id.ageYears,
-        subjectBidx: subjectBidx.toString('hex'),
-        subjectFingerprint: subjectFingerprint.toString('hex'),
-        created: out,
-        requestId,
-      };
-      const runHere = !(input.mode === 'async' && this.d.jobs);
-      await storeResume(client, this.d.crypto, v.verificationId, { kind: 'driver_licence', payload: resume }, runHere ? this.backgroundMs + 30_000 : null);
-      return out;
+      return { ...v, tenantVendorId, graces: graceList };
     });
 
     if (input.mode === 'async' && this.d.jobs) {
@@ -351,6 +350,8 @@ export class DriverLicenceVerificationService {
     subjectBidx: Buffer,
     created: { tenantVendorId: string | null },
   ) {
+    // A mock-bureau answer (tv_test_ key) never changes the shared record outside the sandbox.
+    if (auth.environment === 'test' && !this.d.sharedRecordsFromTest) return;
     if (!input.vendorId || r.status !== 'found' || !r.data) return;
     const l = r.data;
     const holder = `${input.surname ? input.surname.charAt(0).toUpperCase() + '.' : ''} (${mask(l.idNumber, 4)})`;

@@ -67,7 +67,8 @@ $$;
 -- -----------------------------------------------------------------------------
 ALTER TABLE vendor_contacts ADD COLUMN email_verified_at timestamptz;   -- set when they onboard from the emailed link
 
--- Supplier-entered data: the inviting buyer's own (tenant_id) until promoted (NULL = shared).
+-- Supplier-entered data: the inviting buyer's own (tenant_id). Promotion copies what the supplier's
+-- passport and self-service need into shared rows (tenant_id NULL), which no buyer reads.
 ALTER TABLE vendor_contacts      ADD COLUMN tenant_id uuid REFERENCES tenants(id);
 ALTER TABLE vendor_bank_accounts ADD COLUMN tenant_id uuid REFERENCES tenants(id);
 ALTER TABLE vendor_bbbee_profiles ADD COLUMN tenant_id uuid REFERENCES tenants(id);
@@ -79,8 +80,11 @@ DECLARE t text;
 BEGIN
   FOREACH t IN ARRAY ARRAY['vendor_contacts', 'vendor_bank_accounts', 'vendor_bbbee_profiles'] LOOP
     EXECUTE format('DROP POLICY IF EXISTS vendor_child ON %I', t);
-    -- Read: the shared record of a visible supplier, plus this buyer's own rows.
-    EXECUTE format('CREATE POLICY supplier_data_read ON %I FOR SELECT USING (tenant_can_see_vendor(vendor_id) AND (tenant_id IS NULL OR tenant_id = current_tenant_id()))', t);
+    -- Read: this buyer's own rows only. What a supplier entered for another buyer, and the
+    -- shared copies behind its passport and self-service, are not for any buyer to read: anyone
+    -- can sign up and add any company (security review, M9). The passport shows what the
+    -- supplier chose to publish, through passport_public_view().
+    EXECUTE format('CREATE POLICY supplier_data_read ON %I FOR SELECT USING (tenant_id = current_tenant_id() AND tenant_can_see_vendor(vendor_id))', t);
     -- Write: only this buyer's own rows. Shared rows come only from onboarding_promote().
     EXECUTE format('CREATE POLICY supplier_data_insert ON %I FOR INSERT WITH CHECK (tenant_can_see_vendor(vendor_id) AND tenant_id = current_tenant_id())', t);
     EXECUTE format('CREATE POLICY supplier_data_update ON %I FOR UPDATE USING (tenant_id = current_tenant_id()) WITH CHECK (tenant_id = current_tenant_id())', t);
@@ -88,7 +92,7 @@ BEGIN
 END $$;
 -- Documents likewise: the API role may no longer write passport-level (tenant_id NULL) rows.
 DROP POLICY IF EXISTS doc_visible ON vendor_documents;
-CREATE POLICY doc_read ON vendor_documents FOR SELECT USING (tenant_id = current_tenant_id() OR (tenant_id IS NULL AND tenant_can_see_vendor(vendor_id)));
+CREATE POLICY doc_read ON vendor_documents FOR SELECT USING (tenant_id = current_tenant_id() AND tenant_can_see_vendor(vendor_id));
 CREATE POLICY doc_insert ON vendor_documents FOR INSERT WITH CHECK (tenant_id = current_tenant_id() AND tenant_can_see_vendor(vendor_id));
 CREATE POLICY doc_update ON vendor_documents FOR UPDATE USING (tenant_id = current_tenant_id()) WITH CHECK (tenant_id = current_tenant_id());
 
@@ -278,6 +282,8 @@ DECLARE
   v_vendor uuid;
   c vendor_contacts%ROWTYPE;
   v_shared uuid;
+  v_doc uuid;
+  v_doc_copy uuid;
   v_published boolean := false;
 BEGIN
   SELECT * INTO i FROM vendor_invites WHERE id = p_invite AND tenant_id = current_tenant_id() AND completed_at IS NOT NULL;
@@ -289,27 +295,57 @@ BEGIN
     RETURN QUERY SELECT false, false; RETURN;
   END IF;
 
-  -- The contact: becomes (or refreshes) the shared contact for this address.
+  -- What the supplier gave this buyer stays with this buyer (security review, M9): the shared
+  -- record gets COPIES of only what the supplier's own passport and self-service need. Nothing
+  -- here becomes readable by other buyers; they read their own supplier-entered rows only.
+
+  -- The contact: a shared copy (or a refresh of the shared one for this address): it signs in.
   SELECT id INTO v_shared FROM vendor_contacts WHERE vendor_id = v_vendor AND email = c.email AND tenant_id IS NULL;
   IF v_shared IS NULL THEN
-    UPDATE vendor_contacts SET tenant_id = NULL WHERE id = c.id;
+    INSERT INTO vendor_contacts (vendor_id, tenant_id, full_name, email, role, authority_basis, is_authorised_signatory, email_verified_at, purge_after)
+    VALUES (v_vendor, NULL, c.full_name, c.email, c.role, 'director', true, now(), c.purge_after);
   ELSE
     UPDATE vendor_contacts SET full_name = c.full_name, role = coalesce(c.role, role), authority_basis = 'director',
                                is_authorised_signatory = true, email_verified_at = now() WHERE id = v_shared;
   END IF;
 
-  UPDATE vendor_bank_accounts SET tenant_id = NULL
-   WHERE id = (i.progress->'bank'->>'account_id')::uuid AND vendor_id = v_vendor AND tenant_id = i.tenant_id;
-  UPDATE vendor_bbbee_profiles SET tenant_id = NULL
-   WHERE id = (i.progress->'bbbee'->>'profile_id')::uuid AND vendor_id = v_vendor AND tenant_id = i.tenant_id;
-  UPDATE vendor_documents SET tenant_id = NULL
-   WHERE id IN ((i.progress->'identity'->>'document_id')::uuid, (i.progress->'bbbee'->>'document_id')::uuid)
-     AND vendor_id = v_vendor AND tenant_id = i.tenant_id;
+  -- The identity and B-BBEE documents (self-service lists them) and the B-BBEE profile (the
+  -- passport shows its level), copied with new ids. Bank details are never shared.
+  SELECT id INTO v_doc FROM vendor_documents
+   WHERE id = (i.progress->'identity'->>'document_id')::uuid AND vendor_id = v_vendor AND tenant_id = i.tenant_id;
+  IF FOUND THEN
+    INSERT INTO vendor_documents
+    SELECT (jsonb_populate_record(NULL::vendor_documents, to_jsonb(d) || jsonb_build_object('id', uuid_v7(), 'tenant_id', NULL))).*
+      FROM vendor_documents d WHERE d.id = v_doc;
+  END IF;
+  SELECT id INTO v_doc FROM vendor_documents
+   WHERE id = (i.progress->'bbbee'->>'document_id')::uuid AND vendor_id = v_vendor AND tenant_id = i.tenant_id;
+  IF FOUND THEN
+    v_doc_copy := uuid_v7();
+    INSERT INTO vendor_documents
+    SELECT (jsonb_populate_record(NULL::vendor_documents, to_jsonb(d) || jsonb_build_object('id', v_doc_copy, 'tenant_id', NULL))).*
+      FROM vendor_documents d WHERE d.id = v_doc;
+    -- Named columns: the ownership flags are generated, so a whole-row copy cannot insert them.
+    INSERT INTO vendor_bbbee_profiles (vendor_id, tenant_id, evidence_document_id, evidence_type, sector_code, financial_year_end,
+                                       annual_turnover_cents, black_ownership_pct, black_female_ownership_pct, designated_group_ownership_pct,
+                                       bbbee_level, procurement_recognition_pct, is_empowering_supplier, issued_on, valid_until,
+                                       verification_agency, sanas_accreditation_number, certificate_number, commissioner_of_oaths,
+                                       validation_flags, status)
+    SELECT b.vendor_id, NULL, v_doc_copy, b.evidence_type, b.sector_code, b.financial_year_end,
+           b.annual_turnover_cents, b.black_ownership_pct, b.black_female_ownership_pct, b.designated_group_ownership_pct,
+           b.bbbee_level, b.procurement_recognition_pct, b.is_empowering_supplier, b.issued_on, b.valid_until,
+           b.verification_agency, b.sanas_accreditation_number, b.certificate_number, b.commissioner_of_oaths,
+           b.validation_flags, b.status
+      FROM vendor_bbbee_profiles b
+     WHERE b.id = (i.progress->'bbbee'->>'profile_id')::uuid AND b.vendor_id = v_vendor AND b.tenant_id = i.tenant_id;
+  END IF;
 
+  -- Publishing never lifts a suspension by TshepoVet staff, and never re-publishes over the
+  -- supplier's own choice of what the passport shows.
   IF p_publish THEN
     UPDATE vendors SET passport_status = 'active',
            passport_public_fields = ARRAY['legal_name','registration_number','cipc_status','vat_status','tcs_status','bbbee_level','directors_initials','verified_at']
-     WHERE id = v_vendor AND passport_last_verified_at IS NOT NULL AND passport_status <> 'active';
+     WHERE id = v_vendor AND passport_last_verified_at IS NOT NULL AND passport_status IN ('none', 'revoked');
     v_published := FOUND;
   END IF;
   RETURN QUERY SELECT true, v_published;

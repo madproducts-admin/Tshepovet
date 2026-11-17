@@ -70,6 +70,9 @@ const STATUS_ACTIONS: Record<string, string> = {
   offboarded: 'supplier.offboarded',
 };
 
+/** Supplier onboarding invitations a buyer may send in 24 hours. */
+const INVITES_PER_DAY = 100;
+
 /**
  * Suppliers: the organisation's relationships with vendors (tenant_vendors). A vendor's
  * passport is shared across the platform; what one organisation records about its supplier
@@ -378,6 +381,12 @@ export class SuppliersController {
       ).rows[0];
       if (!tv) throw notFound('That supplier');
       if (['rejected', 'offboarded'].includes(tv.status)) throw new ApiError(409, 'supplier_inactive', 'This supplier is rejected or offboarded. Change its status first.');
+      // Invitations go out from TshepoVet's own address with the buyer's name in them: a cap per
+      // day keeps a self-registered account from using it as a mailer (security review, M9).
+      const today = await client.query<{ n: number }>(`SELECT count(*) AS n FROM vendor_invites WHERE created_at > now() - interval '24 hours'`);
+      if (today.rows[0]!.n >= INVITES_PER_DAY) {
+        throw new ApiError(429, 'too_many_invitations', `Your organisation sent ${INVITES_PER_DAY} invitations in the last 24 hours. Try again tomorrow, or ask TshepoVet to raise the limit.`);
+      }
       // Only the newest link works.
       await client.query(`UPDATE vendor_invites SET revoked_at = now() WHERE tenant_vendor_id = $1 AND completed_at IS NULL AND revoked_at IS NULL`, [id]);
       const r = await client.query(

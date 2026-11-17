@@ -1,5 +1,6 @@
 import Redis from 'ioredis';
 import { RequestMethod } from '@nestjs/common';
+import { PDFDocument, PDFName } from 'pdf-lib';
 import type { Pool } from 'pg';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -180,6 +181,21 @@ describe('wallet and checks', () => {
     expect(top.balance_cents).toBe(100_000);
     const list = parse(TopupPageSchema, await viewer.get('/api/wallet/topups'));
     expect(list.total).toBe(1);
+
+    // Its tax invoice, as a PDF: in the sandbox a marked specimen with the right amounts.
+    const pdf = await viewer.agent.get(`/api/wallet/topups/${top.topup.id}/invoice.pdf`).buffer(true).parse((res, cb) => {
+      const chunks: Buffer[] = [];
+      res.on('data', (c: Buffer) => chunks.push(c));
+      res.on('end', () => cb(null, Buffer.concat(chunks)));
+    });
+    expect(pdf.status).toBe(200);
+    expect(pdf.headers['content-type']).toBe('application/pdf');
+    expect(pdf.headers['content-disposition']).toContain(`tshepovet-${top.topup.tax_invoice_number}.pdf`);
+    const doc = await PDFDocument.load(pdf.body as Buffer);
+    expect(doc.getTitle()).toBe(`Specimen tax invoice ${top.topup.tax_invoice_number}`);
+    expect(String(doc.catalog.get(PDFName.of('Lang')))).toContain('en-ZA');
+    // Another tenant's top-up is not found.
+    expect((await B.b.get(`/api/wallet/topups/${top.topup.id}/invoice.pdf`)).status).toBe(404);
   });
 
   it('prices checks up front and runs a company check that lands on the supplier list', async () => {
@@ -345,10 +361,11 @@ describe('modules and the B-BBEE scorecard', () => {
   it('records spend and recognises it at the supplier’s verified level', async () => {
     const vendor = await owner.query<{ vendor_id: string }>(`SELECT vendor_id FROM tenant_vendors WHERE id = $1`, [supplierId]);
     await owner.query(
-      `INSERT INTO vendor_bbbee_profiles (vendor_id, evidence_type, bbbee_level, procurement_recognition_pct, black_ownership_pct, black_female_ownership_pct,
+      // Evidence the supplier gave this buyer: a buyer's scorecard uses what it holds (M9 privacy rule).
+      `INSERT INTO vendor_bbbee_profiles (vendor_id, tenant_id, evidence_type, bbbee_level, procurement_recognition_pct, black_ownership_pct, black_female_ownership_pct,
                                           issued_on, valid_until, status)
-       VALUES ($1, 'eme_affidavit', 2, 125, 60, 35, current_date - 30, current_date + 300, 'accepted')`,
-      [vendor.rows[0]!.vendor_id],
+       VALUES ($1, $2, 'eme_affidavit', 2, 125, 60, 35, current_date - 30, current_date + 300, 'accepted')`,
+      [vendor.rows[0]!.vendor_id, A.tenantId],
     );
     const other = (await A.b.get('/api/suppliers?q=654321')).body.items[0].id as string;
     const lines = [

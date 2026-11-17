@@ -61,3 +61,19 @@ describe('HTTP pipeline', () => {
     isProblem(await request(t.app).get('/webhooks/whatsapp?hub.mode=subscribe'), 404, 'not_found');
   });
 });
+
+describe('the /api rate limit', () => {
+  it('allows an anonymous visitor 120 requests a minute, then answers 429 with when to retry', async () => {
+    // Start well inside a minute, so the window cannot roll over mid-test.
+    const sec = new Date().getSeconds();
+    if (sec > 45) await new Promise((r) => setTimeout(r, (61 - sec) * 1000));
+    const ip = '203.0.113.' + (20 + Math.floor(Math.random() * 200));
+    for (let i = 0; i < 120; i++) expect((await request(t.app).get('/api/meta').set('cf-connecting-ip', ip)).status).toBe(200);
+    const res = await request(t.app).get('/api/meta').set('cf-connecting-ip', ip);
+    expect(res.status).toBe(429);
+    expect(res.body.code).toBe('rate_limited');
+    expect(Number(res.headers['retry-after'])).toBeGreaterThan(0);
+    // Another visitor is not affected.
+    expect((await request(t.app).get('/api/meta').set('cf-connecting-ip', '198.51.100.7')).status).toBe(200);
+  }, 90_000);
+});

@@ -43,6 +43,7 @@ export function portalOpenApi(version = '0.3.0'): Json {
 
     const success: Json = { description: r.summary };
     if (r.produces === 'text/csv') success.content = { 'text/csv': { schema: { type: 'string' } } };
+    else if (r.produces === 'application/pdf') success.content = { 'application/pdf': { schema: { type: 'string', format: 'binary' } } };
     else if (r.response) success.content = { 'application/json': { schema: schemaOf(r.response, 'output') } };
 
     const op: Json = {

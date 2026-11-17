@@ -151,14 +151,14 @@ export class MonitoringScheduler {
     const p = this.d.pool;
     const at = (col: string) => `GREATEST(now(), ((${col} - 30) + time '06:00') AT TIME ZONE 'Africa/Johannesburg')`;
     let n = 0;
-    // B-BBEE: the newest accepted evidence each monitoring buyer can see (shared, or its own).
+    // B-BBEE: the newest accepted evidence the supplier gave the monitoring buyer.
     n += (
       await p.query(
         `INSERT INTO expiry_schedules (tenant_id, tenant_vendor_id, subject_type, subject_id, expires_on, next_action_at, next_action)
          SELECT DISTINCT ON (m.tenant_vendor_id) m.tenant_id, m.tenant_vendor_id, 'bbbee', b.id, b.valid_until, ${at('b.valid_until')}, 'remind'
            FROM monitoring_enrolments m
            JOIN tenant_vendors tv ON tv.id = m.tenant_vendor_id
-           JOIN vendor_bbbee_profiles b ON b.vendor_id = tv.vendor_id AND b.status = 'accepted' AND (b.tenant_id IS NULL OR b.tenant_id = m.tenant_id)
+           JOIN vendor_bbbee_profiles b ON b.vendor_id = tv.vendor_id AND b.status = 'accepted' AND b.tenant_id = m.tenant_id
           WHERE m.period @> now()
           ORDER BY m.tenant_vendor_id, b.valid_until DESC
          ON CONFLICT (tenant_vendor_id, subject_type, subject_id) DO NOTHING`,
@@ -178,7 +178,7 @@ export class MonitoringScheduler {
          SELECT m.tenant_id, m.tenant_vendor_id, 'document', d.id, d.expires_on, ${at('d.expires_on')}, 'remind'
            FROM monitoring_enrolments m
            JOIN tenant_vendors tv ON tv.id = m.tenant_vendor_id
-           JOIN vendor_documents d ON d.vendor_id = tv.vendor_id AND (d.tenant_id IS NULL OR d.tenant_id = m.tenant_id)
+           JOIN vendor_documents d ON d.vendor_id = tv.vendor_id AND d.tenant_id = m.tenant_id
           WHERE m.period @> now() AND d.expires_on IS NOT NULL AND d.superseded_by IS NULL AND d.purged_at IS NULL
             AND d.review_status <> 'rejected' AND d.document_type NOT LIKE 'bbbee%'
          ON CONFLICT (tenant_vendor_id, subject_type, subject_id) DO NOTHING`,

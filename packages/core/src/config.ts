@@ -64,6 +64,19 @@ const ConfigSchema = z.object({
    * (comma-separated IPs: e.g. the box's own public address). */
   WEBHOOK_DENY_IPS: z.string().default(''),
 
+  // --- Hardening (docs/PLAN.md M9) ----------------------------------------------------
+  /** /api requests a minute per signed-in session (the web server's loopback calls get five times this). */
+  API_RATE_PER_MINUTE: z.coerce.number().int().min(10).default(600),
+  /**
+   * The seller on tax invoices (VAT Act s20(4)): TshepoVet's registered name, address and VAT
+   * number. Outside the sandbox no invoice is issued until all three are set.
+   */
+  SELLER_LEGAL_NAME: z.string().optional(),
+  SELLER_ADDRESS: z.string().optional(),
+  SELLER_VAT_NUMBER: z.string().regex(/^4\d{9}$/, 'a 10-digit VAT number starting with 4').optional(),
+  /** /api requests a minute per anonymous visitor address. */
+  API_ANON_RATE_PER_MINUTE: z.coerce.number().int().min(10).default(120),
+
   // --- Jobs (docs/PLAN.md M7) ------------------------------------------------------------
   /** Where documents are kept, encrypted (the stand-in for S3 + KMS, PLAN §6). */
   DOCUMENT_STORE_DIR: z.string().default('D:/madproducts-data/tshepovet/documents'),

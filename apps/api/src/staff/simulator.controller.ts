@@ -2,11 +2,12 @@ import { randomUUID } from 'node:crypto';
 import { Body, Controller, Get, HttpCode, Inject, Param, Post, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { ApiError, SANDBOX_SAMPLES, WA_STREAM, type WaInboundMessage } from '@tshepovet/core';
-import { WaSendSchema, WaStartSchema } from '@tshepovet/contracts';
+import { z } from 'zod';
+import { WaConversationSchema, WaMessageSchema, WaSendSchema, WaStartSchema, WaTenantSchema } from '@tshepovet/contracts';
 import { CONTAINER, type Container } from '../container';
 import { StaffGuard } from '../portal/guards';
 import { utcInstants, uuidParam } from '../portal/tenant';
-import { inStaff, staffAudit } from './common';
+import { inStaff, staffAudit, strict } from './common';
 
 const MSISDN_AAD = 'wa_msisdn';
 
@@ -40,13 +41,13 @@ export class StaffSimulatorController {
         )
       ).rows,
     );
-    return Promise.all(rows.map(async ({ msisdn_enc, ...r }) => ({ ...r, number: await this.number(msisdn_enc).catch(() => 'unknown') })));
+    return strict(z.array(WaConversationSchema), await Promise.all(rows.map(async ({ msisdn_enc, ...r }) => ({ ...r, number: await this.number(msisdn_enc).catch(() => 'unknown') }))));
   }
 
   @Get('tenants')
   async tenants() {
     this.sandboxOnly();
-    return inStaff(this.c, async (db) => (await db.query(`SELECT id, legal_name FROM tenants WHERE status = 'active' ORDER BY legal_name LIMIT 500`)).rows);
+    return inStaff(this.c, async (db) => strict(z.array(WaTenantSchema), (await db.query(`SELECT id, legal_name FROM tenants WHERE status = 'active' ORDER BY legal_name LIMIT 500`)).rows));
   }
 
   @Post()
@@ -75,7 +76,7 @@ export class StaffSimulatorController {
         JSON.stringify({ name: 'supplier_invitation', params: [t.legal_name], text }),
       ]);
       await staffAudit(db, req, { tenantId: b.tenant_id, action: 'whatsapp.sandbox_started', entityType: 'wa_conversation', entityId: c.id });
-      return utcInstants({ id: c.id, tenant: t.legal_name, number: b.number, state: c.state, updated_at: c.updated_at, expires_at: c.expires_at });
+      return strict(WaConversationSchema, utcInstants({ id: c.id, tenant: t.legal_name, number: b.number, state: c.state, updated_at: c.updated_at, expires_at: c.expires_at }));
     });
   }
 
@@ -86,13 +87,13 @@ export class StaffSimulatorController {
     return inStaff(this.c, async (db) => {
       const c = (await db.query<{ msisdn_bidx: Buffer; created_at: Date }>(`SELECT msisdn_bidx, created_at FROM wa_conversations WHERE id = $1`, [id])).rows[0];
       if (!c) throw new ApiError(404, 'not_found', 'That conversation was not found.');
-      return (
+      return strict(z.array(WaMessageSchema), (
         await db.query(
           `SELECT id, direction, kind, body, created_at FROM wa_sandbox_messages
             WHERE msisdn_bidx = $1 AND created_at >= $2::timestamptz - interval '1 second' ORDER BY id LIMIT 500`,
           [c.msisdn_bidx, c.created_at],
         )
-      ).rows;
+      ).rows);
     });
   }
 

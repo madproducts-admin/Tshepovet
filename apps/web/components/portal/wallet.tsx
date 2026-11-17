@@ -147,6 +147,11 @@ export function WalletPage() {
                         <p className="text-sm text-ink-2">
                           <When value={x.created_at} showExact />, {x.payment_provider === 'sandbox' ? 'sandbox payment' : humanise(x.payment_provider)}
                         </p>
+                        {x.status === 'succeeded' && x.tax_invoice_number ? (
+                          <a href={`/api/wallet/topups/${x.id}/invoice.pdf`} download className="inline-flex min-h-11 items-center font-semibold">
+                            Download the tax invoice (PDF)<span className="sr-only"> {x.tax_invoice_number}</span>
+                          </a>
+                        ) : null}
                       </div>
                       <div className="text-right">
                         <p className="font-semibold tabular">{formatMoney(x.gross_cents)} paid</p>

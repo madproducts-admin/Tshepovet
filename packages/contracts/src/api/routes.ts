@@ -126,7 +126,7 @@ export interface ApiRoute {
   body?: z.ZodType;
   response?: z.ZodType;
   status: number;
-  produces?: 'application/json' | 'text/csv';
+  produces?: 'application/json' | 'text/csv' | 'application/pdf';
 }
 
 const Ok = z.strictObject({ ok: z.literal(true) });
@@ -228,6 +228,7 @@ export const API_ROUTES: ApiRoute[] = [
   r({ method: 'PATCH', path: '/api/wallet', tag: 'Wallet', summary: 'Set the low-balance warning', access: 'session', permission: 'wallet:topup', body: UpdateWalletSchema, response: WalletSchema, status: 200 }),
   r({ method: 'GET', path: '/api/wallet/holds', tag: 'Wallet', summary: 'Funds reserved for checks in progress', access: 'session', permission: 'wallet:read', response: z.array(HoldSchema), status: 200 }),
   r({ method: 'GET', path: '/api/wallet/ledger', tag: 'Wallet', summary: 'Wallet movements', access: 'session', permission: 'wallet:read', query: LedgerQuerySchema, response: LedgerPageSchema, status: 200 }),
+  r({ method: 'GET', path: '/api/wallet/topups/{id}/invoice.pdf', tag: 'Wallet', summary: 'The tax invoice for a top-up (PDF)', access: 'session', permission: 'wallet:read', status: 200, produces: 'application/pdf' }),
   r({ method: 'GET', path: '/api/wallet/ledger.csv', tag: 'Wallet', summary: 'Wallet movements as CSV', access: 'session', permission: 'wallet:read', query: LedgerQuerySchema, status: 200, produces: 'text/csv' }),
   r({ method: 'GET', path: '/api/wallet/topups', tag: 'Wallet', summary: 'Top-ups and their tax invoices', access: 'session', permission: 'wallet:read', query: z.object({ page: z.coerce.number().int().min(1).default(1), page_size: z.coerce.number().int().min(1).max(100).default(25) }), response: TopupPageSchema, status: 200 }),
   r({ method: 'POST', path: '/api/wallet/topups', tag: 'Wallet', summary: 'Top up (sandbox: credited at once)', access: 'session', permission: 'wallet:topup', body: TopupRequestSchema, response: TopupResultSchema, status: 201 }),

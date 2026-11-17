@@ -14,6 +14,7 @@ import { requestContext } from './http/middleware/requestContext';
 import { NestPinoLogger } from './nest-logger';
 import { cookieNames } from './portal/cookies';
 import { portalContext } from './portal/portal.middleware';
+import { portalRateLimit } from './http/middleware/portalRateLimit';
 
 /**
  * Builds the HTTP application around a ready Container: used by main.ts and by the
@@ -58,6 +59,7 @@ export async function createHttpApp(c: Container): Promise<INestApplication> {
     next();
   });
   app.use('/api', portalContext(c.sessions, c.accounts, c.pool, cookieNames(c.cookieSecure)));
+  app.use('/api', portalRateLimit(c.redis, { session: c.config.API_RATE_PER_MINUTE, anonymous: c.config.API_ANON_RATE_PER_MINUTE, internal: c.config.API_RATE_PER_MINUTE * 5 }));
   // Errors the middleware above passes to next() - a malformed JSON body, a bad API key, a rate
   // limit - are answered here, by the pre-port errorHandler. Left to Nest, a body-parser error
   // would arrive wrapped as a generic 400 instead of invalid_json.

@@ -30,7 +30,7 @@ export class JobsListener {
     try {
       const c = await this.connect();
       c.on('notification', (n) => {
-        if (n.channel === JOBS_CHANNEL && n.payload) this.handlers[n.payload]?.();
+        if (n.channel === JOBS_CHANNEL && n.payload && Object.hasOwn(this.handlers, n.payload)) this.handlers[n.payload]!();
       });
       c.on('error', (err) => this.lost(err));
       c.on('end', () => this.lost(new Error('connection ended')));

@@ -1,5 +1,6 @@
 import type { Request } from 'express';
 import type { PoolClient } from 'pg';
+import type { z } from 'zod';
 import { ApiError, audit } from '@tshepovet/core';
 import type { Container } from '../container';
 import { clientIp } from '../portal/auth.service';
@@ -39,4 +40,13 @@ export function staffAudit(
   e: { tenantId: string | null; action: string; entityType: string; entityId: string | null; details?: Record<string, unknown> },
 ) {
   return audit(client, { ...e, actorType: 'tshepovet_staff', actorId: staffMe(req).id, requestId: req.requestId, ip: clientIp(req) });
+}
+
+/**
+ * Every staff response goes through its strict contract (security review, M9): staff queries run
+ * on a BYPASSRLS connection, so a column added to a query later must fail loudly here rather
+ * than reach a browser. The round trip through JSON gives the schema what the client would see.
+ */
+export function strict<T extends z.ZodType>(schema: T, value: unknown): z.infer<T> {
+  return schema.parse(JSON.parse(JSON.stringify(value)));
 }

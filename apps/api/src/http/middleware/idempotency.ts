@@ -22,7 +22,9 @@ export function idempotency(pool: Pool) {
     if (!key || !req.auth) return next();
     if (key.length < 8 || key.length > 255) return next(new ApiError(400, 'invalid_idempotency_key', 'Idempotency-Key must be 8-255 characters'));
     const tenantId = req.auth.tenantId;
-    const requestHash = sha256(`${req.method} ${req.path}\n${JSON.stringify(req.body ?? {})}`);
+    // The environment is part of the request: a live call never replays a test call's answer
+    // (security review, M9).
+    const requestHash = sha256(`${req.auth.environment} ${req.method} ${req.path}\n${JSON.stringify(req.body ?? {})}`);
 
     try {
       const claim = await withTenantTx(pool, tenantId, async (c) => {

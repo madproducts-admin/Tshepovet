@@ -180,17 +180,24 @@ describe('another buyer onboarding the same supplier', () => {
     const o = await new Onboarder(await token(ATTACKER, 'vendor_invite', '/onboard')).init();
 
     parse(OnboardingStateSchema, await o.post('start', { agree: true, full_name: 'Pieter van der Merwe', role: 'Director' }));
+    // Calling start again (or many times) never runs, or charges, the register lookup twice.
+    parse(OnboardingStateSchema, await o.post('start', { agree: true, full_name: 'Pieter van der Merwe', role: 'Director' }));
+    const lookups = await owner.query(`SELECT 1 FROM verifications WHERE tenant_id = $1`, [other.tenantId]);
+    expect(lookups.rowCount).toBe(1);
     parse(OnboardingStateSchema, await o.post('company', { correct: true }));
     expect(parse(OnboardingStateSchema, await o.post('documents', { kind: 'identity', sample: 'id_other_person' })).identity).toEqual({ state: 'review', is_director: false });
     parse(OnboardingStateSchema, await o.post('documents', { kind: 'bbbee', sample: 'bbbee_eme' }));
     parse(OnboardingStateSchema, await o.post('bank', { bank_name: 'Capitec', account_number: '1400999999', account_type: 'savings' }));
+    // The tax PIN check is charged to the buyer too: three tries per invitation.
+    for (let i = 0; i < 3; i++) expect((await o.post('tax', { tax_reference_number: '9123456789', tcs_pin: 'AB12CD34EF' })).status).toBe(200);
+    expect((await o.post('tax', { tax_reference_number: '9123456789', tcs_pin: 'AB12CD34EF' })).body.code).toBe('too_many_attempts');
     expect((await o.post('bank', { bank_name: 'Capitec', account_number: '1400888888', account_type: 'savings' })).body.code).toBe('bank_already_added');
     parse(OnboardingStateSchema, await o.post('submit', { publish_passport: true }));
     expect((await o.post('skip', { step: 'tax' })).body.code).toBe('already_submitted');
 
     // The buyer that invited them sees what was entered, as its own.
     const mine = parse(SupplierDetailSchema, await other.b.get(`/api/suppliers/${otherSupplierId}`));
-    expect(mine.bank_accounts.map((a) => a.account_last4).sort()).toEqual(['5678', '9999']);
+    expect(mine.bank_accounts.map((a) => a.account_last4)).toEqual(['9999']);
 
     // The first buyer does not, and its record is as it was.
     const first = parse(SupplierDetailSchema, await buyer.b.get(`/api/suppliers/${supplierId}`));
@@ -268,6 +275,17 @@ describe('supplier self-service', () => {
     expect((await post({ status: 'active', fields: ['legal_name'] })).body.code).toBe('passport_suspended');
     expect((await post({ status: 'revoked', fields: ['legal_name'] })).body.code).toBe('passport_suspended');
     expect((await request(t.app).get(`/api/passport/${publicId}`)).status).toBe(410);
+    // Nor does a director's onboarding through some buyer re-publish it.
+    const inv = (await owner.query<{ id: string }>(`SELECT id FROM vendor_invites WHERE tenant_id = $1 AND completed_at IS NOT NULL`, [buyer.tenantId])).rows[0]!.id;
+    const c = await owner.connect();
+    try {
+      await c.query('BEGIN');
+      await c.query(`SELECT set_config('app.tenant_id', $1, true)`, [buyer.tenantId]);
+      expect((await c.query(`SELECT * FROM onboarding_promote($1, true)`, [inv])).rows[0]).toEqual({ promoted: true, published: false });
+      await c.query('ROLLBACK');
+    } finally {
+      c.release();
+    }
     await owner.query(`UPDATE vendors SET passport_status = 'active' WHERE passport_public_id = $1`, [publicId]);
   });
 

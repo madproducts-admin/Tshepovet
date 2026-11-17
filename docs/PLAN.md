@@ -184,6 +184,7 @@ db/migrations/ 0001, 0002 unchanged; 0003+ add what the new features need (§5)
 
 **M6 decisions (the supplier's side).**
 - **Trust boundary.** Anyone can sign up as a buyer, add any company and invite an address they control. So what an invitation's onboarding enters (contact, documents, bank account, B-BBEE profile) belongs to the inviting buyer only (`tenant_id` set) and is invisible to other buyers. It becomes the supplier's shared record (`tenant_id` NULL), which can publish the passport and sign in to self-service, only through `onboarding_promote()` at submit, and only when the identity document matched an active director on the register. The API role cannot write shared rows at all (split RLS policies in migration 0005). A security review of the first M6 commit found the gap; a test now plays the second buyer.
+- **Changed in M9:** promotion now copies, rather than moves, only what the passport and self-service need, and no buyer reads the shared rows; see the M9 decisions.
 - **One bank account per onboarding,** and every step re-checks under the invitation's row lock that it was not already submitted (the tax step calls a bureau outside the lock).
 - **Migration 0005** runs with the release (M10).
 - **Passports:** `/passport/{id}` is rendered by the web server from the API (never indexed; the supplier shares the link). Withdrawn, the API answers 410 and the page says so with a 200 (the App Router has no 410 for pages). A paper copy carries a QR code to the page and a signed code that `/verify-passport` checks. Only staff lift a suspension (`vendor_set_passport` refuses a suspended passport).
@@ -207,12 +208,26 @@ db/migrations/ 0001, 0002 unchanged; 0003+ add what the new features need (§5)
 - **Review decisions** record the reviewer and a reason; accepting or rejecting B-BBEE evidence moves its profile with it. Documents now keep their post-validation flags (`review_flags`, migration 0007), so the queue says why each one waits.
 - **Carried into M10:** migration 0007; the API service needs `STAFF_DATABASE_URL` (the jobs login) or inherits `WORKER_DATABASE_URL`; staff accounts are made on the box with `apps/api/scripts/create-staff.ts`.
 
+**M9 decisions (hardening).**
+- **Rate limit on `/api`,** a one-minute window after the session is known: 600 requests per signed-in session, 120 per anonymous address, and a shared 3 000 for the web server's own loopback calls (so a request mistaken for it is still bounded); `API_RATE_PER_MINUTE` and `API_ANON_RATE_PER_MINUTE` tune it. Over the limit: 429 with `Retry-After`. Sign-in and sign-up keep their stricter per-address limits.
+- **Tax invoices:** `GET /api/wallet/topups/{id}/invoice.pdf` (pdf-lib 1.17.1) carries what the VAT Act s20(4) asks of a full tax invoice. In the sandbox it is overprinted as a specimen; outside it, it is refused until `SELLER_LEGAL_NAME`, `SELLER_ADDRESS` and `SELLER_VAT_NUMBER` are set, and is never issued with made-up details. A buyer's billing address is not collected yet (a tax invoice over R5 000 needs it): see §8.
+- **Load test** (opt-in, `TSV_LOAD=1`, `apps/api/test/integration/load.test.ts`): 300 company checks at concurrency 10 through HTTP, PostgreSQL and Redis with the mock bureau: 38 a second, p50 239 ms, p95 340 ms, p99 805 ms, no errors (budget: p95 under 1.5 s on this box). The creating transaction now writes its audit entry last: the audit insert holds the tenant's chain-head lock until commit, and one tenant's concurrent checks queue on it. Client JavaScript is about 550 KB gzipped across the whole app; per-page loads are measured live in M10.
+- **Independent security review** (2026-11-17; 1 critical, 1 high, 4 medium, 4 low). Fixed, each with a test (`hardening.test.ts`, `supplier.test.ts`):
+  - Critical: test keys (the mock bureau) wrote the live verification cache and the shared supplier record, so in a live deployment a free account could pre-clear a shell company. The mock's answers now have their own cache namespace, and a test-environment check writes shared records only in the sandbox deployment (`sharedRecordsFromTest`).
+  - High: a correct password cleared the count of wrong second factors, allowing unlimited code guessing four at a time. Only a complete sign-in clears it now, for buyers and staff.
+  - Medium: `onboarding_promote()` could re-publish a passport staff had suspended; it publishes only from `none` or `revoked`.
+  - Medium: an invitation could drain the buyer's wallet by repeating charged steps. The register lookup runs once per invitation (claimed under the row lock) and the tax PIN check three times.
+  - Medium: any self-registered buyer could read a supplier's shared bank, B-BBEE and document details by adding the company. What a supplier gives a buyer now stays with that buyer; promotion copies only what the passport and self-service need (the contact, the identity and B-BBEE documents, the B-BBEE profile; never bank details) into shared rows no buyer reads. The monitoring sweep and the B-BBEE scorecard use the buyer's own evidence.
+  - Low: idempotency keys now include the environment (a live call never replays a test answer); invitations are capped at 100 a day per buyer; the NOTIFY handler lookup uses `Object.hasOwn`; every staff console response is parsed through its strict contract, so a column added to a BYPASSRLS query later fails loudly instead of reaching a browser.
+- **Open from the review, for live mode** (with the owner items in §8): identity proof beyond matching an ID number (DHA or liveness); a promoted supplier contact can withdraw any buyer's consents; `email_outbox` keeps link tokens in plain text (render at send time and clear after sending, once real mail exists); the API process holds the BYPASSRLS staff credential and the staff console shares the portal's origin (a separate staff process and origin, with a narrower role); the public passport's tax status comes from any buyer's latest real check.
+
 ## 8. Blocked on the owner (none of it stops the build)
 
 - **Bureau and payment contracts:** bureau contracts and credentials (XDS, CPB, SearchWorks, VerifyID), and confirmation of which bureaus offer TCS and eNaTIS; a payment provider for top-ups (the fleet default is Paddle via Cloud).
 - **Messaging and accounting:** a Meta WhatsApp Business account and number; the SARS TCS fulfilment channel (`docs/03` §3.8); the Xero and Sage apps.
 - **Production readiness:** hosting in South Africa (af-south-1), and the legal review of the privacy notice, the roles matrix and the s57 assessment of the conflict-of-interest radar (the radar ships behind a feature flag, off until then).
 - **Email sending:** how mail should be sent (Cloud mail gateway or an SMTP account).
+- **Tax invoices:** TshepoVet's registered name, address and VAT number (`SELLER_*`), and whether to collect buyers' billing addresses (needed on invoices over R5 000).
 
 ## 9. Risks
 

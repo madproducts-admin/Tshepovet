@@ -51,8 +51,17 @@ export interface CreateArgs {
   consentId: string | null;
 }
 
-/** Inside the caller's tenant transaction: price, insert verification, reserve funds. */
-export async function createVerification(client: PoolClient, a: CreateArgs): Promise<{ verificationId: string; holdId: string | null; priceCents: number }> {
+/**
+ * Inside the caller's tenant transaction: price, insert verification, reserve funds, and the
+ * audit entry last. The audit insert takes the tenant's chain-head lock until commit, so
+ * anything else the caller must write first goes in `beforeAudit` (the lock is then held
+ * only for the commit: concurrent checks of one tenant queue on it).
+ */
+export async function createVerification(
+  client: PoolClient,
+  a: CreateArgs,
+  beforeAudit?: (created: { verificationId: string; holdId: string | null; priceCents: number }) => Promise<void>,
+): Promise<{ verificationId: string; holdId: string | null; priceCents: number }> {
   const priceCents = await priceFor(client, a.auth.tenantId, a.sku, a.auth.chargeTestChecks ? 'live' : a.auth.environment);
   const v = await client.query<{ id: string }>(
     `INSERT INTO verifications (tenant_id, verification_type, tenant_vendor_id, vendor_id, subject_fingerprint, subject_display,
@@ -77,6 +86,7 @@ export async function createVerification(client: PoolClient, a: CreateArgs): Pro
   const verificationId = v.rows[0]!.id;
   const hold = await reserve(client, { tenantId: a.auth.tenantId, amountCents: priceCents, sku: a.sku, referenceType: 'verification', referenceId: verificationId });
   if (hold) await client.query(`UPDATE verifications SET wallet_hold_id = $2 WHERE id = $1`, [verificationId, hold.id]);
+  await beforeAudit?.({ verificationId, holdId: hold?.id ?? null, priceCents });
   await audit(client, {
     tenantId: a.auth.tenantId,
     // A user (portal), an API key (/v1), or TshepoVet itself (a check started by onboarding).

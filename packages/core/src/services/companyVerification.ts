@@ -42,6 +42,13 @@ export interface CompanyServiceDeps {
   costCeilingCents: number;
   /** Durable completion in a worker (docs/PLAN.md M7). Without it, checks finish in this process. */
   jobs?: VerificationJobs;
+  /**
+   * Whether a check answered by the mock bureau (environment 'test') may write the shared
+   * supplier record: the vendor's register details, directors, tax PINs, monitoring. Only in
+   * the sandbox deployment, where every record is test data. In a live deployment a free
+   * tv_test_ key must never change what live buyers and the public passport see.
+   */
+  sharedRecordsFromTest?: boolean;
 }
 
 /** What a worker needs to run a company verification again (stored encrypted until final). */
@@ -148,17 +155,18 @@ export class CompanyVerificationService {
         vendorId,
         tenantVendorId,
         consentId,
+      }, async (created) => {
+        // A worker can finish it after a restart; this process claims it while it runs it.
+        const resume: CompanyResume = {
+          auth,
+          input: { ...input, consentId, consentAttestation: null },
+          created: { ...created, vendorId, tenantVendorId },
+          subjectFingerprint: subjectFingerprint.toString('hex'),
+          requestId,
+        };
+        const runHere = !(input.mode === 'async' && this.d.jobs);
+        await storeResume(client, this.d.crypto, created.verificationId, { kind: 'company', payload: resume }, runHere ? this.backgroundMs + 30_000 : null);
       });
-      // A worker can finish it after a restart; this process claims it while it runs it.
-      const resume: CompanyResume = {
-        auth,
-        input: { ...input, consentId, consentAttestation: null },
-        created: { ...v, vendorId, tenantVendorId },
-        subjectFingerprint: subjectFingerprint.toString('hex'),
-        requestId,
-      };
-      const runHere = !(input.mode === 'async' && this.d.jobs);
-      await storeResume(client, this.d.crypto, v.verificationId, { kind: 'company', payload: resume }, runHere ? this.backgroundMs + 30_000 : null);
       return { ...v, vendorId, tenantVendorId };
     });
 
@@ -438,6 +446,8 @@ export class CompanyVerificationService {
     tcs: ResolvedCheck<'tax_compliance_status'> | null,
     requestId: string,
   ) {
+    // A mock-bureau answer (tv_test_ key) never changes the shared record outside the sandbox.
+    if (auth.environment === 'test' && !this.d.sharedRecordsFromTest) return;
     const vendorId = created.vendorId;
     if (company?.status === 'found' && company.data) {
       const c: CompanyRecord = company.data;

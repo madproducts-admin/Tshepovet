@@ -64,7 +64,12 @@ interface Progress {
   bbbee?: { state: OnboardingState['bbbee']['state']; document_id?: string; profile_id?: string; level?: number | null; reasons?: string[] };
   bank?: { state: OnboardingState['bank']['state']; account_id?: string; last4?: string };
   tax?: { state: OnboardingState['tax']['state']; verification_id?: string; detail?: string };
+  /** Tax checks run (each is charged to the buyer): at most TAX_ATTEMPTS per invitation. */
+  tax_attempts?: number;
 }
+
+/** Tax checks per invitation (each is charged to the buyer). */
+const TAX_ATTEMPTS = 3;
 
 const ONBOARDING_PURPOSES = [
   { purpose: 'kyb_company_verification', lawfulBasis: 'legitimate_interest_responsible_party' },
@@ -187,9 +192,16 @@ export class OnboardingController {
   async start(@Req() req: Request): Promise<OnboardingState> {
     const inv = await this.open(req);
     const b = OnboardingStartSchema.parse(req.body);
-    await this.change(inv, async (client, p) => {
+    // The register lookup is charged to the buyer: it runs once per invitation, claimed under the
+    // invitation's row lock, however often (or concurrently) this is called (security review, M9).
+    const lookup = await this.change(inv, async (client, p) => {
       this.requireOpen(inv, p, false);
-      if (p.consent_id) return;
+      const claim = () => {
+        if (p.company) return false;
+        p.company = { state: 'todo' };
+        return true;
+      };
+      if (p.consent_id) return claim();
       const contact = await client.query<{ id: string }>(
         `INSERT INTO vendor_contacts (vendor_id, tenant_id, full_name, email, role, authority_basis, email_verified_at, purge_after)
          VALUES ($1, $2, $3, $4, $5, 'unverified', now(), now() + interval '5 years')
@@ -225,8 +237,9 @@ export class OnboardingController {
       await client.query(`UPDATE consent_purposes SET special_pi_basis = 's29_bbbee_redress' WHERE consent_id = $1 AND purpose = 'bbbee_verification'`, [p.consent_id]);
       await client.query(`UPDATE tenant_vendors SET status = 'onboarding' WHERE id = $1 AND status = 'invited'`, [inv.tenant_vendor_id]);
       await this.auditStep(client, req, inv, p, 'onboarding.started');
+      return claim();
     });
-    await this.lookupCompany(req, inv);
+    if (lookup) await this.lookupCompany(req, inv);
     return withTenantTx(this.c.pool, inv.tenant_id, (client) => this.view(client, inv));
   }
 
@@ -247,8 +260,9 @@ export class OnboardingController {
         const outcome = out.rows[0]?.outcome;
         state = outcome === 'not_found' ? 'not_found' : outcome && outcome !== 'unable_to_verify' ? 'found' : 'unavailable';
       } catch (err) {
-        // An empty wallet on the buyer's side must not block the supplier: the buyer runs it later.
-        if (!(err instanceof ApiError && err.code === 'insufficient_funds')) throw err;
+        // An empty wallet on the buyer's side, or a failure, must not block the supplier: the
+        // buyer runs the check later. The lookup is never retried from here (it is charged).
+        if (!(err instanceof ApiError && err.code === 'insufficient_funds')) this.c.log.error({ err, inviteId: inv.invite_id }, 'onboarding register lookup failed');
       }
     }
     await this.change(inv, async (client, p) => {
@@ -418,22 +432,23 @@ export class OnboardingController {
     const taxRef = normaliseTaxReference(b.tax_reference_number);
     if (!taxRef) throw new ApiError(400, 'invalid_tax_reference', 'Enter the 10-digit income tax reference number.');
     const pin = normaliseTcsPin(b.tcs_pin).pin;
-    const pre = await withTenantTx(this.c.pool, inv.tenant_id, (c) =>
-      c.query<{ progress: Progress; reg: string | null }>(
-        `SELECT i.progress, v.cipc_enterprise_number AS reg FROM vendor_invites i JOIN vendors v ON v.id = $2 WHERE i.id = $1`,
-        [inv.invite_id, inv.vendor_id],
-      ),
-    );
-    const p0 = pre.rows[0]!.progress;
-    this.requireOpen(inv, p0);
-    if (!pre.rows[0]!.reg) throw new ApiError(409, 'no_registration', 'Tax compliance is checked against a registered company.');
+    // Each check is charged to the buyer: an attempt is claimed under the row lock first, and an
+    // invitation gets TAX_ATTEMPTS of them (security review, M9).
+    const pre = await this.change(inv, async (client, p) => {
+      this.requireOpen(inv, p);
+      const reg = (await client.query<{ reg: string | null }>(`SELECT cipc_enterprise_number AS reg FROM vendors WHERE id = $1`, [inv.vendor_id])).rows[0]?.reg ?? null;
+      if (!reg) throw new ApiError(409, 'no_registration', 'Tax compliance is checked against a registered company.');
+      if ((p.tax_attempts ?? 0) >= TAX_ATTEMPTS) throw new ApiError(429, 'too_many_attempts', `The PIN was checked ${TAX_ATTEMPTS} times. Ask your customer to check it for you, or skip this step.`);
+      p.tax_attempts = (p.tax_attempts ?? 0) + 1;
+      return { reg, consentId: p.consent_id! };
+    });
     let state: NonNullable<Progress['tax']>['state'] = 'problem';
     let detail: string | undefined;
     let verificationId: string | undefined;
     try {
       const r = await this.c.company.start(
         this.auth(inv),
-        { registrationNumber: pre.rows[0]!.reg, vatNumber: null, taxReferenceNumber: taxRef, tcsPin: pin, checks: ['registration', 'tcs'], externalRef: null, consentId: p0.consent_id!, consentAttestation: null, freshness: 'cached_ok', maxAgeSeconds: null, mode: 'sync', monitor: false },
+        { registrationNumber: pre.reg, vatNumber: null, taxReferenceNumber: taxRef, tcsPin: pin, checks: ['registration', 'tcs'], externalRef: null, consentId: pre.consentId, consentAttestation: null, freshness: 'cached_ok', maxAgeSeconds: null, mode: 'sync', monitor: false },
         req.requestId,
       );
       verificationId = r.verificationId;

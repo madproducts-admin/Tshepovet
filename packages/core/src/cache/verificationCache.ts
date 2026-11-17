@@ -71,20 +71,28 @@ export class VerificationCache {
     private readonly redis: RedisClient,
     private readonly crypto: Crypto,
     private readonly policies: Record<Capability, CachePolicy> = CACHE_POLICIES,
+    /**
+     * Which bureaus' answers this cache holds. The mock bureau behind tv_test_ keys answers
+     * anything with sample data: its answers must never be served to a live check, so the
+     * 'test' cache is keyed and sealed apart from the live one.
+     */
+    private readonly namespace: 'live' | 'test' = 'live',
   ) {}
 
   private key(capability: Capability, subject: string, tenantId: string) {
     const policy = this.policies[capability];
     const scopeTenant = policy.scope === 'tenant' ? tenantId : null;
-    const cacheKey = this.crypto.blindIndex('cache_key', `${capability}|${subject}`, scopeTenant ?? 'global');
+    const ns = this.namespace === 'live' ? '' : `${this.namespace}|`;
+    const cacheKey = this.crypto.blindIndex('cache_key', `${ns}${capability}|${subject}`, scopeTenant ?? 'global');
     const hex = cacheKey.toString('hex');
+    const tag = this.namespace === 'live' ? '' : `${this.namespace}:`;
     return {
       policy,
       scopeTenant,
       cacheKey,
-      redisKey: `tv:vc:${policy.scope}:${scopeTenant ?? 'g'}:${hex}`,
-      lockKey: `tv:vc:lock:${hex}`,
-      aad: `cache:${capability}:${policy.scope}:${scopeTenant ?? 'g'}`,
+      redisKey: `tv:vc:${tag}${policy.scope}:${scopeTenant ?? 'g'}:${hex}`,
+      lockKey: `tv:vc:lock:${tag}${hex}`,
+      aad: `cache:${ns}${capability}:${policy.scope}:${scopeTenant ?? 'g'}`,
     };
   }
 

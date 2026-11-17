@@ -1,18 +1,30 @@
 import { Body, Controller, Get, HttpCode, Inject, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { ApiError, HealthTracker, type Capability } from '@tshepovet/core';
+import { z } from 'zod';
 import {
   CapabilityUpdateSchema,
+  ChainVerificationSchema,
   NewPriceSchema,
+  PriceSchema,
+  PurgeRunSchema,
   ReviewDecisionSchema,
+  ReviewQueueSchema,
+  StaffMailPageSchema,
   StaffMailQuerySchema,
+  StaffMailSchema,
+  StaffOverviewSchema,
+  StaffProviderSchema,
+  StaffRequestSchema,
+  StaffTenantPageSchema,
   StaffTenantQuerySchema,
+  StaffTenantSchema,
   TenantStatusSchema,
 } from '@tshepovet/contracts';
 import { CONTAINER, type Container } from '../container';
 import { RequireStaffRole, StaffGuard } from '../portal/guards';
 import { likeTerm, pageOf, utcInstants, uuidParam } from '../portal/tenant';
-import { inStaff, staffAudit } from './common';
+import { inStaff, staffAudit, strict } from './common';
 
 /**
  * The staff console (/api/staff, docs/PLAN.md M8): the review queue, tenants and users, data-
@@ -45,7 +57,7 @@ export class StaffConsoleController {
              (SELECT max(finished_at) FROM purge_runs) AS last_purge_at`,
         )
       ).rows[0];
-      return {
+      return strict(StaffOverviewSchema, {
         sandbox: this.c.config.SANDBOX === 'true',
         review: { documents: r.documents, handoffs: r.handoffs },
         requests: { open: r.open, due_within_7_days: r.due7, overdue: r.overdue },
@@ -53,7 +65,7 @@ export class StaffConsoleController {
         verifications: { processing: r.processing, last_24h: r.last_24h, failed_24h: r.failed_24h },
         mail: { held: r.held, queued: r.queued },
         last_purge_at: r.last_purge_at,
-      };
+      });
     });
   }
 
@@ -81,7 +93,7 @@ export class StaffConsoleController {
           WHERE c.state = 'HUMAN_HANDOFF'
           ORDER BY c.updated_at LIMIT 200`,
       );
-      return { documents: documents.rows, handoffs: handoffs.rows };
+      return strict(ReviewQueueSchema, { documents: documents.rows, handoffs: handoffs.rows });
     });
   }
 
@@ -129,7 +141,7 @@ export class StaffConsoleController {
           ORDER BY t.created_at DESC LIMIT $3 OFFSET $4`,
         [q.q ? likeTerm(q.q) : null, q.status ?? null, limit, offset],
       );
-      return { items: r.rows.map(({ total: _t, ...x }) => x), total: r.rows[0]?.total ?? 0, page: q.page, page_size: q.page_size };
+      return strict(StaffTenantPageSchema, { items: r.rows.map(({ total: _t, ...x }) => x), total: r.rows[0]?.total ?? 0, page: q.page, page_size: q.page_size });
     });
   }
 
@@ -161,7 +173,7 @@ export class StaffConsoleController {
       );
       // A look at a tenant's records is itself on their record.
       await staffAudit(db, req, { tenantId: id, action: 'staff.support_view', entityType: 'tenant', entityId: id });
-      return {
+      return strict(StaffTenantSchema, {
         id: t.id,
         legal_name: t.legal_name,
         status: t.status,
@@ -171,7 +183,7 @@ export class StaffConsoleController {
         counts: { suppliers: t.suppliers, monitored: t.monitored, verifications_30d: t.verifications_30d },
         users: users.rows,
         recent_activity: activity.rows,
-      };
+      });
     });
   }
 
@@ -199,7 +211,7 @@ export class StaffConsoleController {
     return inStaff(this.c, async (db) => {
       const r = (await db.query<{ broken: number | null; n: number }>(`SELECT verify_audit_chain($1) AS broken, (SELECT count(*) FROM audit_log WHERE tenant_id = $1) AS n`, [id])).rows[0]!;
       await staffAudit(db, req, { tenantId: id, action: 'audit.chain_verified', entityType: 'audit_log', entityId: null, details: { intact: r.broken === null, entries: r.n } });
-      return { intact: r.broken === null, entries_checked: r.n, broken_at_sequence: r.broken, checked_at: new Date() };
+      return strict(ChainVerificationSchema, { intact: r.broken === null, entries_checked: r.n, broken_at_sequence: r.broken, checked_at: new Date() });
     });
   }
 
@@ -220,7 +232,7 @@ export class StaffConsoleController {
   @RequireStaffRole('support', 'admin')
   async requests() {
     return inStaff(this.c, async (db) =>
-      (
+      strict(z.array(StaffRequestSchema), (
         await db.query(
           `SELECT r.id, t.legal_name AS tenant, v.legal_name AS supplier, r.request_type, r.status, r.received_at, r.due_at,
                   ceil(extract(epoch FROM (r.due_at - now())) / 86400)::integer AS days_left
@@ -228,14 +240,16 @@ export class StaffConsoleController {
             WHERE r.status NOT IN ('completed', 'refused')
             ORDER BY r.due_at LIMIT 500`,
         )
-      ).rows,
+      ).rows),
     );
   }
 
   @Get('purge-runs')
   @RequireStaffRole('admin')
   async purgeRuns() {
-    return inStaff(this.c, async (db) => (await db.query(`SELECT id, started_at, finished_at, coalesce(counts, '{}'::jsonb) AS counts FROM purge_runs ORDER BY id DESC LIMIT 50`)).rows);
+    return inStaff(this.c, async (db) =>
+      strict(z.array(PurgeRunSchema), (await db.query(`SELECT id, started_at, finished_at, coalesce(counts, '{}'::jsonb) AS counts FROM purge_runs ORDER BY id DESC LIMIT 50`)).rows),
+    );
   }
 
   // --- Bureaus and prices --------------------------------------------------------------------
@@ -248,7 +262,7 @@ export class StaffConsoleController {
       providers: (await db.query(`SELECT code, name, is_active, operator_agreement_signed_on FROM providers ORDER BY code`)).rows,
       caps: (await db.query(`SELECT provider_code, capability, unit_cost_cents, is_live_source, timeout_ms, enabled FROM provider_capabilities ORDER BY provider_code, capability`)).rows,
     }));
-    return Promise.all(
+    const out = await Promise.all(
       rows.providers.map(async (p) => ({
         ...p,
         capabilities: await Promise.all(
@@ -261,6 +275,7 @@ export class StaffConsoleController {
         ),
       })),
     );
+    return strict(z.array(StaffProviderSchema), out);
   }
 
   @Patch('providers/:code/:capability')
@@ -279,7 +294,7 @@ export class StaffConsoleController {
   @RequireStaffRole('admin')
   async prices() {
     return inStaff(this.c, async (db) =>
-      (await db.query(`SELECT sku, description, billing_type, unit_price_cents, effective_from, effective_to FROM price_book ORDER BY sku, effective_from DESC`)).rows,
+      strict(z.array(PriceSchema), (await db.query(`SELECT sku, description, billing_type, unit_price_cents, effective_from, effective_to FROM price_book ORDER BY sku, effective_from DESC`)).rows),
     );
   }
 
@@ -327,7 +342,7 @@ export class StaffConsoleController {
           ORDER BY m.created_at DESC LIMIT $3 OFFSET $4`,
         [q.q ? likeTerm(q.q) : null, q.template ?? null, limit, offset],
       );
-      return { items: r.rows.map(({ total: _t, ...x }) => x), total: r.rows[0]?.total ?? 0, page: q.page, page_size: q.page_size };
+      return strict(StaffMailPageSchema, { items: r.rows.map(({ total: _t, ...x }) => x), total: r.rows[0]?.total ?? 0, page: q.page, page_size: q.page_size });
     });
   }
 
@@ -352,7 +367,7 @@ export class StaffConsoleController {
       if (!m) throw new ApiError(404, 'not_found', 'That message was not found.');
       await staffAudit(db, req, { tenantId: m.tenant_id, action: 'staff.mail_viewed', entityType: 'email_outbox', entityId: id, details: { template: m.template } });
       const { tenant_id: _t, ...out } = m;
-      return utcInstants(out);
+      return strict(StaffMailSchema, utcInstants(out));
     });
   }
 }
