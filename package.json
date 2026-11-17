@@ -36,7 +36,10 @@
     "web:build": "npm run build --workspace @tshepovet/web",
     "web:typecheck": "npm run typecheck --workspace @tshepovet/web",
     "web:test": "playwright test -c apps/web/playwright.config.ts",
+    "design:pending": "node tools/design-sync.mjs pending",
     "design:pull": "node tools/design-sync.mjs pull",
+    "design:applied": "node tools/design-sync.mjs applied",
+    "design:declined": "node tools/design-sync.mjs declined",
     "design:push": "node tools/design-sync.mjs push",
     "design:check": "node tools/design-sync.mjs check",
     "design:css": "node tools/design-sync.mjs css"

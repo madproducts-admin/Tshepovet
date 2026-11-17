@@ -197,7 +197,7 @@ export function StaffShell({ band, children }: { band: ReactNode; children: Reac
               <Who compact={collapsed} />
             </div>
           </aside>
-          <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[90rem] px-4 py-8 outline-none sm:px-8 lg:px-10">
+          <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[var(--layout-content)] px-4 py-8 outline-none sm:px-8 lg:px-10">
             {children}
           </main>
         </div>

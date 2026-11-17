@@ -202,7 +202,7 @@ function Frame({ band, children }: { band: ReactNode; children: ReactNode }) {
             <UserMenu compact={collapsed} />
           </div>
         </aside>
-        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[90rem] px-4 py-8 outline-none sm:px-8 lg:px-10">
+        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[var(--layout-content)] px-4 py-8 outline-none sm:px-8 lg:px-10">
           {mustEnrol ? <Spinner label="Opening two-step verification setup" /> : children}
         </main>
       </div>

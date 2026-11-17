@@ -78,9 +78,13 @@ export function SidebarToggle({ collapsed, onToggle, controls }: { collapsed: bo
   );
 }
 
-/** The grid that holds the sidebar and the page: 17rem expanded, a 6rem rail collapsed. */
+/** The grid that holds the sidebar and the page. The widths and the motion come from the design
+ * reference (design/tokens.json: --layout-sidebar, --layout-rail, --motion-fast, --motion-ease). */
 export const sidebarGrid = (collapsed: boolean) =>
-  cn('lg:grid motion-safe:transition-[grid-template-columns] motion-safe:duration-150', collapsed ? 'lg:grid-cols-[6rem_minmax(0,1fr)]' : 'lg:grid-cols-[17rem_minmax(0,1fr)]');
+  cn(
+    'lg:grid motion-safe:transition-[grid-template-columns] motion-safe:duration-[var(--motion-fast)] motion-safe:ease-[var(--motion-ease)]',
+    collapsed ? 'lg:grid-cols-[var(--layout-rail)_minmax(0,1fr)]' : 'lg:grid-cols-[var(--layout-sidebar)_minmax(0,1fr)]',
+  );
 
 export const sidebarAside = (collapsed: boolean) =>
   cn('sticky top-0 hidden h-dvh flex-col gap-6 border-r border-rule bg-sheet py-5 lg:flex', collapsed ? 'px-2' : 'px-3');

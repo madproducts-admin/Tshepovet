@@ -16,19 +16,24 @@ printing gives the vocabulary, used sparingly:
 
 ## Where the design lives
 
-The design system and the page map are edited in the owner's project dashboard (`dashboard.html`,
-kept out of git: its Design system and User interface tabs). `npm run design:pull` carries them
-into the repository as `design/tokens.json` and `design/pages.json` and generates
-`app/tokens.css` (never edit that file by hand); `npm run design:push` sends the repository's
-copy back to the dashboard. `npm run design:check` (run before every browser test run and deploy)
-fails when:
+The design system and the page layouts are edited in the owner's project dashboard
+(`dashboard.html`, kept out of git: its Color Palette & Themes, Typography & Font Scaling, Layout &
+Structure and Brand Assets & Micro-interactions tabs), where every edit is a requested change until
+Claude applies it (`design/README.md` has the sync steps). `npm run design:pull` carries them into
+the repository as `design/tokens.json` and `design/pages.json` and generates `app/tokens.css`
+(never edit that file by hand): the colours, the type scale, the radii, and, as plain custom
+properties, the interface scale (the root font size), `--layout-sidebar`, `--layout-rail`,
+`--layout-content`, `--motion-fast` and `--motion-ease`, which the sidebar, the main column and
+`Button` use. `npm run design:push` sends the repository's copy back to the dashboard.
+`npm run design:check` (run before every browser test run and deploy) fails when:
 
 - `app/tokens.css` was not generated from `design/tokens.json`;
 - a pair in `tokens.json`'s `contrast` list is under its minimum (7:1 text, 3:1 control edges),
   in either theme (`pull` refuses such colours outright);
+- a token setting is not a valid length, duration, easing or percentage;
 - `tokens.json` names a font that `app/layout.tsx` does not load through `next/font`;
-- a page is added to or removed from `app/` without `design/pages.json` (pages there are
-  `built` or `planned`; the owner's notes on a page are printed as change requests).
+- a page is added to or removed from `app/` without `design/pages.json` (a `proposed` page is
+  planned, not built; the owner's change requests on pages are printed).
 
 When a change starts in code instead (a new page, a new token), update `design/*.json` in the
 same commit and run `npm run design:push` so the dashboard shows it.

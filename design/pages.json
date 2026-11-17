@@ -1,4 +1,19 @@
 {
+  "version": 2,
+  "reference": "Every page of TshepoVet's web app, read from apps/web/app/**/page.tsx: its shell, who can open it, and its regions top to bottom. Open a page to see its layout; edit it, or write a change request, and Claude applies it at the next sync. `npm run design:check` fails when a page exists in the code but not here, or the reverse.",
+  "syncedAt": "2026-11-17",
+  "shell": {
+    "summary": "Signed-in pages (the buyer portal and the staff console) sit in a collapsible left sidebar shell: a skip link, the sandbox band, a 17rem sidebar on large screens that collapses to a 6rem rail, and the main column up to 90rem wide. Public pages have a top bar and a footer; account pages a centred card.",
+    "header": [
+      "Skip link",
+      "Sandbox band (sandbox only), above everything",
+      "Phones/tablets only: top bar with brand (seal, 'TshepoVet', organisation legal name) and a 'Menu' button"
+    ],
+    "mobile": "Below 1024px the sidebar is hidden; a top bar shows the brand and a 'Menu' button that opens a dialog titled 'Menu' with the same nav list and, under a rule, the account button/menu. Content is single-column; tables scroll sideways.",
+    "banners": [
+      "The sandbox band (Specimen) on every page"
+    ]
+  },
   "shells": [
     {
       "id": "public",
@@ -177,931 +192,2642 @@
       "phone": "Whatever the page does; the design system page is a single max-w-6xl column whose grids stack."
     }
   ],
+  "areas": [
+    {
+      "slug": "public",
+      "label": "Public site",
+      "section": "Public"
+    },
+    {
+      "slug": "account",
+      "label": "Account",
+      "section": "Public"
+    },
+    {
+      "slug": "portal",
+      "label": "Buyer portal",
+      "section": "Buyers"
+    },
+    {
+      "slug": "supplier",
+      "label": "Supplier",
+      "section": "Suppliers"
+    },
+    {
+      "slug": "staff",
+      "label": "Staff console",
+      "section": "TshepoVet staff"
+    },
+    {
+      "slug": "reference",
+      "label": "Reference",
+      "section": "Reference"
+    }
+  ],
   "pages": [
     {
+      "id": "home",
       "route": "/",
-      "name": "Know who you are paying.",
-      "area": "Public site",
+      "area": "public",
       "shell": "public",
-      "status": "built",
-      "access": "Anyone",
+      "inShell": false,
+      "title": "Know who you are paying.",
       "purpose": "A visitor learns what a TshepoVet check answers and starts an account or looks at prices.",
+      "access": "Anyone",
+      "layout": "Public site",
+      "states": "Company-check price is read from the API at render time",
       "regions": [
-        "Hero (two columns on large screens): h1 'Know who you are paying.', lead paragraph, buttons 'Create an account' and 'See the prices', line giving the company-check price and 'no subscription'",
-        "Specimen passport beside the hero: a sample Verified Vendor Passport for 'Specimen Trading (Pty) Ltd', overprinted 'Specimen', tilted slightly",
-        "Section 'What one check answers': 5 question/answer pairs in two columns (registered and still in business; directors; tax compliant today; B-BBEE level; can its driver drive your load)",
-        "Section 'How it works' (tinted band): 3 numbered steps 'Add a supplier', 'Check it, or let it onboard itself', 'Hear before anything lapses'",
-        "Two columns: 'Invited by a customer?' with links 'Sign in as a supplier' and 'Check a printed passport'; 'For developers' with three API endpoints in mono and 'Read the API documentation'"
+        {
+          "id": "r1",
+          "name": "Hero (two columns on large screens)",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Know who you are paying.', lead paragraph, buttons 'Create an account' and 'See the prices', line giving the company-check price and 'no subscription'",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Specimen passport beside the hero",
+          "kind": "header",
+          "span": "full",
+          "contents": "a sample Verified Vendor Passport for 'Specimen Trading (Pty) Ltd', overprinted 'Specimen', tilted slightly",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Section 'What one check answers'",
+          "kind": "card",
+          "span": "full",
+          "contents": "5 question/answer pairs in two columns (registered and still in business; directors; tax compliant today; B-BBEE level; can its driver drive your load)",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Section 'How it works' (tinted band)",
+          "kind": "banner",
+          "span": "full",
+          "contents": "3 numbered steps 'Add a supplier', 'Check it, or let it onboard itself', 'Hear before anything lapses'",
+          "condition": null
+        },
+        {
+          "id": "r5",
+          "name": "Two columns",
+          "kind": "card",
+          "span": "full",
+          "contents": "'Invited by a customer?' with links 'Sign in as a supplier' and 'Check a printed passport'; 'For developers' with three API endpoints in mono and 'Read the API documentation'",
+          "condition": null
+        }
       ],
-      "states": [
-        "Company-check price is read from the API at render time"
+      "files": [
+        "apps/web/app/(public)/page.tsx"
       ],
-      "file": "apps/web/app/(public)/page.tsx",
-      "notes": ""
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "pricing",
       "route": "/pricing",
-      "name": "Pricing",
-      "area": "Public site",
+      "area": "public",
       "shell": "public",
-      "status": "built",
-      "access": "Anyone",
+      "inShell": false,
+      "title": "Pricing",
       "purpose": "A visitor sees what each check and module costs from a prepaid rand wallet.",
+      "access": "Anyone",
+      "layout": "Public site",
+      "states": "Sandbox callout; Prices and modules come from the API",
       "regions": [
-        "Header: h1 'Pricing', paragraph on topping up a wallet in rand, no subscription, VAT rate",
-        "Callout 'This is the sandbox' (sandbox only): pretend money, sample data, same prices",
-        "Section 'Checks': price list of 4 rows, name and description left, price and unit right: Company check; Company check, fresh from the bureau; Driving licence check; Monitoring (a supplier a month)",
-        "Note: onboarding costs a supplier nothing, checks are charged to the inviting customer",
-        "Section 'Modules' (only when modules exist): monthly price rows with description and 'Not available yet: reason'",
-        "Buttons: 'Create an account', 'Read the API documentation'"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Pricing', paragraph on topping up a wallet in rand, no subscription, VAT rate",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Callout 'This is the sandbox' (sandbox only)",
+          "kind": "banner",
+          "span": "full",
+          "contents": "pretend money, sample data, same prices",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Section 'Checks'",
+          "kind": "card",
+          "span": "full",
+          "contents": "price list of 4 rows, name and description left, price and unit right: Company check; Company check, fresh from the bureau; Driving licence check; Monitoring (a supplier a month)",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Note",
+          "kind": "banner",
+          "span": "full",
+          "contents": "onboarding costs a supplier nothing, checks are charged to the inviting customer",
+          "condition": null
+        },
+        {
+          "id": "r5",
+          "name": "Section 'Modules' (only when modules exist)",
+          "kind": "card",
+          "span": "full",
+          "contents": "monthly price rows with description and 'Not available yet: reason'",
+          "condition": null
+        },
+        {
+          "id": "r6",
+          "name": "Buttons",
+          "kind": "toolbar",
+          "span": "full",
+          "contents": "'Create an account', 'Read the API documentation'",
+          "condition": null
+        }
       ],
-      "states": [
-        "Sandbox callout",
-        "Prices and modules come from the API"
+      "files": [
+        "apps/web/app/(public)/pricing/page.tsx"
       ],
-      "file": "apps/web/app/(public)/pricing/page.tsx",
-      "notes": ""
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "glossary",
       "route": "/glossary",
-      "name": "Words we use",
-      "area": "Public site",
+      "area": "public",
       "shell": "public",
-      "status": "built",
-      "access": "Anyone",
+      "inShell": false,
+      "title": "Words we use",
       "purpose": "A reader looks up an abbreviation or compliance term in plain words.",
+      "access": "Anyone",
+      "layout": "Public site",
+      "states": "",
       "regions": [
-        "Header: h1 'Words we use', description 'South African compliance has its own vocabulary. Here is what each term means, in plain words.'",
-        "Definition list, A to Z, divided by rules: each term in bold with its expansion in brackets, then a plain explanation (AVS, B-BBEE, CIDB, CIPC, COIDA, CSD, DSR, EME, KYB, PAIA, POPIA, PrDP, QSE, SARS, TCS, VAT)",
-        "Each entry carries an anchor id (the term in lower case) so it can be linked directly"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Words we use', description 'South African compliance has its own vocabulary. Here is what each term means, in plain words.'",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Definition list, A to Z, divided by rules",
+          "kind": "table",
+          "span": "full",
+          "contents": "each term in bold with its expansion in brackets, then a plain explanation (AVS, B-BBEE, CIDB, CIPC, COIDA, CSD, DSR, EME, KYB, PAIA, POPIA, PrDP, QSE, SARS, TCS, VAT)",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Each entry carries an anchor id (the term in lo…",
+          "kind": "list",
+          "span": "full",
+          "contents": "Each entry carries an anchor id (the term in lower case) so it can be linked directly",
+          "condition": null
+        }
       ],
-      "states": [],
-      "file": "apps/web/app/(public)/glossary/page.tsx",
-      "notes": ""
+      "files": [
+        "apps/web/app/(public)/glossary/page.tsx"
+      ],
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "legal-doc",
       "route": "/legal/[doc]",
-      "name": "Privacy notice / Terms of use",
-      "area": "Public site",
+      "area": "public",
       "shell": "public",
-      "status": "built",
-      "access": "Anyone",
+      "inShell": false,
+      "title": "Privacy notice / Terms of use",
       "purpose": "A reader reads the privacy notice (/legal/privacy) or the terms of use (/legal/terms).",
+      "access": "Anyone",
+      "layout": "Public site",
+      "states": "Only 'privacy' and 'terms' exist; any other value is a 404",
       "regions": [
-        "Header: h1 the document title ('Privacy notice' or 'Terms of use')",
-        "Callout (caution) 'Draft': 'This text is waiting for legal review and may change before TshepoVet goes live.'",
-        "Sections, each an h2 with paragraphs. Privacy: Who we are; What we process, and why; How long we keep it; Where it is kept; Your rights. Terms: The sandbox; Your account; Checks; Charges"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 the document title ('Privacy notice' or 'Terms of use')",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Callout (caution) 'Draft'",
+          "kind": "banner",
+          "span": "full",
+          "contents": "'This text is waiting for legal review and may change before TshepoVet goes live.'",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Sections, each an h2 with paragraphs. Privacy",
+          "kind": "card",
+          "span": "full",
+          "contents": "Who we are; What we process, and why; How long we keep it; Where it is kept; Your rights. Terms: The sandbox; Your account; Checks; Charges",
+          "condition": null
+        }
       ],
-      "states": [
-        "Only 'privacy' and 'terms' exist; any other value is a 404"
+      "files": [
+        "apps/web/app/(public)/legal/[doc]/page.tsx"
       ],
-      "file": "apps/web/app/(public)/legal/[doc]/page.tsx",
-      "notes": ""
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "passport-id",
       "route": "/passport/[id]",
-      "name": "<supplier legal name> (Verified Vendor Passport)",
-      "area": "Supplier",
+      "area": "supplier",
       "shell": "public",
-      "status": "built",
-      "access": "Anyone with the link (not indexed); shown only while the supplier keeps it published",
+      "inShell": false,
+      "title": "<supplier legal name> (Verified Vendor Passport)",
       "purpose": "A buyer opens or prints a supplier's published Verified Vendor Passport.",
+      "access": "Anyone with the link (not indexed); shown only while the supplier keeps it published",
+      "layout": "Public site",
+      "states": "Withdrawn: sheet with 'Withdrawn' stamp and h1 'This passport was withdrawn'; API unreachable: caution callout 'The passport could not be loaded'; Unknown id: 404; Print layout",
       "regions": [
-        "Passport sheet header: guilloche band, large verified seal, 'Verified Vendor Passport', h1 legal name, registration number in mono",
-        "Facts grid (only the fields the supplier chose): Status on the CIPC register (stamp), Tax compliance (SARS) stamp with PIN validity and check date, VAT, B-BBEE level with evidence validity, Directors (initials), Verified date",
-        "Sheet footer: QR code that opens this page, verification code in groups of four, how to check a printed copy",
-        "Actions (hidden when printing): 'Print or save as PDF' button, 'Check a printed copy' link",
-        "Disclaimer: the facts describe the company on the verified date"
+        {
+          "id": "r1",
+          "name": "Passport sheet header",
+          "kind": "header",
+          "span": "full",
+          "contents": "guilloche band, large verified seal, 'Verified Vendor Passport', h1 legal name, registration number in mono",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Facts grid (only the fields the supplier chose)",
+          "kind": "card",
+          "span": "full",
+          "contents": "Status on the CIPC register (stamp), Tax compliance (SARS) stamp with PIN validity and check date, VAT, B-BBEE level with evidence validity, Directors (initials), Verified date",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Sheet footer",
+          "kind": "card",
+          "span": "full",
+          "contents": "QR code that opens this page, verification code in groups of four, how to check a printed copy",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Actions (hidden when printing)",
+          "kind": "toolbar",
+          "span": "full",
+          "contents": "'Print or save as PDF' button, 'Check a printed copy' link",
+          "condition": null
+        },
+        {
+          "id": "r5",
+          "name": "Disclaimer",
+          "kind": "banner",
+          "span": "full",
+          "contents": "the facts describe the company on the verified date",
+          "condition": null
+        }
       ],
-      "states": [
-        "Withdrawn: sheet with 'Withdrawn' stamp and h1 'This passport was withdrawn'",
-        "API unreachable: caution callout 'The passport could not be loaded'",
-        "Unknown id: 404",
-        "Print layout"
+      "files": [
+        "apps/web/app/(public)/passport/[id]/page.tsx"
       ],
-      "file": "apps/web/app/(public)/passport/[id]/page.tsx",
-      "notes": ""
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "verify-passport",
       "route": "/verify-passport",
-      "name": "Check a supplier passport",
-      "area": "Public site",
+      "area": "public",
       "shell": "public",
-      "status": "built",
-      "access": "Anyone",
+      "inShell": false,
+      "title": "Check a supplier passport",
       "purpose": "A buyer types the code from a printed passport to see whether it is genuine and current.",
+      "access": "Anyone",
+      "layout": "Public site",
+      "states": "Validation error for a short code; Network error message",
       "regions": [
-        "Header: h1 'Check a supplier passport', paragraph explaining the printed passport and its code",
-        "Form: 'Verification code' field (mono; hint 'Printed at the bottom of the passport, in groups of four'), 'Check the code' button",
-        "Result callout (live region): 'Genuine and current', 'Genuine, but out of date', 'Genuine, but the passport was withdrawn' or 'TshepoVet did not issue this code'; 'Open the current passport' link when there is one"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Check a supplier passport', paragraph explaining the printed passport and its code",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Form",
+          "kind": "form",
+          "span": "full",
+          "contents": "'Verification code' field (mono; hint 'Printed at the bottom of the passport, in groups of four'), 'Check the code' button",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Result callout (live region)",
+          "kind": "banner",
+          "span": "full",
+          "contents": "'Genuine and current', 'Genuine, but out of date', 'Genuine, but the passport was withdrawn' or 'TshepoVet did not issue this code'; 'Open the current passport' link when there is one",
+          "condition": null
+        }
       ],
-      "states": [
-        "Validation error for a short code",
-        "Network error message"
+      "files": [
+        "apps/web/app/(public)/verify-passport/page.tsx"
       ],
-      "file": "apps/web/app/(public)/verify-passport/page.tsx",
-      "notes": ""
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "onboard",
       "route": "/onboard",
-      "name": "Supplier onboarding for <buyer>",
-      "area": "Supplier",
+      "area": "supplier",
       "shell": "public",
-      "status": "built",
-      "access": "Anyone holding a valid onboarding link (token in the URL fragment, kept in sessionStorage for the tab); links come from a buyer's 'Invite to onboard' email",
+      "inShell": false,
+      "title": "Supplier onboarding for <buyer>",
       "purpose": "A supplier invited by a buyer agrees to the checks and adds its company, identity, B-BBEE, bank and tax details step by step.",
+      "access": "Anyone holding a valid onboarding link (token in the URL fragment, kept in sessionStorage for the tab); links come from a buyer's 'Invite to onboard' email",
+      "layout": "Public site",
+      "states": "Loading: 'Opening your invitation'; Expired or withdrawn link: 'This link has expired or was withdrawn'; Company disputed: caution callout, flow stops; Error callout on a failed step; Sandbox: sample documents instead of uploads",
       "regions": [
-        "Header: h1 'Supplier onboarding for {buyer}', supplier legal name with registration number",
-        "Steps bar: Agree, Company, Identity, B-BBEE, Bank, Tax, Review (numbered, current step highlighted)",
-        "Step sheet 'Before you start': what happens to the information, link to the privacy notice, sandbox callout, 'Your full name', 'Your role at the company' (optional), consent checkbox, 'Agree and continue'",
-        "Step sheet 'Is this your company?': registered name, status, directors as the CIPC register has them; 'Yes, this is my company' / 'No, something is wrong'",
-        "Step sheets 'Your identity document' and 'B-BBEE evidence': retake/wrong-document callouts, sandbox radio list of sample documents (live: 'Uploads open when TshepoVet goes live'), 'Add the document'; B-BBEE also 'My customer does not need this'",
-        "Step sheet 'Bank details': Bank select, Account number, Account type radios; 'Add bank details' / 'Skip for now'",
-        "Step sheet 'Tax compliance': Income tax reference number, Tax compliance status PIN; 'Check with SARS' / 'Skip for now'",
-        "Step sheet 'Check and submit': stamp per item (Company, Identity document, B-BBEE, Bank details, Tax compliance); 'Publish a Verified Vendor Passport' checkbox for directors, otherwise an info callout; 'Submit to {buyer}'",
-        "Done sheet 'Submitted': seal, '{buyer} has your details', link to sign in as a supplier (directors only)"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Supplier onboarding for {buyer}', supplier legal name with registration number",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Steps bar",
+          "kind": "tabs",
+          "span": "full",
+          "contents": "Agree, Company, Identity, B-BBEE, Bank, Tax, Review (numbered, current step highlighted)",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Step sheet 'Before you start'",
+          "kind": "tabs",
+          "span": "full",
+          "contents": "what happens to the information, link to the privacy notice, sandbox callout, 'Your full name', 'Your role at the company' (optional), consent checkbox, 'Agree and continue'",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Step sheet 'Is this your company?'",
+          "kind": "tabs",
+          "span": "full",
+          "contents": "registered name, status, directors as the CIPC register has them; 'Yes, this is my company' / 'No, something is wrong'",
+          "condition": null
+        },
+        {
+          "id": "r5",
+          "name": "Step sheets 'Your identity document' and 'B-BBEE evidence'",
+          "kind": "tabs",
+          "span": "full",
+          "contents": "retake/wrong-document callouts, sandbox radio list of sample documents (live: 'Uploads open when TshepoVet goes live'), 'Add the document'; B-BBEE also 'My customer does not need this'",
+          "condition": null
+        },
+        {
+          "id": "r6",
+          "name": "Step sheet 'Bank details'",
+          "kind": "tabs",
+          "span": "full",
+          "contents": "Bank select, Account number, Account type radios; 'Add bank details' / 'Skip for now'",
+          "condition": null
+        },
+        {
+          "id": "r7",
+          "name": "Step sheet 'Tax compliance'",
+          "kind": "tabs",
+          "span": "full",
+          "contents": "Income tax reference number, Tax compliance status PIN; 'Check with SARS' / 'Skip for now'",
+          "condition": null
+        },
+        {
+          "id": "r8",
+          "name": "Step sheet 'Check and submit'",
+          "kind": "tabs",
+          "span": "full",
+          "contents": "stamp per item (Company, Identity document, B-BBEE, Bank details, Tax compliance); 'Publish a Verified Vendor Passport' checkbox for directors, otherwise an info callout; 'Submit to {buyer}'",
+          "condition": null
+        },
+        {
+          "id": "r9",
+          "name": "Done sheet 'Submitted'",
+          "kind": "banner",
+          "span": "full",
+          "contents": "seal, '{buyer} has your details', link to sign in as a supplier (directors only)",
+          "condition": null
+        }
       ],
-      "states": [
-        "Loading: 'Opening your invitation'",
-        "Expired or withdrawn link: 'This link has expired or was withdrawn'",
-        "Company disputed: caution callout, flow stops",
-        "Error callout on a failed step",
-        "Sandbox: sample documents instead of uploads"
+      "files": [
+        "apps/web/app/(public)/onboard/page.tsx"
       ],
-      "file": "apps/web/app/(public)/onboard/page.tsx",
-      "notes": ""
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "sign-in",
       "route": "/sign-in",
-      "name": "Sign in to TshepoVet",
-      "area": "Account",
+      "area": "account",
       "shell": "auth",
-      "status": "built",
-      "access": "Anyone (buyer accounts)",
+      "inShell": false,
+      "title": "Sign in to TshepoVet",
       "purpose": "A buyer user signs in with email and password, then an authenticator code if two-step verification is on.",
+      "access": "Anyone (buyer accounts)",
+      "layout": "Account (sign-in and recovery)",
+      "states": "Code step; Expired challenge returns to the password step; After sign-in goes to ?next= inside /app, or /app/mfa-setup",
       "regions": [
-        "Header: h1 'Sign in to TshepoVet'",
-        "Error summary and problem callout, with 'Send the confirmation email again' (unverified email) or 'Reset your password' (wrong password / locked)",
-        "Form: Email address, Password with show/hide button, full-width 'Sign in'",
-        "Links: 'Forgot your password?', 'New to TshepoVet? Create an account'",
-        "Second step on the same page: h1 'Two-step verification', 'Code' field (or 'Recovery code'), 'Sign in', toggle 'I cannot use my authenticator app' / 'Use a code from the app instead'"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Sign in to TshepoVet'",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Error summary and problem callout, with 'Send t…",
+          "kind": "banner",
+          "span": "full",
+          "contents": "Error summary and problem callout, with 'Send the confirmation email again' (unverified email) or 'Reset your password' (wrong password / locked)",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Form",
+          "kind": "form",
+          "span": "full",
+          "contents": "Email address, Password with show/hide button, full-width 'Sign in'",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Links",
+          "kind": "toolbar",
+          "span": "full",
+          "contents": "'Forgot your password?', 'New to TshepoVet? Create an account'",
+          "condition": null
+        },
+        {
+          "id": "r5",
+          "name": "Second step on the same page",
+          "kind": "form",
+          "span": "full",
+          "contents": "h1 'Two-step verification', 'Code' field (or 'Recovery code'), 'Sign in', toggle 'I cannot use my authenticator app' / 'Use a code from the app instead'",
+          "condition": null
+        }
       ],
-      "states": [
-        "Code step",
-        "Expired challenge returns to the password step",
-        "After sign-in goes to ?next= inside /app, or /app/mfa-setup"
+      "files": [
+        "apps/web/app/(auth)/sign-in/page.tsx"
       ],
-      "file": "apps/web/app/(auth)/sign-in/page.tsx",
-      "notes": ""
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "sign-up",
       "route": "/sign-up",
-      "name": "Create your TshepoVet account",
-      "area": "Account",
+      "area": "account",
       "shell": "auth",
-      "status": "built",
-      "access": "Anyone",
+      "inShell": false,
+      "title": "Create your TshepoVet account",
       "purpose": "A new buyer organisation creates its workspace and owner account.",
-      "regions": [
-        "Header: h1 'Create your TshepoVet account', 'Your organisation gets its own workspace, a wallet for checks, and you as its owner.'",
-        "Error summary and problem callout",
-        "Form: Organisation (registered name), Your full name, Work email address, Password with show/hide and hint, checkbox 'I accept the terms of use and have read the privacy notice', full-width 'Create account'",
-        "Link: 'Already have an account? Sign in'",
-        "After submit: h1 'Check your email', 'Nothing arrived?' info callout, 'Back to sign in'"
-      ],
-      "states": [],
-      "file": "apps/web/app/(auth)/sign-up/page.tsx",
-      "notes": ""
-    },
-    {
-      "route": "/verify-email",
-      "name": "Confirm your email address",
-      "area": "Account",
-      "shell": "auth",
-      "status": "built",
-      "access": "Anyone with the emailed link (token in fragment), or ?resend=email from sign-in",
-      "purpose": "A new user confirms their email address, or asks for a new confirmation link.",
-      "regions": [
-        "While checking the link: spinner 'Confirming your email address'",
-        "Success: h1 'Email address confirmed', 'You can sign in now.', 'Sign in' button",
-        "Expired link or resend: h1 'This link has expired or was already used' (or 'Confirm your email address'), Email address field, 'Send a new link'",
-        "After resending: h1 'Check your email' with 'Nothing arrived?' callout and 'Back to sign in'"
-      ],
-      "states": [],
-      "file": "apps/web/app/(auth)/verify-email/page.tsx",
-      "notes": ""
-    },
-    {
-      "route": "/forgot-password",
-      "name": "Reset your password",
-      "area": "Account",
-      "shell": "auth",
-      "status": "built",
       "access": "Anyone",
+      "layout": "Account (sign-in and recovery)",
+      "states": "",
+      "regions": [
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Create your TshepoVet account', 'Your organisation gets its own workspace, a wallet for checks, and you as its owner.'",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Error summary and problem callout",
+          "kind": "banner",
+          "span": "full",
+          "contents": "Error summary and problem callout",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Form",
+          "kind": "form",
+          "span": "full",
+          "contents": "Organisation (registered name), Your full name, Work email address, Password with show/hide and hint, checkbox 'I accept the terms of use and have read the privacy notice', full-width 'Create account'",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Link",
+          "kind": "toolbar",
+          "span": "full",
+          "contents": "'Already have an account? Sign in'",
+          "condition": null
+        },
+        {
+          "id": "r5",
+          "name": "After submit",
+          "kind": "banner",
+          "span": "full",
+          "contents": "h1 'Check your email', 'Nothing arrived?' info callout, 'Back to sign in'",
+          "condition": null
+        }
+      ],
+      "files": [
+        "apps/web/app/(auth)/sign-up/page.tsx"
+      ],
+      "request": "",
+      "proposed": false
+    },
+    {
+      "id": "verify-email",
+      "route": "/verify-email",
+      "area": "account",
+      "shell": "auth",
+      "inShell": false,
+      "title": "Confirm your email address",
+      "purpose": "A new user confirms their email address, or asks for a new confirmation link.",
+      "access": "Anyone with the emailed link (token in fragment), or ?resend=email from sign-in",
+      "layout": "Account (sign-in and recovery)",
+      "states": "",
+      "regions": [
+        {
+          "id": "r1",
+          "name": "While checking the link",
+          "kind": "toolbar",
+          "span": "full",
+          "contents": "spinner 'Confirming your email address'",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Success",
+          "kind": "banner",
+          "span": "full",
+          "contents": "h1 'Email address confirmed', 'You can sign in now.', 'Sign in' button",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Expired link or resend",
+          "kind": "toolbar",
+          "span": "full",
+          "contents": "h1 'This link has expired or was already used' (or 'Confirm your email address'), Email address field, 'Send a new link'",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "After resending",
+          "kind": "banner",
+          "span": "full",
+          "contents": "h1 'Check your email' with 'Nothing arrived?' callout and 'Back to sign in'",
+          "condition": null
+        }
+      ],
+      "files": [
+        "apps/web/app/(auth)/verify-email/page.tsx"
+      ],
+      "request": "",
+      "proposed": false
+    },
+    {
+      "id": "forgot-password",
+      "route": "/forgot-password",
+      "area": "account",
+      "shell": "auth",
+      "inShell": false,
+      "title": "Reset your password",
       "purpose": "A user asks for a password-reset link by email.",
+      "access": "Anyone",
+      "layout": "Account (sign-in and recovery)",
+      "states": "",
       "regions": [
-        "Header: h1 'Reset your password', 'Enter the email address you sign in with...'",
-        "Form: Email address, full-width 'Send reset link'",
-        "Link: 'Back to sign in'",
-        "After submit: h1 'Check your email' with 'Nothing arrived?' callout"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Reset your password', 'Enter the email address you sign in with...'",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Form",
+          "kind": "form",
+          "span": "full",
+          "contents": "Email address, full-width 'Send reset link'",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Link",
+          "kind": "toolbar",
+          "span": "full",
+          "contents": "'Back to sign in'",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "After submit",
+          "kind": "banner",
+          "span": "full",
+          "contents": "h1 'Check your email' with 'Nothing arrived?' callout",
+          "condition": null
+        }
       ],
-      "states": [],
-      "file": "apps/web/app/(auth)/forgot-password/page.tsx",
-      "notes": ""
+      "files": [
+        "apps/web/app/(auth)/forgot-password/page.tsx"
+      ],
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "reset-password",
       "route": "/reset-password",
-      "name": "Choose a new password",
-      "area": "Account",
+      "area": "account",
       "shell": "auth",
-      "status": "built",
-      "access": "Anyone with the emailed reset link (token in fragment)",
+      "inShell": false,
+      "title": "Choose a new password",
       "purpose": "A user sets a new password from the reset email.",
+      "access": "Anyone with the emailed reset link (token in fragment)",
+      "layout": "Account (sign-in and recovery)",
+      "states": "No token: h1 'This link is not complete' with 'Ask for a new link'",
       "regions": [
-        "Header: h1 'Choose a new password'",
-        "Problem callout with 'Ask for a new link'",
-        "Form: New password with show/hide and hint, full-width 'Change password'",
-        "Done: h1 'Password changed', 'You were signed out everywhere...', 'Sign in' button"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Choose a new password'",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Problem callout with 'Ask for a new link'",
+          "kind": "toolbar",
+          "span": "full",
+          "contents": "Problem callout with 'Ask for a new link'",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Form",
+          "kind": "form",
+          "span": "full",
+          "contents": "New password with show/hide and hint, full-width 'Change password'",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Done",
+          "kind": "banner",
+          "span": "full",
+          "contents": "h1 'Password changed', 'You were signed out everywhere...', 'Sign in' button",
+          "condition": null
+        }
       ],
-      "states": [
-        "No token: h1 'This link is not complete' with 'Ask for a new link'"
+      "files": [
+        "apps/web/app/(auth)/reset-password/page.tsx"
       ],
-      "file": "apps/web/app/(auth)/reset-password/page.tsx",
-      "notes": ""
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "accept-invite",
       "route": "/accept-invite",
-      "name": "Join <organisation>",
-      "area": "Account",
+      "area": "account",
       "shell": "auth",
-      "status": "built",
-      "access": "Anyone with a team invitation link (token in fragment)",
+      "inShell": false,
+      "title": "Join <organisation>",
       "purpose": "An invited colleague sets their name and password and joins the organisation.",
+      "access": "Anyone with a team invitation link (token in fragment)",
+      "layout": "Account (sign-in and recovery)",
+      "states": "Loading: 'Opening your invitation'; Expired: h1 'This invitation has expired or was already used'; After joining goes to /app or /app/mfa-setup",
       "regions": [
-        "Header: h1 'Join {organisation}', 'You were invited as a {role}. You will sign in with {email}.'",
-        "Error summary and problem callout",
-        "Form: Your full name, Choose a password with show/hide and hint, full-width 'Join {organisation}'"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Join {organisation}', 'You were invited as a {role}. You will sign in with {email}.'",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Error summary and problem callout",
+          "kind": "banner",
+          "span": "full",
+          "contents": "Error summary and problem callout",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Form",
+          "kind": "form",
+          "span": "full",
+          "contents": "Your full name, Choose a password with show/hide and hint, full-width 'Join {organisation}'",
+          "condition": null
+        }
       ],
-      "states": [
-        "Loading: 'Opening your invitation'",
-        "Expired: h1 'This invitation has expired or was already used'",
-        "After joining goes to /app or /app/mfa-setup"
+      "files": [
+        "apps/web/app/(auth)/accept-invite/page.tsx"
       ],
-      "file": "apps/web/app/(auth)/accept-invite/page.tsx",
-      "notes": ""
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "app",
       "route": "/app",
-      "name": "Good to see you, <first name> (Overview)",
-      "area": "Buyer portal",
+      "area": "portal",
       "shell": "portal",
-      "status": "built",
-      "access": "Signed-in buyer (no page guard; the nav item needs suppliers:read)",
+      "inShell": true,
+      "title": "Good to see you, <first name> (Overview)",
       "purpose": "A buyer sees this month's checks, suppliers, expiries and wallet at a glance.",
+      "access": "Signed-in buyer (no page guard; the nav item needs suppliers:read)",
+      "layout": "Buyer portal",
+      "states": "Loading skeleton; Error callout with 'Try again'",
       "regions": [
-        "Header: h1 'Good to see you, {first name}', organisation name, 'Run a check' button (checks:run)",
-        "Callouts: 'Your wallet is running low' with 'Top up the wallet' (wallet:read); '{n} things need attention' with 'See the alerts'",
-        "Section 'This month': 4 stat tiles - Checks run (% verified, 'See all checks'), Suppliers (approved / in progress), Expiring in 30 days ('See the calendar'), Wallet available (held amount, 'Open the wallet')",
-        "Sheet 'Latest checks': list of supplier link, check type and time, outcome stamp; empty state 'No checks yet' with 'Run your first check'",
-        "Sheet 'Recent activity' (audit:read) with 'Audit log' link: action, actor, time"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Good to see you, {first name}', organisation name, 'Run a check' button (checks:run)",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Callouts",
+          "kind": "banner",
+          "span": "full",
+          "contents": "'Your wallet is running low' with 'Top up the wallet' (wallet:read); '{n} things need attention' with 'See the alerts'",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Section 'This month'",
+          "kind": "card",
+          "span": "full",
+          "contents": "4 stat tiles - Checks run (% verified, 'See all checks'), Suppliers (approved / in progress), Expiring in 30 days ('See the calendar'), Wallet available (held amount, 'Open the wallet')",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Sheet 'Latest checks'",
+          "kind": "card",
+          "span": "full",
+          "contents": "list of supplier link, check type and time, outcome stamp; empty state 'No checks yet' with 'Run your first check'",
+          "condition": null
+        },
+        {
+          "id": "r5",
+          "name": "Sheet 'Recent activity' (audit",
+          "kind": "card",
+          "span": "full",
+          "contents": "read) with 'Audit log' link: action, actor, time",
+          "condition": null
+        }
       ],
-      "states": [
-        "Loading skeleton",
-        "Error callout with 'Try again'"
+      "files": [
+        "apps/web/app/app/page.tsx"
       ],
-      "file": "apps/web/app/app/page.tsx",
-      "notes": ""
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "app-suppliers",
       "route": "/app/suppliers",
-      "name": "Suppliers",
-      "area": "Buyer portal",
+      "area": "portal",
       "shell": "portal",
-      "status": "built",
-      "access": "Signed-in buyer with suppliers:read",
+      "inShell": true,
+      "title": "Suppliers",
       "purpose": "A buyer searches, filters and opens the suppliers they pay, and adds new ones.",
+      "access": "Signed-in buyer with suppliers:read",
+      "layout": "Buyer portal",
+      "states": "Empty: 'No suppliers yet...' or 'No suppliers match these filters.'; Filters, sort and page kept in the URL; No permission: 'You cannot open this page'",
       "regions": [
-        "Header: h1 'Suppliers', description, buttons 'Add a supplier' (suppliers:write) and 'Run a check' (checks:run)",
-        "Filter bar: Search (name, registration number or your reference), Status select, Risk select, Monitoring select, 'Views' menu (saved views, 'Save this view', delete a view), 'Export CSV'",
-        "Table (sortable): Supplier (name, registration number, your reference), Status stamp, Last check (outcome stamp and time), Risk, Monitoring (with 'Payments locked' stamp), Next expiry",
-        "Pagination, 25 per page",
-        "Dialog 'Add a supplier': Registration number, Your reference (optional), Industry; 'already on your list' callout with link",
-        "Dialog 'Save this view': Name"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Suppliers', description, buttons 'Add a supplier' (suppliers:write) and 'Run a check' (checks:run)",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Filter bar",
+          "kind": "toolbar",
+          "span": "full",
+          "contents": "Search (name, registration number or your reference), Status select, Risk select, Monitoring select, 'Views' menu (saved views, 'Save this view', delete a view), 'Export CSV'",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Table (sortable)",
+          "kind": "table",
+          "span": "full",
+          "contents": "Supplier (name, registration number, your reference), Status stamp, Last check (outcome stamp and time), Risk, Monitoring (with 'Payments locked' stamp), Next expiry",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Pagination, 25 per page",
+          "kind": "toolbar",
+          "span": "full",
+          "contents": "Pagination, 25 per page",
+          "condition": null
+        },
+        {
+          "id": "r5",
+          "name": "Dialog 'Add a supplier'",
+          "kind": "dialog",
+          "span": "full",
+          "contents": "Registration number, Your reference (optional), Industry; 'already on your list' callout with link",
+          "condition": null
+        },
+        {
+          "id": "r6",
+          "name": "Dialog 'Save this view'",
+          "kind": "dialog",
+          "span": "full",
+          "contents": "Name",
+          "condition": null
+        }
       ],
-      "states": [
-        "Empty: 'No suppliers yet...' or 'No suppliers match these filters.'",
-        "Filters, sort and page kept in the URL",
-        "No permission: 'You cannot open this page'"
+      "files": [
+        "apps/web/app/app/suppliers/page.tsx"
       ],
-      "file": "apps/web/app/app/suppliers/page.tsx",
-      "notes": ""
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "app-suppliers-id",
       "route": "/app/suppliers/[id]",
-      "name": "<supplier legal name>",
-      "area": "Buyer portal",
+      "area": "portal",
       "shell": "portal",
-      "status": "built",
-      "access": "Signed-in buyer with suppliers:read (changes need suppliers:write, monitoring:manage, checks:run; audit tab audit:read)",
+      "inShell": true,
+      "title": "<supplier legal name>",
       "purpose": "A buyer reviews everything known about one supplier and approves, monitors, invites or locks payments to it.",
+      "access": "Signed-in buyer with suppliers:read (changes need suppliers:write, monitoring:manage, checks:run; audit tab audit:read)",
+      "layout": "Buyer portal",
+      "states": "Loading skeleton / error with retry; Payments locked callout",
       "regions": [
-        "Header: breadcrumbs Suppliers > name; h1 legal name; status stamp, latest outcome stamp, registration number; buttons 'Run a check', 'Invite to onboard', 'Change status' menu (Approve, Send for review, Reject, Suspend, Offboard), 'Edit'",
-        "Callout 'Payments to this supplier are locked' (when locked)",
-        "Tabs: Facts, People, B-BBEE and bank, Documents, Onboarding, Monitoring, Checks, Audit trail (audit:read)",
-        "Facts tab: 'The company' record (registered and trading name, registration no, entity type, CIPC status, incorporated, annual return due, VAT, CSD) and 'Your relationship' (status, risk, your reference, industry, approved, added)",
-        "People tab: 'Directors and members' table and 'Beneficial owners' table; B-BBEE and bank tab: 'B-BBEE status' record and 'Bank accounts' (last four digits, verified stamp)",
-        "Documents tab: 'Documents' and 'Licences and permits' tables; Onboarding tab: 'Onboarding invitations' table (Sent to, Status, Sent, Link works until, Withdraw)",
-        "Monitoring tab: 'Continuous monitoring' (Start/Stop monitoring, Lock/Unlock/Override payments) and 'What expires when' list; Checks tab: list of checks with outcome stamps; Audit trail tab: timeline with 'Show older entries'",
-        "Dialogs: 'Invite the supplier to onboard', '{Action} this supplier?' with Reason, 'Edit supplier details' (reference, risk rating, industry), 'Start monitoring' (accounting lock, consent), lock/unlock with Reason, 'Withdraw the invitation?'"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "breadcrumbs Suppliers > name; h1 legal name; status stamp, latest outcome stamp, registration number; buttons 'Run a check', 'Invite to onboard', 'Change status' menu (Approve, Send for review, Reject, Suspend, Offboard), 'Edit'",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Callout 'Payments to this supplier are locked' …",
+          "kind": "banner",
+          "span": "full",
+          "contents": "Callout 'Payments to this supplier are locked' (when locked)",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Tabs",
+          "kind": "tabs",
+          "span": "full",
+          "contents": "Facts, People, B-BBEE and bank, Documents, Onboarding, Monitoring, Checks, Audit trail (audit:read)",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Facts tab",
+          "kind": "tabs",
+          "span": "full",
+          "contents": "'The company' record (registered and trading name, registration no, entity type, CIPC status, incorporated, annual return due, VAT, CSD) and 'Your relationship' (status, risk, your reference, industry, approved, added)",
+          "condition": null
+        },
+        {
+          "id": "r5",
+          "name": "People tab",
+          "kind": "tabs",
+          "span": "full",
+          "contents": "'Directors and members' table and 'Beneficial owners' table; B-BBEE and bank tab: 'B-BBEE status' record and 'Bank accounts' (last four digits, verified stamp)",
+          "condition": null
+        },
+        {
+          "id": "r6",
+          "name": "Documents tab",
+          "kind": "tabs",
+          "span": "full",
+          "contents": "'Documents' and 'Licences and permits' tables; Onboarding tab: 'Onboarding invitations' table (Sent to, Status, Sent, Link works until, Withdraw)",
+          "condition": null
+        },
+        {
+          "id": "r7",
+          "name": "Monitoring tab",
+          "kind": "tabs",
+          "span": "full",
+          "contents": "'Continuous monitoring' (Start/Stop monitoring, Lock/Unlock/Override payments) and 'What expires when' list; Checks tab: list of checks with outcome stamps; Audit trail tab: timeline with 'Show older entries'",
+          "condition": null
+        },
+        {
+          "id": "r8",
+          "name": "Dialogs",
+          "kind": "dialog",
+          "span": "full",
+          "contents": "'Invite the supplier to onboard', '{Action} this supplier?' with Reason, 'Edit supplier details' (reference, risk rating, industry), 'Start monitoring' (accounting lock, consent), lock/unlock with Reason, 'Withdraw the invitation?'",
+          "condition": null
+        }
       ],
-      "states": [
-        "Loading skeleton / error with retry",
-        "Payments locked callout"
+      "files": [
+        "apps/web/app/app/suppliers/[id]/page.tsx"
       ],
-      "file": "apps/web/app/app/suppliers/[id]/page.tsx",
-      "notes": ""
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "app-checks",
       "route": "/app/checks",
-      "name": "Checks",
-      "area": "Buyer portal",
+      "area": "portal",
       "shell": "portal",
-      "status": "built",
-      "access": "Signed-in buyer with suppliers:read",
+      "inShell": true,
+      "title": "Checks",
       "purpose": "A buyer browses every company and driver check run through the portal or the API.",
+      "access": "Signed-in buyer with suppliers:read",
+      "layout": "Buyer portal",
+      "states": "Empty: 'No checks match. Run one: the result appears here.'; Filters kept in the URL",
       "regions": [
-        "Header: h1 'Checks', description, 'Run a check' button (checks:run)",
-        "Filter bar: Search (supplier name, registration number or reference), Type select (All checks / Company / Driver), Result select (Any result, Verified, Verified with warnings, Failed checks, Not found, Could not verify)",
-        "Table (sortable): Checked (name or subject, check type), Result stamp, When, By, Cost (or 'Not charged')",
-        "Pagination, 25 per page"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Checks', description, 'Run a check' button (checks:run)",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Filter bar",
+          "kind": "toolbar",
+          "span": "full",
+          "contents": "Search (supplier name, registration number or reference), Type select (All checks / Company / Driver), Result select (Any result, Verified, Verified with warnings, Failed checks, Not found, Could not verify)",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Table (sortable)",
+          "kind": "table",
+          "span": "full",
+          "contents": "Checked (name or subject, check type), Result stamp, When, By, Cost (or 'Not charged')",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Pagination, 25 per page",
+          "kind": "toolbar",
+          "span": "full",
+          "contents": "Pagination, 25 per page",
+          "condition": null
+        }
       ],
-      "states": [
-        "Empty: 'No checks match. Run one: the result appears here.'",
-        "Filters kept in the URL"
+      "files": [
+        "apps/web/app/app/checks/page.tsx"
       ],
-      "file": "apps/web/app/app/checks/page.tsx",
-      "notes": ""
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "app-checks-new",
       "route": "/app/checks/new",
-      "name": "Run a check",
-      "area": "Buyer portal",
+      "area": "portal",
       "shell": "portal",
-      "status": "built",
-      "access": "Signed-in buyer with checks:run",
+      "inShell": true,
+      "title": "Run a check",
       "purpose": "A buyer runs a paid company or driver check from the wallet.",
+      "access": "Signed-in buyer with checks:run",
+      "layout": "Buyer portal",
+      "states": "Prefilled from ?registration= and ?type=driver; Submit disabled when the wallet is short; Redirects to the check result",
       "regions": [
-        "Header: breadcrumbs Checks > Run a check, h1 'Run a check'",
-        "Radio 'What do you want to check?': A company / A driver, each with its price",
-        "Company form: Registration number; 'What to check' checkboxes (Registration always, Directors, VAT registration, Tax compliance with SARS); VAT number, Income tax reference and TCS PIN fields when ticked; 'How fresh must the answer be?' radios; 'Keep monitoring this supplier'; Your reference",
-        "Driver form: Driver's ID number, Licence number (optional), Surname (optional), licence code checkboxes, PrDP category checkboxes (G, P, D)",
-        "Consent fieldset when needed: agreement checkbox, 'Where the evidence is kept'",
-        "Price line, or caution callout 'Your wallet does not have enough for this check'; submit 'Run the check for R...'",
-        "Side panel (sticky on wide screens): 'Your wallet' available balance with 'Top up the wallet'; sandbox callout listing test-data numbers"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "breadcrumbs Checks > Run a check, h1 'Run a check'",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Radio 'What do you want to check?'",
+          "kind": "form",
+          "span": "full",
+          "contents": "A company / A driver, each with its price",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Company form",
+          "kind": "form",
+          "span": "full",
+          "contents": "Registration number; 'What to check' checkboxes (Registration always, Directors, VAT registration, Tax compliance with SARS); VAT number, Income tax reference and TCS PIN fields when ticked; 'How fresh must the answer be?' radios; 'Keep monitoring this supplier'; Your reference",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Driver form",
+          "kind": "form",
+          "span": "full",
+          "contents": "Driver's ID number, Licence number (optional), Surname (optional), licence code checkboxes, PrDP category checkboxes (G, P, D)",
+          "condition": null
+        },
+        {
+          "id": "r5",
+          "name": "Consent fieldset when needed",
+          "kind": "form",
+          "span": "full",
+          "contents": "agreement checkbox, 'Where the evidence is kept'",
+          "condition": null
+        },
+        {
+          "id": "r6",
+          "name": "Price line, or caution callout 'Your wallet doe…",
+          "kind": "banner",
+          "span": "full",
+          "contents": "Price line, or caution callout 'Your wallet does not have enough for this check'; submit 'Run the check for R...'",
+          "condition": null
+        },
+        {
+          "id": "r7",
+          "name": "Side panel (sticky on wide screens)",
+          "kind": "card",
+          "span": "side",
+          "contents": "'Your wallet' available balance with 'Top up the wallet'; sandbox callout listing test-data numbers",
+          "condition": null
+        }
       ],
-      "states": [
-        "Prefilled from ?registration= and ?type=driver",
-        "Submit disabled when the wallet is short",
-        "Redirects to the check result"
+      "files": [
+        "apps/web/app/app/checks/new/page.tsx"
       ],
-      "file": "apps/web/app/app/checks/new/page.tsx",
-      "notes": ""
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "app-checks-id",
       "route": "/app/checks/[id]",
-      "name": "<supplier name or check subject>",
-      "area": "Buyer portal",
+      "area": "portal",
       "shell": "portal",
-      "status": "built",
-      "access": "Signed-in buyer with suppliers:read",
+      "inShell": true,
+      "title": "<supplier name or check subject>",
       "purpose": "A buyer reads the result of one check, part by part, with anything to act on.",
-      "regions": [
-        "Header: breadcrumbs Checks > name; h1 supplier name (or 'Company {reg}' / 'Driver {id}'); outcome stamp, check type, requester and exact time; 'Open the supplier' button",
-        "Callout 'Still checking' while processing (page polls every 2 seconds)",
-        "Sheet 'One thing to look at' / '{n} things to look at' listing risk flags with advice, or callout 'Nothing to look at'",
-        "Grid of one sheet per part (Registration (CIPC), Directors, VAT registration, Tax compliance (SARS), Driving licence, Professional driving permit, Identity): source and as-of date, status stamp, result facts or director list, warnings",
-        "Billing line: 'Charged R... (excluding VAT) from the wallet.' or 'Not charged.'"
-      ],
-      "states": [
-        "Processing (auto-refresh)",
-        "Loading / error with retry"
-      ],
-      "file": "apps/web/app/app/checks/[id]/page.tsx",
-      "notes": ""
-    },
-    {
-      "route": "/app/monitoring",
-      "name": "Monitoring",
-      "area": "Buyer portal",
-      "shell": "portal",
-      "status": "built",
       "access": "Signed-in buyer with suppliers:read",
+      "layout": "Buyer portal",
+      "states": "Processing (auto-refresh); Loading / error with retry",
+      "regions": [
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "breadcrumbs Checks > name; h1 supplier name (or 'Company {reg}' / 'Driver {id}'); outcome stamp, check type, requester and exact time; 'Open the supplier' button",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Callout 'Still checking' while processing (page…",
+          "kind": "banner",
+          "span": "full",
+          "contents": "Callout 'Still checking' while processing (page polls every 2 seconds)",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Sheet 'One thing to look at' / '{n} things to l…",
+          "kind": "card",
+          "span": "full",
+          "contents": "Sheet 'One thing to look at' / '{n} things to look at' listing risk flags with advice, or callout 'Nothing to look at'",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Grid of one sheet per part (Registration (CIPC)…",
+          "kind": "card",
+          "span": "full",
+          "contents": "Grid of one sheet per part (Registration (CIPC), Directors, VAT registration, Tax compliance (SARS), Driving licence, Professional driving permit, Identity): source and as-of date, status stamp, result facts or director list, warnings",
+          "condition": null
+        },
+        {
+          "id": "r5",
+          "name": "Billing line",
+          "kind": "stats",
+          "span": "full",
+          "contents": "'Charged R... (excluding VAT) from the wallet.' or 'Not charged.'",
+          "condition": null
+        }
+      ],
+      "files": [
+        "apps/web/app/app/checks/[id]/page.tsx"
+      ],
+      "request": "",
+      "proposed": false
+    },
+    {
+      "id": "app-monitoring",
+      "route": "/app/monitoring",
+      "area": "portal",
+      "shell": "portal",
+      "inShell": true,
+      "title": "Monitoring",
       "purpose": "A buyer sees what is lapsing, what has lapsed and whose payments are locked.",
+      "access": "Signed-in buyer with suppliers:read",
+      "layout": "Buyer portal",
+      "states": "",
       "regions": [
-        "Header: h1 'Monitoring', description",
-        "4 stat tiles: Monitored suppliers, Expiring in 30 days, Expired, Payments locked",
-        "Sheet 'Needs attention': alerts (supplier link, what lapses and when, stamp '{n} days left' / 'Expired' / 'Locked'), or an all-clear sentence",
-        "Sheet 'Expiry calendar': three-month window label, 'Earlier' / 'Later' buttons, items grouped by month (date, supplier link, what expires)",
-        "Sheet 'Monitored suppliers' table: Supplier, Monitored since, Accounting lock, Payments stamp, Next expiry; empty state 'No suppliers are monitored yet' with 'Go to suppliers'"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Monitoring', description",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "4 stat tiles",
+          "kind": "stats",
+          "span": "full",
+          "contents": "Monitored suppliers, Expiring in 30 days, Expired, Payments locked",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Sheet 'Needs attention'",
+          "kind": "card",
+          "span": "full",
+          "contents": "alerts (supplier link, what lapses and when, stamp '{n} days left' / 'Expired' / 'Locked'), or an all-clear sentence",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Sheet 'Expiry calendar'",
+          "kind": "card",
+          "span": "full",
+          "contents": "three-month window label, 'Earlier' / 'Later' buttons, items grouped by month (date, supplier link, what expires)",
+          "condition": null
+        },
+        {
+          "id": "r5",
+          "name": "Sheet 'Monitored suppliers' table",
+          "kind": "table",
+          "span": "full",
+          "contents": "Supplier, Monitored since, Accounting lock, Payments stamp, Next expiry; empty state 'No suppliers are monitored yet' with 'Go to suppliers'",
+          "condition": null
+        }
       ],
-      "states": [],
-      "file": "apps/web/app/app/monitoring/page.tsx",
-      "notes": ""
+      "files": [
+        "apps/web/app/app/monitoring/page.tsx"
+      ],
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "app-modules",
       "route": "/app/modules",
-      "name": "Modules",
-      "area": "Buyer portal",
+      "area": "portal",
       "shell": "portal",
-      "status": "built",
-      "access": "Any signed-in buyer (switching needs settings:manage; the scorecard needs modules:use)",
+      "inShell": true,
+      "title": "Modules",
       "purpose": "A buyer turns paid monthly modules on or off.",
+      "access": "Any signed-in buyer (switching needs settings:manage; the scorecard needs modules:use)",
+      "layout": "Buyer portal",
+      "states": "Insufficient funds error callout",
       "regions": [
-        "Header: h1 'Modules', description about monthly charges from the wallet",
-        "Grid of module sheets (2 columns): name, stamp On / 'Ends {date}' / Off, description, '{price} a month, excluding VAT', 'Not available yet' callout",
-        "Sheet buttons: 'Open the scorecard' (B-BBEE module when on), 'Turn on' / 'Turn off' / 'Keep it on'",
-        "Confirm dialogs: 'Turn on {module}?' (first month charged now), 'Turn off {module}?' (stays on to month end), 'Keep {module} on?'"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Modules', description about monthly charges from the wallet",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Grid of module sheets (2 columns)",
+          "kind": "card",
+          "span": "full",
+          "contents": "name, stamp On / 'Ends {date}' / Off, description, '{price} a month, excluding VAT', 'Not available yet' callout",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Sheet buttons",
+          "kind": "toolbar",
+          "span": "full",
+          "contents": "'Open the scorecard' (B-BBEE module when on), 'Turn on' / 'Turn off' / 'Keep it on'",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Confirm dialogs",
+          "kind": "dialog",
+          "span": "full",
+          "contents": "'Turn on {module}?' (first month charged now), 'Turn off {module}?' (stays on to month end), 'Keep {module} on?'",
+          "condition": null
+        }
       ],
-      "states": [
-        "Insufficient funds error callout"
+      "files": [
+        "apps/web/app/app/modules/page.tsx"
       ],
-      "file": "apps/web/app/app/modules/page.tsx",
-      "notes": ""
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "app-modules-bbbee",
       "route": "/app/modules/bbbee",
-      "name": "Preferential procurement (B-BBEE scorecard)",
-      "area": "Buyer portal",
+      "area": "portal",
       "shell": "portal",
-      "status": "built",
-      "access": "Signed-in buyer with modules:use",
+      "inShell": true,
+      "title": "Preferential procurement (B-BBEE scorecard)",
       "purpose": "A buyer records spend per supplier and sees how much counts towards its own B-BBEE scorecard.",
+      "access": "Signed-in buyer with modules:use",
+      "layout": "Buyer portal",
+      "states": "Reached only from the Modules page while the B-BBEE module is on",
       "regions": [
-        "Header: breadcrumbs Modules > B-BBEE scorecard, h1 'Preferential procurement', description",
-        "Sheet 'Measurement period': From and To date fields (default March to February)",
-        "4 stat tiles: Measured spend, Recognised spend (% of measured), Spend with EMEs and QSEs, Unverified spend",
-        "Sheet 'Targets that count ownership': spend with 51% black-owned, 30% black women-owned and empowering suppliers",
-        "Sheet 'By supplier' table: Supplier, Level, Spend, Recognised at, Recognised spend, Evidence stamp",
-        "Sheet 'Record spend' form: Supplier, Amount in rand, From, To, Description, 'Record spend' (empty state 'Add suppliers first')",
-        "Sheet 'Spend lines in this period': list with amount and 'Delete' (confirm 'Delete this spend line?')"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "breadcrumbs Modules > B-BBEE scorecard, h1 'Preferential procurement', description",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Sheet 'Measurement period'",
+          "kind": "card",
+          "span": "full",
+          "contents": "From and To date fields (default March to February)",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "4 stat tiles",
+          "kind": "stats",
+          "span": "full",
+          "contents": "Measured spend, Recognised spend (% of measured), Spend with EMEs and QSEs, Unverified spend",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Sheet 'Targets that count ownership'",
+          "kind": "card",
+          "span": "full",
+          "contents": "spend with 51% black-owned, 30% black women-owned and empowering suppliers",
+          "condition": null
+        },
+        {
+          "id": "r5",
+          "name": "Sheet 'By supplier' table",
+          "kind": "table",
+          "span": "full",
+          "contents": "Supplier, Level, Spend, Recognised at, Recognised spend, Evidence stamp",
+          "condition": null
+        },
+        {
+          "id": "r6",
+          "name": "Sheet 'Record spend' form",
+          "kind": "form",
+          "span": "full",
+          "contents": "Supplier, Amount in rand, From, To, Description, 'Record spend' (empty state 'Add suppliers first')",
+          "condition": null
+        },
+        {
+          "id": "r7",
+          "name": "Sheet 'Spend lines in this period'",
+          "kind": "card",
+          "span": "full",
+          "contents": "list with amount and 'Delete' (confirm 'Delete this spend line?')",
+          "condition": null
+        }
       ],
-      "states": [
-        "Reached only from the Modules page while the B-BBEE module is on"
+      "files": [
+        "apps/web/app/app/modules/bbbee/page.tsx"
       ],
-      "file": "apps/web/app/app/modules/bbbee/page.tsx",
-      "notes": ""
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "app-wallet",
       "route": "/app/wallet",
-      "name": "Wallet",
-      "area": "Buyer portal",
+      "area": "portal",
       "shell": "portal",
-      "status": "built",
-      "access": "Signed-in buyer with wallet:read (top-up and warning level need wallet:topup)",
+      "inShell": true,
+      "title": "Wallet",
       "purpose": "A buyer checks the prepaid balance, tops it up and downloads tax invoices.",
+      "access": "Signed-in buyer with wallet:read (top-up and warning level need wallet:topup)",
+      "layout": "Buyer portal",
+      "states": "Sandbox top-up moves no money; Low-balance callout; Frozen wallet status",
       "regions": [
-        "Header: h1 'Wallet', description, 'Top up' button",
-        "Two sheets side by side: 'Balance' (available now, Balance, Held for checks in progress, Warn me below with 'Change', Status; low-balance callout) and 'Held right now' (company/driver holds with amounts)",
-        "Sheet 'Movements': Show filter, 'Export CSV', table When / What / Details / Amount, pagination (20)",
-        "Sheet 'Top-ups and tax invoices': each top-up with invoice number, time, provider, 'Download the tax invoice (PDF)', paid amount with credit + VAT",
-        "Dialog 'Top up the wallet': amount radios R500, R1 000, R2 500, R10 000, Another amount; VAT breakdown; 'Pay R...'; then 'Wallet topped up' with credit, VAT, paid, invoice number, new balance",
-        "Dialog 'Warn me when the balance is low': Amount in rand"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Wallet', description, 'Top up' button",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Two sheets side by side",
+          "kind": "card",
+          "span": "full",
+          "contents": "'Balance' (available now, Balance, Held for checks in progress, Warn me below with 'Change', Status; low-balance callout) and 'Held right now' (company/driver holds with amounts)",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Sheet 'Movements'",
+          "kind": "card",
+          "span": "full",
+          "contents": "Show filter, 'Export CSV', table When / What / Details / Amount, pagination (20)",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Sheet 'Top-ups and tax invoices'",
+          "kind": "card",
+          "span": "full",
+          "contents": "each top-up with invoice number, time, provider, 'Download the tax invoice (PDF)', paid amount with credit + VAT",
+          "condition": null
+        },
+        {
+          "id": "r5",
+          "name": "Dialog 'Top up the wallet'",
+          "kind": "dialog",
+          "span": "full",
+          "contents": "amount radios R500, R1 000, R2 500, R10 000, Another amount; VAT breakdown; 'Pay R...'; then 'Wallet topped up' with credit, VAT, paid, invoice number, new balance",
+          "condition": null
+        },
+        {
+          "id": "r6",
+          "name": "Dialog 'Warn me when the balance is low'",
+          "kind": "dialog",
+          "span": "full",
+          "contents": "Amount in rand",
+          "condition": null
+        }
       ],
-      "states": [
-        "Sandbox top-up moves no money",
-        "Low-balance callout",
-        "Frozen wallet status"
+      "files": [
+        "apps/web/app/app/wallet/page.tsx"
       ],
-      "file": "apps/web/app/app/wallet/page.tsx",
-      "notes": ""
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "app-developers",
       "route": "/app/developers",
-      "name": "Developers",
-      "area": "Buyer portal",
+      "area": "portal",
       "shell": "portal",
-      "status": "built",
-      "access": "Signed-in buyer with developers:manage",
+      "inShell": true,
+      "title": "Developers",
       "purpose": "A developer makes API keys, adds webhook endpoints and tries the API with a test key.",
-      "regions": [
-        "Header: h1 'Developers', description with 'Read the API documentation' link",
-        "Tabs: API keys, Webhooks, Try the API",
-        "API keys tab: sheet 'API keys' with 'Make a key'; table Name, Key starts, Kind (Test/Live), Last used, State stamp, 'Revoke'",
-        "Webhooks tab: sheet 'Webhook endpoints' with 'Add endpoint'; list of URLs (link to the endpoint page), event count, failures, Sending/Paused stamp; code block 'Check a signature (Node.js)'",
-        "Try the API tab: sheet 'Call the API' (Test key, Scenario select, Registration number, 'Send request') beside the response code block",
-        "Dialogs: 'Make an API key' (Name, Kind) then 'Your new key' secret reveal; 'Add a webhook endpoint' (Address, Description, 'Events to send' checkboxes) then signing secret; 'Revoke {key}?' confirm"
-      ],
-      "states": [],
-      "file": "apps/web/app/app/developers/page.tsx",
-      "notes": ""
-    },
-    {
-      "route": "/app/developers/webhooks/[id]",
-      "name": "<webhook endpoint URL>",
-      "area": "Buyer portal",
-      "shell": "portal",
-      "status": "built",
       "access": "Signed-in buyer with developers:manage",
+      "layout": "Buyer portal",
+      "states": "",
+      "regions": [
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Developers', description with 'Read the API documentation' link",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Tabs",
+          "kind": "tabs",
+          "span": "full",
+          "contents": "API keys, Webhooks, Try the API",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "API keys tab",
+          "kind": "tabs",
+          "span": "full",
+          "contents": "sheet 'API keys' with 'Make a key'; table Name, Key starts, Kind (Test/Live), Last used, State stamp, 'Revoke'",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Webhooks tab",
+          "kind": "tabs",
+          "span": "full",
+          "contents": "sheet 'Webhook endpoints' with 'Add endpoint'; list of URLs (link to the endpoint page), event count, failures, Sending/Paused stamp; code block 'Check a signature (Node.js)'",
+          "condition": null
+        },
+        {
+          "id": "r5",
+          "name": "Try the API tab",
+          "kind": "tabs",
+          "span": "full",
+          "contents": "sheet 'Call the API' (Test key, Scenario select, Registration number, 'Send request') beside the response code block",
+          "condition": null
+        },
+        {
+          "id": "r6",
+          "name": "Dialogs",
+          "kind": "dialog",
+          "span": "full",
+          "contents": "'Make an API key' (Name, Kind) then 'Your new key' secret reveal; 'Add a webhook endpoint' (Address, Description, 'Events to send' checkboxes) then signing secret; 'Revoke {key}?' confirm",
+          "condition": null
+        }
+      ],
+      "files": [
+        "apps/web/app/app/developers/page.tsx"
+      ],
+      "request": "",
+      "proposed": false
+    },
+    {
+      "id": "app-developers-webhooks-id",
+      "route": "/app/developers/webhooks/[id]",
+      "area": "portal",
+      "shell": "portal",
+      "inShell": true,
+      "title": "<webhook endpoint URL>",
       "purpose": "A developer watches deliveries to one webhook endpoint, pauses it, rotates its secret or resends events.",
+      "access": "Signed-in buyer with developers:manage",
+      "layout": "Buyer portal",
+      "states": "",
       "regions": [
-        "Header: breadcrumbs Developers > Webhook endpoint; h1 endpoint URL in mono; Sending/Paused stamp; buttons 'Pause'/'Resume' and 'Rotate the secret'",
-        "Sheet 'New signing secret' with secret reveal (only after rotating)",
-        "Sheet 'Deliveries' table: Event, Sent, Result stamp (Delivered, Retrying, Gave up, Queued), Answer (HTTP status or error), Attempts, 'Send again'; pagination (20)",
-        "Confirm dialog 'Make a new signing secret?' (both secrets sign for 24 hours)"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "breadcrumbs Developers > Webhook endpoint; h1 endpoint URL in mono; Sending/Paused stamp; buttons 'Pause'/'Resume' and 'Rotate the secret'",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Sheet 'New signing secret' with secret reveal (…",
+          "kind": "card",
+          "span": "full",
+          "contents": "Sheet 'New signing secret' with secret reveal (only after rotating)",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Sheet 'Deliveries' table",
+          "kind": "table",
+          "span": "full",
+          "contents": "Event, Sent, Result stamp (Delivered, Retrying, Gave up, Queued), Answer (HTTP status or error), Attempts, 'Send again'; pagination (20)",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Confirm dialog 'Make a new signing secret?' (bo…",
+          "kind": "dialog",
+          "span": "full",
+          "contents": "Confirm dialog 'Make a new signing secret?' (both secrets sign for 24 hours)",
+          "condition": null
+        }
       ],
-      "states": [],
-      "file": "apps/web/app/app/developers/webhooks/[id]/page.tsx",
-      "notes": ""
+      "files": [
+        "apps/web/app/app/developers/webhooks/[id]/page.tsx"
+      ],
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "app-team",
       "route": "/app/team",
-      "name": "Team",
-      "area": "Buyer portal",
+      "area": "portal",
       "shell": "portal",
-      "status": "built",
-      "access": "Signed-in buyer with team:read (changes need team:manage)",
+      "inShell": true,
+      "title": "Team",
       "purpose": "An administrator invites colleagues, changes their roles and removes them.",
+      "access": "Signed-in buyer with team:read (changes need team:manage)",
+      "layout": "Buyer portal",
+      "states": "",
       "regions": [
-        "Header: h1 'Team', description, 'Invite someone' button (team:manage)",
-        "Sheet 'Members' table: Name with email and '(you)', Role (inline select for managers), Two-step verification stamp, Last signed in, 'Remove'",
-        "Sheet 'Waiting to accept' (only when invitations exist): email, role, expiry, 'Withdraw'",
-        "Sheet 'What each role may do': Owner, Admin, Compliance officer, Procurement, AP clerk, Viewer with a hint and permission count",
-        "Dialogs: 'Invite someone' (Email address, Role), confirm 'Remove {name}?', confirm 'Withdraw the invitation to {email}?'"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Team', description, 'Invite someone' button (team:manage)",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Sheet 'Members' table",
+          "kind": "table",
+          "span": "full",
+          "contents": "Name with email and '(you)', Role (inline select for managers), Two-step verification stamp, Last signed in, 'Remove'",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Sheet 'Waiting to accept' (only when invitations exist)",
+          "kind": "card",
+          "span": "full",
+          "contents": "email, role, expiry, 'Withdraw'",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Sheet 'What each role may do'",
+          "kind": "card",
+          "span": "full",
+          "contents": "Owner, Admin, Compliance officer, Procurement, AP clerk, Viewer with a hint and permission count",
+          "condition": null
+        },
+        {
+          "id": "r5",
+          "name": "Dialogs",
+          "kind": "dialog",
+          "span": "full",
+          "contents": "'Invite someone' (Email address, Role), confirm 'Remove {name}?', confirm 'Withdraw the invitation to {email}?'",
+          "condition": null
+        }
       ],
-      "states": [],
-      "file": "apps/web/app/app/team/page.tsx",
-      "notes": ""
+      "files": [
+        "apps/web/app/app/team/page.tsx"
+      ],
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "app-compliance",
       "route": "/app/compliance",
-      "name": "Compliance",
-      "area": "Buyer portal",
+      "area": "portal",
       "shell": "portal",
-      "status": "built",
-      "access": "Signed-in buyer with compliance:read (changes need compliance:manage)",
+      "inShell": true,
+      "title": "Compliance",
       "purpose": "A compliance officer shows POPIA records: consents, data-subject requests, privacy notices and the record of processing.",
+      "access": "Signed-in buyer with compliance:read (changes need compliance:manage)",
+      "layout": "Buyer portal",
+      "states": "",
       "regions": [
-        "Header: h1 'Compliance', POPIA description, 'Audit log' button (audit:read)",
-        "Tabs: Consents, Data-subject requests, Privacy notices, What we process",
-        "Consents tab: Show filter (All consents, Still in force, Fully withdrawn); table Who agreed, For (purposes with lawful basis, struck through when withdrawn), How, When, 'Record withdrawal'; pagination",
-        "Data-subject requests tab: sheet 'DSRs' with 'Log a request'; Show filter (Open, Closed, All); rows with request type and requester, received/due dates, status, days-left stamp, 'Update'",
-        "Privacy notices tab: one sheet per notice version with channel, dates and text; What we process tab: 'Record of processing' table (Processing, Lawful basis, Information, Special information, Kept for)",
-        "Dialogs: 'Record a withdrawal of consent' (purposes, how they told you), 'Log a data-subject request' (They asked to, Who asked, Notes), 'Update the request' (Status, identity confirmed, What was done)"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Compliance', POPIA description, 'Audit log' button (audit:read)",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Tabs",
+          "kind": "tabs",
+          "span": "full",
+          "contents": "Consents, Data-subject requests, Privacy notices, What we process",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Consents tab",
+          "kind": "tabs",
+          "span": "full",
+          "contents": "Show filter (All consents, Still in force, Fully withdrawn); table Who agreed, For (purposes with lawful basis, struck through when withdrawn), How, When, 'Record withdrawal'; pagination",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Data-subject requests tab",
+          "kind": "tabs",
+          "span": "full",
+          "contents": "sheet 'DSRs' with 'Log a request'; Show filter (Open, Closed, All); rows with request type and requester, received/due dates, status, days-left stamp, 'Update'",
+          "condition": null
+        },
+        {
+          "id": "r5",
+          "name": "Privacy notices tab",
+          "kind": "tabs",
+          "span": "full",
+          "contents": "one sheet per notice version with channel, dates and text; What we process tab: 'Record of processing' table (Processing, Lawful basis, Information, Special information, Kept for)",
+          "condition": null
+        },
+        {
+          "id": "r6",
+          "name": "Dialogs",
+          "kind": "dialog",
+          "span": "full",
+          "contents": "'Record a withdrawal of consent' (purposes, how they told you), 'Log a data-subject request' (They asked to, Who asked, Notes), 'Update the request' (Status, identity confirmed, What was done)",
+          "condition": null
+        }
       ],
-      "states": [],
-      "file": "apps/web/app/app/compliance/page.tsx",
-      "notes": ""
+      "files": [
+        "apps/web/app/app/compliance/page.tsx"
+      ],
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "app-compliance-audit",
       "route": "/app/compliance/audit",
-      "name": "Audit log",
-      "area": "Buyer portal",
+      "area": "portal",
       "shell": "portal",
-      "status": "built",
-      "access": "Signed-in buyer with audit:read",
+      "inShell": true,
+      "title": "Audit log",
       "purpose": "A compliance officer reads every change made in the organisation and checks the hash chain is intact.",
+      "access": "Signed-in buyer with audit:read",
+      "layout": "Buyer portal",
+      "states": "Empty: 'No entries match.'",
       "regions": [
-        "Header: breadcrumbs Compliance > Audit log, h1 'Audit log', description of the fingerprint chain, 'Check the chain' button",
-        "Result callout: 'The chain is intact' (entries checked) or 'The chain is broken' (entry number)",
-        "Filter bar: 'Action starts with' text field, 'Done by' select (Anyone, People, API keys, TshepoVet, TshepoVet support)",
-        "Table: When (exact), What happened, Who, On (entity type), From (IP)",
-        "Paging buttons 'Newer entries' / 'Older entries'"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "breadcrumbs Compliance > Audit log, h1 'Audit log', description of the fingerprint chain, 'Check the chain' button",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Result callout",
+          "kind": "banner",
+          "span": "full",
+          "contents": "'The chain is intact' (entries checked) or 'The chain is broken' (entry number)",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Filter bar",
+          "kind": "toolbar",
+          "span": "full",
+          "contents": "'Action starts with' text field, 'Done by' select (Anyone, People, API keys, TshepoVet, TshepoVet support)",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Table",
+          "kind": "table",
+          "span": "full",
+          "contents": "When (exact), What happened, Who, On (entity type), From (IP)",
+          "condition": null
+        },
+        {
+          "id": "r5",
+          "name": "Paging buttons 'Newer entries' / 'Older entries'",
+          "kind": "toolbar",
+          "span": "full",
+          "contents": "Paging buttons 'Newer entries' / 'Older entries'",
+          "condition": null
+        }
       ],
-      "states": [
-        "Empty: 'No entries match.'"
+      "files": [
+        "apps/web/app/app/compliance/audit/page.tsx"
       ],
-      "file": "apps/web/app/app/compliance/audit/page.tsx",
-      "notes": ""
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "app-settings",
       "route": "/app/settings",
-      "name": "Settings",
-      "area": "Buyer portal",
+      "area": "portal",
       "shell": "portal",
-      "status": "built",
-      "access": "Any signed-in buyer (editing needs settings:manage)",
+      "inShell": true,
+      "title": "Settings",
       "purpose": "An administrator edits the organisation's details and organisation-wide preferences.",
+      "access": "Any signed-in buyer (editing needs settings:manage)",
+      "layout": "Buyer portal",
+      "states": "Read-only for roles without settings:manage",
       "regions": [
-        "Header: h1 'Settings', description",
-        "Sheet 'Organisation': form Registered name, Registration number, VAT number, Information officer's email, checkbox 'We are a public-sector buyer', 'Save changes' (read-only list for users without settings:manage)",
-        "Sheet 'How TshepoVet works for you': switches 'Ask for consent on every check', 'Email me when the wallet runs low', 'Email me before documents expire'"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Settings', description",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Sheet 'Organisation'",
+          "kind": "card",
+          "span": "full",
+          "contents": "form Registered name, Registration number, VAT number, Information officer's email, checkbox 'We are a public-sector buyer', 'Save changes' (read-only list for users without settings:manage)",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Sheet 'How TshepoVet works for you'",
+          "kind": "card",
+          "span": "full",
+          "contents": "switches 'Ask for consent on every check', 'Email me when the wallet runs low', 'Email me before documents expire'",
+          "condition": null
+        }
       ],
-      "states": [
-        "Read-only for roles without settings:manage"
+      "files": [
+        "apps/web/app/app/settings/page.tsx"
       ],
-      "file": "apps/web/app/app/settings/page.tsx",
-      "notes": ""
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "app-account",
       "route": "/app/account",
-      "name": "Your account",
-      "area": "Account",
+      "area": "account",
       "shell": "portal",
-      "status": "built",
-      "access": "Any signed-in buyer",
+      "inShell": true,
+      "title": "Your account",
       "purpose": "A user manages their own two-step verification, password, theme and signed-in devices.",
+      "access": "Any signed-in buyer",
+      "layout": "Buyer portal",
+      "states": "",
       "regions": [
-        "Header: h1 'Your account', '{name}, {email}'",
-        "Sheet 'You': Name, Email address, Role, Organisation; theme switch (Light, Dark, Device)",
-        "Sheet 'Two-step verification' with On/Off stamp: 'New recovery codes' and 'Turn off' (not offered to owners/admins), or 'Turn on two-step verification'",
-        "Sheet 'Password': Current password, New password, 'Change password'",
-        "Sheet 'Where you are signed in': 'Sign out everywhere else' button, sessions list (device, IP, last active, 'Sign out')",
-        "Dialogs: 'New recovery codes' (password, then codes with 'Copy the codes'), 'Turn off two-step verification?' (password and app code)"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Your account', '{name}, {email}'",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Sheet 'You'",
+          "kind": "card",
+          "span": "full",
+          "contents": "Name, Email address, Role, Organisation; theme switch (Light, Dark, Device)",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Sheet 'Two-step verification' with On/Off stamp",
+          "kind": "tabs",
+          "span": "full",
+          "contents": "'New recovery codes' and 'Turn off' (not offered to owners/admins), or 'Turn on two-step verification'",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Sheet 'Password'",
+          "kind": "card",
+          "span": "full",
+          "contents": "Current password, New password, 'Change password'",
+          "condition": null
+        },
+        {
+          "id": "r5",
+          "name": "Sheet 'Where you are signed in'",
+          "kind": "card",
+          "span": "full",
+          "contents": "'Sign out everywhere else' button, sessions list (device, IP, last active, 'Sign out')",
+          "condition": null
+        },
+        {
+          "id": "r6",
+          "name": "Dialogs",
+          "kind": "dialog",
+          "span": "full",
+          "contents": "'New recovery codes' (password, then codes with 'Copy the codes'), 'Turn off two-step verification?' (password and app code)",
+          "condition": null
+        }
       ],
-      "states": [],
-      "file": "apps/web/app/app/account/page.tsx",
-      "notes": ""
+      "files": [
+        "apps/web/app/app/account/page.tsx"
+      ],
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "app-mfa-setup",
       "route": "/app/mfa-setup",
-      "name": "Set up two-step verification",
-      "area": "Account",
+      "area": "account",
       "shell": "portal",
-      "status": "built",
-      "access": "Any signed-in buyer; forced for roles that require it (session stage mfa_setup)",
+      "inShell": true,
+      "title": "Set up two-step verification",
       "purpose": "A user links an authenticator app and saves recovery codes.",
+      "access": "Any signed-in buyer; forced for roles that require it (session stage mfa_setup)",
+      "layout": "Buyer portal",
+      "states": "Shell nav hidden while forced; Already enrolled: redirects to /app/account",
       "regions": [
-        "Header: h1 'Set up two-step verification', description (forced users are told their role requires it)",
-        "Error callout",
-        "Sheet '1. Get an authenticator app'",
-        "Sheet '2. Add TshepoVet to it': QR code and the setup key in groups of four",
-        "Sheet '3. Enter the code it shows': 6-digit code field, 'Turn on two-step verification'",
-        "'Sign out instead' with confirm dialog (forced users only)",
-        "Done view: h1 'Two-step verification is on', 'Save these codes now' callout, recovery codes grid, 'Copy the codes', 'Continue to TshepoVet'"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Set up two-step verification', description (forced users are told their role requires it)",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Error callout",
+          "kind": "banner",
+          "span": "full",
+          "contents": "Error callout",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Sheet '1. Get an authenticator app'",
+          "kind": "card",
+          "span": "full",
+          "contents": "Sheet '1. Get an authenticator app'",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Sheet '2. Add TshepoVet to it'",
+          "kind": "card",
+          "span": "full",
+          "contents": "QR code and the setup key in groups of four",
+          "condition": null
+        },
+        {
+          "id": "r5",
+          "name": "Sheet '3. Enter the code it shows'",
+          "kind": "card",
+          "span": "full",
+          "contents": "6-digit code field, 'Turn on two-step verification'",
+          "condition": null
+        },
+        {
+          "id": "r6",
+          "name": "'Sign out instead' with confirm dialog (forced …",
+          "kind": "dialog",
+          "span": "full",
+          "contents": "'Sign out instead' with confirm dialog (forced users only)",
+          "condition": null
+        },
+        {
+          "id": "r7",
+          "name": "Done view",
+          "kind": "banner",
+          "span": "full",
+          "contents": "h1 'Two-step verification is on', 'Save these codes now' callout, recovery codes grid, 'Copy the codes', 'Continue to TshepoVet'",
+          "condition": null
+        }
       ],
-      "states": [
-        "Shell nav hidden while forced",
-        "Already enrolled: redirects to /app/account"
+      "files": [
+        "apps/web/app/app/mfa-setup/page.tsx"
       ],
-      "file": "apps/web/app/app/mfa-setup/page.tsx",
-      "notes": ""
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "supplier-sign-in",
       "route": "/supplier/sign-in",
-      "name": "Sign in as a supplier",
-      "area": "Supplier",
+      "area": "supplier",
       "shell": "supplier",
-      "status": "built",
-      "access": "Anyone; sign-in works only for supplier directors whose ID matched the register",
+      "inShell": false,
+      "title": "Sign in as a supplier",
       "purpose": "A supplier director asks for a one-time sign-in link by email.",
+      "access": "Anyone; sign-in works only for supplier directors whose ID matched the register",
+      "layout": "Supplier self-service",
+      "states": "Link token in fragment: spinner 'Signing you in', then /supplier; Used/expired link: h1 'This link has expired or was already used'",
       "regions": [
-        "Header: h1 'Sign in as a supplier', 'Manage your passport, see which customers hold your details, and withdraw consent.'",
-        "Form: Email address (hint: the address the invitation went to), full-width 'Email me a sign-in link'",
-        "Link: 'Buying from suppliers? Sign in to the buyer portal'",
-        "After submit: h1 'Check your email' with 'Nothing arrived?' callout"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Sign in as a supplier', 'Manage your passport, see which customers hold your details, and withdraw consent.'",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Form",
+          "kind": "form",
+          "span": "full",
+          "contents": "Email address (hint: the address the invitation went to), full-width 'Email me a sign-in link'",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Link",
+          "kind": "toolbar",
+          "span": "full",
+          "contents": "'Buying from suppliers? Sign in to the buyer portal'",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "After submit",
+          "kind": "banner",
+          "span": "full",
+          "contents": "h1 'Check your email' with 'Nothing arrived?' callout",
+          "condition": null
+        }
       ],
-      "states": [
-        "Link token in fragment: spinner 'Signing you in', then /supplier",
-        "Used/expired link: h1 'This link has expired or was already used'"
+      "files": [
+        "apps/web/app/supplier/sign-in/page.tsx"
       ],
-      "file": "apps/web/app/supplier/sign-in/page.tsx",
-      "notes": ""
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "supplier",
       "route": "/supplier",
-      "name": "<company legal name> (Your company's record)",
-      "area": "Supplier",
+      "area": "supplier",
       "shell": "supplier",
-      "status": "built",
-      "access": "Supplier session (magic-link sign-in); without the session cookie redirected to /supplier/sign-in",
+      "inShell": false,
+      "title": "<company legal name> (Your company's record)",
       "purpose": "A supplier director controls the public passport, consents given to customers and POPIA requests to them.",
+      "access": "Supplier session (magic-link sign-in); without the session cookie redirected to /supplier/sign-in",
+      "layout": "Supplier self-service",
+      "states": "Passport suspended by TshepoVet callout; 'Your company has not been verified yet' callout; Loading / error",
       "regions": [
-        "Header: h1 company legal name, registration number, 'Signed in as {name} ({email})', 'Sign out' button",
-        "Left column: sheet 'Your Verified Vendor Passport' with status stamp; 'Open your passport' link; 'What it shows' checkboxes (8 fields); 'Publish the passport' or 'Save what it shows' + 'Withdraw the passport'",
-        "Sheet 'Customers who hold your details' table: Customer, Where it stands, Monitoring you, Since",
-        "Sheet 'Consents you gave': per customer, its purposes with 'Withdraw' buttons or 'Withdrawn' stamps",
-        "Sheet 'Your requests to customers' with 'Send a request': table Request, To, Status, Sent, Answer due",
-        "Right column: sheet 'Your company' (registered and trading name, registration no, entity type, CIPC status, VAT number) and sheet 'Documents on your record'",
-        "Dialogs: 'Withdraw your passport?', 'Withdraw consent to ...?', 'Send a request to a customer' (Customer, What you are asking radios, Details)"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 company legal name, registration number, 'Signed in as {name} ({email})', 'Sign out' button",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Left column",
+          "kind": "card",
+          "span": "main",
+          "contents": "sheet 'Your Verified Vendor Passport' with status stamp; 'Open your passport' link; 'What it shows' checkboxes (8 fields); 'Publish the passport' or 'Save what it shows' + 'Withdraw the passport'",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Sheet 'Customers who hold your details' table",
+          "kind": "table",
+          "span": "full",
+          "contents": "Customer, Where it stands, Monitoring you, Since",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Sheet 'Consents you gave'",
+          "kind": "card",
+          "span": "full",
+          "contents": "per customer, its purposes with 'Withdraw' buttons or 'Withdrawn' stamps",
+          "condition": null
+        },
+        {
+          "id": "r5",
+          "name": "Sheet 'Your requests to customers' with 'Send a request'",
+          "kind": "card",
+          "span": "full",
+          "contents": "table Request, To, Status, Sent, Answer due",
+          "condition": null
+        },
+        {
+          "id": "r6",
+          "name": "Right column",
+          "kind": "card",
+          "span": "side",
+          "contents": "sheet 'Your company' (registered and trading name, registration no, entity type, CIPC status, VAT number) and sheet 'Documents on your record'",
+          "condition": null
+        },
+        {
+          "id": "r7",
+          "name": "Dialogs",
+          "kind": "dialog",
+          "span": "full",
+          "contents": "'Withdraw your passport?', 'Withdraw consent to ...?', 'Send a request to a customer' (Customer, What you are asking radios, Details)",
+          "condition": null
+        }
       ],
-      "states": [
-        "Passport suspended by TshepoVet callout",
-        "'Your company has not been verified yet' callout",
-        "Loading / error"
+      "files": [
+        "apps/web/app/supplier/page.tsx"
       ],
-      "file": "apps/web/app/supplier/page.tsx",
-      "notes": ""
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "staff-sign-in",
       "route": "/staff/sign-in",
-      "name": "Staff sign-in",
-      "area": "Staff console",
+      "area": "staff",
       "shell": "staff-auth",
-      "status": "built",
-      "access": "Anyone (TshepoVet staff accounts); not indexed",
+      "inShell": false,
+      "title": "Staff sign-in",
       "purpose": "A TshepoVet staff member signs in with password and a mandatory authenticator code.",
+      "access": "Anyone (TshepoVet staff accounts); not indexed",
+      "layout": "Staff sign-in",
+      "states": "",
       "regions": [
-        "Header: h1 'Staff sign-in', 'For TshepoVet staff. Customers sign in at the portal.'",
-        "Error callout",
-        "Form: Email address, Password with show/hide, full-width 'Sign in'",
-        "Code step: '6-digit code' field, 'Continue'",
-        "Enrol step (staff without two-step yet): h1 'Set up two-step verification', QR code, setup key, '6-digit code', 'Turn on two-step verification'"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Staff sign-in', 'For TshepoVet staff. Customers sign in at the portal.'",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Error callout",
+          "kind": "banner",
+          "span": "full",
+          "contents": "Error callout",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Form",
+          "kind": "form",
+          "span": "full",
+          "contents": "Email address, Password with show/hide, full-width 'Sign in'",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Code step",
+          "kind": "form",
+          "span": "full",
+          "contents": "'6-digit code' field, 'Continue'",
+          "condition": null
+        },
+        {
+          "id": "r5",
+          "name": "Enrol step (staff without two-step yet)",
+          "kind": "form",
+          "span": "full",
+          "contents": "h1 'Set up two-step verification', QR code, setup key, '6-digit code', 'Turn on two-step verification'",
+          "condition": null
+        }
       ],
-      "states": [],
-      "file": "apps/web/app/staff/sign-in/page.tsx",
-      "notes": ""
+      "files": [
+        "apps/web/app/staff/sign-in/page.tsx"
+      ],
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "staff",
       "route": "/staff",
-      "name": "Staff console (Overview)",
-      "area": "Staff console",
+      "area": "staff",
       "shell": "staff",
-      "status": "built",
-      "access": "Any staff role (support, reviewer, admin)",
+      "inShell": true,
+      "title": "Staff console (Overview)",
       "purpose": "Staff see what is waiting for them across all tenants.",
+      "access": "Any staff role (support, reviewer, admin)",
+      "layout": "Staff console",
+      "states": "Refreshes every 30 seconds",
       "regions": [
-        "Header: h1 'Staff console', 'Signed in as {name} ({role}).'",
-        "Callout 'This is the sandbox' (sandbox only): mail held in the outbox, WhatsApp in the simulator, mock bureau",
-        "4 stat tiles: Waiting for review (documents, WhatsApp hand-offs), Open data requests (overdue, due within 7 days), Tenants (suspended), Checks in the last 24 hours (failed, running); links only for roles that can open them",
-        "Sheet 'Housekeeping': mail held in the sandbox outbox, last retention purge"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Staff console', 'Signed in as {name} ({role}).'",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Callout 'This is the sandbox' (sandbox only)",
+          "kind": "banner",
+          "span": "full",
+          "contents": "mail held in the outbox, WhatsApp in the simulator, mock bureau",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "4 stat tiles",
+          "kind": "stats",
+          "span": "full",
+          "contents": "Waiting for review (documents, WhatsApp hand-offs), Open data requests (overdue, due within 7 days), Tenants (suspended), Checks in the last 24 hours (failed, running); links only for roles that can open them",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Sheet 'Housekeeping'",
+          "kind": "card",
+          "span": "full",
+          "contents": "mail held in the sandbox outbox, last retention purge",
+          "condition": null
+        }
       ],
-      "states": [
-        "Refreshes every 30 seconds"
+      "files": [
+        "apps/web/app/staff/(console)/page.tsx"
       ],
-      "file": "apps/web/app/staff/(console)/page.tsx",
-      "notes": ""
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "staff-review",
       "route": "/staff/review",
-      "name": "Review queue",
-      "area": "Staff console",
+      "area": "staff",
       "shell": "staff",
-      "status": "built",
-      "access": "Staff with role reviewer or admin",
+      "inShell": true,
+      "title": "Review queue",
       "purpose": "A reviewer decides on documents the software could not judge and picks up WhatsApp hand-offs.",
+      "access": "Staff with role reviewer or admin",
+      "layout": "Staff console",
+      "states": "Other roles: 'Your staff role cannot open this page'; Empty tables: 'No documents are waiting.' / 'No conversation is waiting for a person.'",
       "regions": [
-        "Header: h1 'Review queue', description",
-        "Sheet 'Documents' table: Supplier, Document, Why it waits, Buyer, Waiting since, 'Decide'",
-        "Sheet 'WhatsApp hand-offs' table: Buyer, Supplier, Why, Waiting since, 'Open it' (to the simulator)",
-        "Dialog '{document}: {supplier}': Decision radios (Accept it / Reject it), Reason, 'Record the decision'"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Review queue', description",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Sheet 'Documents' table",
+          "kind": "table",
+          "span": "full",
+          "contents": "Supplier, Document, Why it waits, Buyer, Waiting since, 'Decide'",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Sheet 'WhatsApp hand-offs' table",
+          "kind": "table",
+          "span": "full",
+          "contents": "Buyer, Supplier, Why, Waiting since, 'Open it' (to the simulator)",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Dialog '{document}",
+          "kind": "dialog",
+          "span": "full",
+          "contents": "{supplier}': Decision radios (Accept it / Reject it), Reason, 'Record the decision'",
+          "condition": null
+        }
       ],
-      "states": [
-        "Other roles: 'Your staff role cannot open this page'",
-        "Empty tables: 'No documents are waiting.' / 'No conversation is waiting for a person.'"
+      "files": [
+        "apps/web/app/staff/(console)/review/page.tsx"
       ],
-      "file": "apps/web/app/staff/(console)/review/page.tsx",
-      "notes": ""
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "staff-tenants",
       "route": "/staff/tenants",
-      "name": "Tenants",
-      "area": "Staff console",
+      "area": "staff",
       "shell": "staff",
-      "status": "built",
-      "access": "Staff with role support or admin",
+      "inShell": true,
+      "title": "Tenants",
       "purpose": "Support staff find a buyer organisation.",
+      "access": "Staff with role support or admin",
+      "layout": "Staff console",
+      "states": "Empty: 'No tenant matches.'",
       "regions": [
-        "Header: h1 'Tenants', 'Opening a tenant is recorded in its audit log as a support view.'",
-        "Filters: 'Search by name', Status select (Any, Active, Suspended, Closed)",
-        "Table: Tenant (link), Status stamp, Users, Suppliers, Wallet, Joined",
-        "Pagination (25)"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Tenants', 'Opening a tenant is recorded in its audit log as a support view.'",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Filters",
+          "kind": "toolbar",
+          "span": "full",
+          "contents": "'Search by name', Status select (Any, Active, Suspended, Closed)",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Table",
+          "kind": "table",
+          "span": "full",
+          "contents": "Tenant (link), Status stamp, Users, Suppliers, Wallet, Joined",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Pagination (25)",
+          "kind": "toolbar",
+          "span": "full",
+          "contents": "Pagination (25)",
+          "condition": null
+        }
       ],
-      "states": [
-        "Empty: 'No tenant matches.'"
+      "files": [
+        "apps/web/app/staff/(console)/tenants/page.tsx"
       ],
-      "file": "apps/web/app/staff/(console)/tenants/page.tsx",
-      "notes": ""
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "staff-tenants-id",
       "route": "/staff/tenants/[id]",
-      "name": "<tenant legal name>",
-      "area": "Staff console",
+      "area": "staff",
       "shell": "staff",
-      "status": "built",
-      "access": "Staff with role support or admin; suspend/reinstate admin only",
+      "inShell": true,
+      "title": "<tenant legal name>",
       "purpose": "Support staff inspect one tenant, unlock users, verify its audit chain or suspend it.",
+      "access": "Staff with role support or admin; suspend/reinstate admin only",
+      "layout": "Staff console",
+      "states": "",
       "regions": [
-        "Header: breadcrumbs Tenants > name, h1 name, status stamp, 'Verify the audit chain', 'Suspend the tenant' / 'Reinstate the tenant' (admin)",
-        "Callout 'This view is on the tenant's record' (support view written to its audit log)",
-        "Chain result callout (intact with entry count, or broken)",
-        "Sheet 'Account': Wallet balance (held), Suppliers (monitored), Checks in 30 days, Joined",
-        "Sheet 'Users' table: Name, Email, Role, Two-step, State stamp, 'Unlock'",
-        "Sheet 'Recent activity' table: last 20 audit entries (What, By, When)",
-        "Dialog suspend/reinstate with Reason"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "breadcrumbs Tenants > name, h1 name, status stamp, 'Verify the audit chain', 'Suspend the tenant' / 'Reinstate the tenant' (admin)",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Callout 'This view is on the tenant's record' (…",
+          "kind": "banner",
+          "span": "full",
+          "contents": "Callout 'This view is on the tenant's record' (support view written to its audit log)",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Chain result callout (intact with entry count, …",
+          "kind": "banner",
+          "span": "full",
+          "contents": "Chain result callout (intact with entry count, or broken)",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Sheet 'Account'",
+          "kind": "card",
+          "span": "full",
+          "contents": "Wallet balance (held), Suppliers (monitored), Checks in 30 days, Joined",
+          "condition": null
+        },
+        {
+          "id": "r5",
+          "name": "Sheet 'Users' table",
+          "kind": "table",
+          "span": "full",
+          "contents": "Name, Email, Role, Two-step, State stamp, 'Unlock'",
+          "condition": null
+        },
+        {
+          "id": "r6",
+          "name": "Sheet 'Recent activity' table",
+          "kind": "table",
+          "span": "full",
+          "contents": "last 20 audit entries (What, By, When)",
+          "condition": null
+        },
+        {
+          "id": "r7",
+          "name": "Dialog suspend/reinstate with Reason",
+          "kind": "dialog",
+          "span": "full",
+          "contents": "Dialog suspend/reinstate with Reason",
+          "condition": null
+        }
       ],
-      "states": [],
-      "file": "apps/web/app/staff/(console)/tenants/[id]/page.tsx",
-      "notes": ""
+      "files": [
+        "apps/web/app/staff/(console)/tenants/[id]/page.tsx"
+      ],
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "staff-requests",
       "route": "/staff/requests",
-      "name": "Data requests",
-      "area": "Staff console",
+      "area": "staff",
       "shell": "staff",
-      "status": "built",
-      "access": "Staff with role support or admin",
+      "inShell": true,
+      "title": "Data requests",
       "purpose": "Support staff watch POPIA data-subject requests across all tenants against their 30-day deadline.",
-      "regions": [
-        "Header: h1 'Data requests', description",
-        "Table: Request, Buyer, Supplier, Status, Answer due stamp (date and days left, or days overdue)",
-        "Empty state text 'No open requests.'"
-      ],
-      "states": [],
-      "file": "apps/web/app/staff/(console)/requests/page.tsx",
-      "notes": ""
-    },
-    {
-      "route": "/staff/whatsapp",
-      "name": "WhatsApp simulator",
-      "area": "Staff console",
-      "shell": "staff",
-      "status": "built",
-      "access": "Any staff role (no role guard); sandbox only",
-      "purpose": "Staff play a supplier's phone to test the WhatsApp onboarding bot.",
-      "regions": [
-        "Header: h1 'WhatsApp simulator', 'Play the supplier's phone in the sandbox. The real bot answers.'",
-        "Left column, sheet 'Start an onboarding': Inviting buyer select, Supplier's mobile number, 'Send the invitation'",
-        "Left column, sheet 'Conversations': selectable list (+number, tenant: state); empty 'No conversations yet'",
-        "Right: phone sheet (+number, 'Invited by {tenant}', state stamp) with a scrolling chat log of bot and supplier bubbles and reply buttons",
-        "Under the chat: 'Message' field + 'Send'; 'Send a photo of a sample document' select + 'Send the photo'"
-      ],
-      "states": [
-        "Outside the sandbox: 'The simulator is only in the sandbox'",
-        "Polls every 2 seconds",
-        "?c= preselects a conversation (from the review queue)"
-      ],
-      "file": "apps/web/app/staff/(console)/whatsapp/page.tsx",
-      "notes": ""
-    },
-    {
-      "route": "/staff/mail",
-      "name": "Mail outbox",
-      "area": "Staff console",
-      "shell": "staff",
-      "status": "built",
       "access": "Staff with role support or admin",
+      "layout": "Staff console",
+      "states": "",
+      "regions": [
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Data requests', description",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Table",
+          "kind": "table",
+          "span": "full",
+          "contents": "Request, Buyer, Supplier, Status, Answer due stamp (date and days left, or days overdue)",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Empty state text 'No open requests.'",
+          "kind": "empty",
+          "span": "full",
+          "contents": "Empty state text 'No open requests.'",
+          "condition": null
+        }
+      ],
+      "files": [
+        "apps/web/app/staff/(console)/requests/page.tsx"
+      ],
+      "request": "",
+      "proposed": false
+    },
+    {
+      "id": "staff-whatsapp",
+      "route": "/staff/whatsapp",
+      "area": "staff",
+      "shell": "staff",
+      "inShell": true,
+      "title": "WhatsApp simulator",
+      "purpose": "Staff play a supplier's phone to test the WhatsApp onboarding bot.",
+      "access": "Any staff role (no role guard); sandbox only",
+      "layout": "Staff console",
+      "states": "Outside the sandbox: 'The simulator is only in the sandbox'; Polls every 2 seconds; ?c= preselects a conversation (from the review queue)",
+      "regions": [
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'WhatsApp simulator', 'Play the supplier's phone in the sandbox. The real bot answers.'",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Left column, sheet 'Start an onboarding'",
+          "kind": "card",
+          "span": "main",
+          "contents": "Inviting buyer select, Supplier's mobile number, 'Send the invitation'",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Left column, sheet 'Conversations'",
+          "kind": "card",
+          "span": "main",
+          "contents": "selectable list (+number, tenant: state); empty 'No conversations yet'",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Right",
+          "kind": "card",
+          "span": "side",
+          "contents": "phone sheet (+number, 'Invited by {tenant}', state stamp) with a scrolling chat log of bot and supplier bubbles and reply buttons",
+          "condition": null
+        },
+        {
+          "id": "r5",
+          "name": "Under the chat",
+          "kind": "form",
+          "span": "full",
+          "contents": "'Message' field + 'Send'; 'Send a photo of a sample document' select + 'Send the photo'",
+          "condition": null
+        }
+      ],
+      "files": [
+        "apps/web/app/staff/(console)/whatsapp/page.tsx"
+      ],
+      "request": "",
+      "proposed": false
+    },
+    {
+      "id": "staff-mail",
+      "route": "/staff/mail",
+      "area": "staff",
+      "shell": "staff",
+      "inShell": true,
+      "title": "Mail outbox",
       "purpose": "Staff read the emails the sandbox would have sent.",
+      "access": "Staff with role support or admin",
+      "layout": "Staff console",
+      "states": "Empty: 'No messages match.'",
       "regions": [
-        "Header: h1 'Mail outbox', description (reading a message is recorded)",
-        "Search: 'Search by address or subject'",
-        "Table: Subject, To, Tenant, When, 'Read'",
-        "Pagination (25)",
-        "Dialog: subject, 'To {address}, {time}', plain-text body"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Mail outbox', description (reading a message is recorded)",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Search",
+          "kind": "toolbar",
+          "span": "full",
+          "contents": "'Search by address or subject'",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Table",
+          "kind": "table",
+          "span": "full",
+          "contents": "Subject, To, Tenant, When, 'Read'",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Pagination (25)",
+          "kind": "toolbar",
+          "span": "full",
+          "contents": "Pagination (25)",
+          "condition": null
+        },
+        {
+          "id": "r5",
+          "name": "Dialog",
+          "kind": "dialog",
+          "span": "full",
+          "contents": "subject, 'To {address}, {time}', plain-text body",
+          "condition": null
+        }
       ],
-      "states": [
-        "Empty: 'No messages match.'"
+      "files": [
+        "apps/web/app/staff/(console)/mail/page.tsx"
       ],
-      "file": "apps/web/app/staff/(console)/mail/page.tsx",
-      "notes": ""
+      "request": "",
+      "proposed": false
     },
     {
+      "id": "staff-bureaus",
       "route": "/staff/bureaus",
-      "name": "Bureaus and prices",
-      "area": "Staff console",
+      "area": "staff",
       "shell": "staff",
-      "status": "built",
-      "access": "Staff with role admin",
+      "inShell": true,
+      "title": "Bureaus and prices",
       "purpose": "An admin switches bureau capabilities on or off, watches their health and sets prices.",
-      "regions": [
-        "Header: h1 'Bureaus and prices', description",
-        "One sheet per bureau (name, operator agreement date): capabilities table Check, Cost to us, Source, Health (Healthy / Recovering / Failing stamp, success rate, latency), 'In use' switch",
-        "Sheet 'Price book' with 'Set a new price': table SKU, What, Price, From, Until",
-        "Dialog 'Set a new price': What select, New price in rand, From date"
-      ],
-      "states": [
-        "Bureau health refreshes every 30 seconds"
-      ],
-      "file": "apps/web/app/staff/(console)/bureaus/page.tsx",
-      "notes": ""
-    },
-    {
-      "route": "/staff/purge",
-      "name": "Purge runs",
-      "area": "Staff console",
-      "shell": "staff",
-      "status": "built",
       "access": "Staff with role admin",
-      "purpose": "An admin checks what the hourly POPIA retention purge deleted.",
+      "layout": "Staff console",
+      "states": "Bureau health refreshes every 30 seconds",
       "regions": [
-        "Header: h1 'Purge runs', 'The hourly retention purge (POPIA s14): what it deleted, run by run.'",
-        "Table: Started, Finished (or 'Still running'), Deleted (counts per kind, or 'Nothing due')",
-        "Empty state: 'No purge has run yet' - 'The worker runs it every hour.'"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Bureaus and prices', description",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "One sheet per bureau (name, operator agreement date)",
+          "kind": "card",
+          "span": "full",
+          "contents": "capabilities table Check, Cost to us, Source, Health (Healthy / Recovering / Failing stamp, success rate, latency), 'In use' switch",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Sheet 'Price book' with 'Set a new price'",
+          "kind": "card",
+          "span": "full",
+          "contents": "table SKU, What, Price, From, Until",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Dialog 'Set a new price'",
+          "kind": "dialog",
+          "span": "full",
+          "contents": "What select, New price in rand, From date",
+          "condition": null
+        }
       ],
-      "states": [],
-      "file": "apps/web/app/staff/(console)/purge/page.tsx",
-      "notes": ""
+      "files": [
+        "apps/web/app/staff/(console)/bureaus/page.tsx"
+      ],
+      "request": "",
+      "proposed": false
     },
     {
-      "route": "/design-system",
-      "name": "Design system",
-      "area": "Reference",
-      "shell": "bare",
-      "status": "built",
-      "access": "Anyone (linked from the public footer)",
-      "purpose": "A designer or developer sees every component TshepoVet screens are built from.",
+      "id": "staff-purge",
+      "route": "/staff/purge",
+      "area": "staff",
+      "shell": "staff",
+      "inShell": true,
+      "title": "Purge runs",
+      "purpose": "An admin checks what the hourly POPIA retention purge deleted.",
+      "access": "Staff with role admin",
+      "layout": "Staff console",
+      "states": "",
       "regions": [
-        "Own header: sandbox band shown always (not only in the sandbox), seal + 'TshepoVet'",
-        "Header: breadcrumbs TshepoVet > Design system, h1 'Design system', WCAG 2.2 AAA description",
-        "'The seal' (three sizes), 'Colour' (8 swatches with use and contrast ratio), 'Type' (8 size samples with px and use)",
-        "'Stamps' (outcome and supplier-status stamps) and 'Messages' (verified, caution, refused, info callouts)",
-        "'Records': 3 stat tiles, a sample supplier record sheet, Steps, Timeline, Progress (meters, spinner, skeleton), an empty state",
-        "Interactive 'Buttons' (variants, toasts, tooltip) and 'Forms' (fields, select, radios, checkbox, switch, search, validation errors)",
-        "'Dialogs and menus' (dialog, confirm, menu, popover), 'Tables' (sortable demo with pagination), 'Tabs'",
-        "'Secrets and code' (secret reveal, curl code block) and 'Theme' switch"
+        {
+          "id": "r1",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "h1 'Purge runs', 'The hourly retention purge (POPIA s14): what it deleted, run by run.'",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Table",
+          "kind": "table",
+          "span": "full",
+          "contents": "Started, Finished (or 'Still running'), Deleted (counts per kind, or 'Nothing due')",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "Empty state",
+          "kind": "empty",
+          "span": "full",
+          "contents": "'No purge has run yet' - 'The worker runs it every hour.'",
+          "condition": null
+        }
       ],
-      "states": [],
-      "file": "apps/web/app/design-system/page.tsx",
-      "notes": ""
+      "files": [
+        "apps/web/app/staff/(console)/purge/page.tsx"
+      ],
+      "request": "",
+      "proposed": false
+    },
+    {
+      "id": "design-system",
+      "route": "/design-system",
+      "area": "reference",
+      "shell": "bare",
+      "inShell": false,
+      "title": "Design system",
+      "purpose": "A designer or developer sees every component TshepoVet screens are built from.",
+      "access": "Anyone (linked from the public footer)",
+      "layout": "Bare (root layout only)",
+      "states": "",
+      "regions": [
+        {
+          "id": "r1",
+          "name": "Own header",
+          "kind": "header",
+          "span": "full",
+          "contents": "sandbox band shown always (not only in the sandbox), seal + 'TshepoVet'",
+          "condition": null
+        },
+        {
+          "id": "r2",
+          "name": "Header",
+          "kind": "header",
+          "span": "full",
+          "contents": "breadcrumbs TshepoVet > Design system, h1 'Design system', WCAG 2.2 AAA description",
+          "condition": null
+        },
+        {
+          "id": "r3",
+          "name": "'The seal' (three sizes), 'Colour' (8 swatches …",
+          "kind": "card",
+          "span": "full",
+          "contents": "'The seal' (three sizes), 'Colour' (8 swatches with use and contrast ratio), 'Type' (8 size samples with px and use)",
+          "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "'Stamps' (outcome and supplier-status stamps) a…",
+          "kind": "card",
+          "span": "full",
+          "contents": "'Stamps' (outcome and supplier-status stamps) and 'Messages' (verified, caution, refused, info callouts)",
+          "condition": null
+        },
+        {
+          "id": "r5",
+          "name": "'Records'",
+          "kind": "card",
+          "span": "full",
+          "contents": "3 stat tiles, a sample supplier record sheet, Steps, Timeline, Progress (meters, spinner, skeleton), an empty state",
+          "condition": null
+        },
+        {
+          "id": "r6",
+          "name": "Interactive 'Buttons' (variants, toasts, toolti…",
+          "kind": "toolbar",
+          "span": "full",
+          "contents": "Interactive 'Buttons' (variants, toasts, tooltip) and 'Forms' (fields, select, radios, checkbox, switch, search, validation errors)",
+          "condition": null
+        },
+        {
+          "id": "r7",
+          "name": "'Dialogs and menus' (dialog, confirm, menu, pop…",
+          "kind": "dialog",
+          "span": "full",
+          "contents": "'Dialogs and menus' (dialog, confirm, menu, popover), 'Tables' (sortable demo with pagination), 'Tabs'",
+          "condition": null
+        },
+        {
+          "id": "r8",
+          "name": "'Secrets and code' (secret reveal, curl code bl…",
+          "kind": "card",
+          "span": "full",
+          "contents": "'Secrets and code' (secret reveal, curl code block) and 'Theme' switch",
+          "condition": null
+        }
+      ],
+      "files": [
+        "apps/web/app/design-system/page.tsx"
+      ],
+      "request": "",
+      "proposed": false
     }
   ]
 }
