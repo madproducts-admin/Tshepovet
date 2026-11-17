@@ -68,10 +68,14 @@ const ConfigSchema = z.object({
   /** /api requests a minute per signed-in session (the web server's loopback calls get five times this). */
   API_RATE_PER_MINUTE: z.coerce.number().int().min(10).default(600),
   /**
-   * The seller on tax invoices (VAT Act s20(4)): TshepoVet's registered name, address and VAT
-   * number. Outside the sandbox no invoice is issued until all three are set.
+   * Who runs TshepoVet: the seller on tax invoices (VAT Act s20(4): name, address, VAT number;
+   * outside the sandbox no invoice is issued until the address and VAT number are set) and the
+   * disclosure in the website footer and terms (ECTA s43, the owner's request of 2026-11-17:
+   * "MAD Products (Pty) Ltd t/a TshepoVet | Reg No | VAT No | physical address").
    */
-  SELLER_LEGAL_NAME: z.string().optional(),
+  SELLER_LEGAL_NAME: z.string().min(1).default('MAD Products (Pty) Ltd'),
+  SELLER_TRADING_NAME: z.string().min(1).default('TshepoVet'),
+  SELLER_REGISTRATION_NUMBER: z.string().regex(/^\d{4}\/\d{6}\/\d{2}$/, 'a CIPC registration number such as 2015/123456/07').optional(),
   SELLER_ADDRESS: z.string().optional(),
   SELLER_VAT_NUMBER: z.string().regex(/^4\d{9}$/, 'a 10-digit VAT number starting with 4').optional(),
   /** /api requests a minute per anonymous visitor address. */

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { connection } from 'next/server';
 import type { ReactNode } from 'react';
+import { CompanyDisclosure } from '@/components/brand/company';
 import { Seal } from '@/components/brand/seal';
 import { SpecimenBand } from '@/components/brand/specimen';
 import { SkipLink } from '@/components/ui/layout';
@@ -80,6 +81,7 @@ export default async function PublicLayout({ children }: { children: ReactNode }
             </ul>
           </nav>
           <p>TshepoVet checks South African suppliers. Information is processed in line with POPIA.</p>
+          <CompanyDisclosure seller={meta.seller} />
         </div>
       </footer>
     </>

@@ -41,6 +41,13 @@ export class PlatformController {
         const reason = m.sku === 'MOD_COI_RADAR' && this.c.config.COI_RADAR_ENABLED !== 'true' ? COI_PENDING : null;
         return { sku: m.sku, name: m.name, description: m.description, price_cents: price(m.sku), available: reason === null, unavailable_reason: reason };
       }),
+      seller: {
+        legal_name: this.c.config.SELLER_LEGAL_NAME,
+        trading_name: this.c.config.SELLER_TRADING_NAME,
+        registration_number: this.c.config.SELLER_REGISTRATION_NUMBER ?? null,
+        vat_number: this.c.config.SELLER_VAT_NUMBER ?? null,
+        address: this.c.config.SELLER_ADDRESS ?? null,
+      },
     };
   }
 

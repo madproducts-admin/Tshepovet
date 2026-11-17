@@ -160,7 +160,7 @@ function Read-SecretsFile([string]$Path) {
     $owner = (Get-Acl -LiteralPath $Path).Owner
     if ($owner -ne 'BUILTIN\Administrators') { throw "$Path is owned by $owner, not Administrators" }
     $map = @{}
-    foreach ($line in Get-Content -LiteralPath $Path) {
+    foreach ($line in Get-Content -LiteralPath $Path -Encoding UTF8) {
         if ($line -match '^([A-Z0-9_]+)=(.*)$') { $map[$Matches[1]] = $Matches[2] }
     }
     $map
@@ -238,6 +238,12 @@ function Get-ServiceEnv([hashtable]$S, [string]$Role, [string]$Release) {
         $e['DATABASE_URL'] = $jobsDb
         $e['WORKER_DATABASE_URL'] = $jobsDb
     } else { throw "unknown service role '$Role'" }
+    # Who runs TshepoVet (the ECTA s43 footer and terms, tax invoices): public facts kept with the
+    # box settings in secrets.env, passed on only when filled in (an empty value would fail the
+    # API's configuration check; unset, the site shows the owner's bracketed placeholders).
+    foreach ($k in 'SELLER_LEGAL_NAME', 'SELLER_TRADING_NAME', 'SELLER_REGISTRATION_NUMBER', 'SELLER_VAT_NUMBER', 'SELLER_ADDRESS') {
+        if ($S.ContainsKey($k) -and "$($S[$k])".Trim()) { $e[$k] = "$($S[$k])".Trim() }
+    }
     $e
 }
 

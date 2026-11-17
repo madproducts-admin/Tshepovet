@@ -106,7 +106,7 @@ export class WalletController {
     const id = uuidParam(raw, 'That top-up');
     const cfg = this.c.config;
     const specimen = cfg.SANDBOX === 'true';
-    if (!specimen && !(cfg.SELLER_LEGAL_NAME && cfg.SELLER_ADDRESS && cfg.SELLER_VAT_NUMBER)) {
+    if (!specimen && !(cfg.SELLER_ADDRESS && cfg.SELLER_VAT_NUMBER)) {
       throw new ApiError(409, 'invoice_unavailable', 'Tax invoices cannot be downloaded yet. Ask TshepoVet for a copy.');
     }
     const row = await inTenant(this.c, req, async (client) =>
@@ -124,8 +124,8 @@ export class WalletController {
       number: row.tax_invoice_number,
       issuedAt: row.created_at,
       seller: specimen
-        ? { name: cfg.SELLER_LEGAL_NAME ?? 'TshepoVet (sandbox)', address: cfg.SELLER_ADDRESS ?? 'Sandbox: no seller address', vatNumber: cfg.SELLER_VAT_NUMBER ?? 'not registered (sandbox)' }
-        : { name: cfg.SELLER_LEGAL_NAME!, address: cfg.SELLER_ADDRESS!, vatNumber: cfg.SELLER_VAT_NUMBER! },
+        ? { name: cfg.SELLER_LEGAL_NAME, address: cfg.SELLER_ADDRESS ?? 'Sandbox: no seller address', vatNumber: cfg.SELLER_VAT_NUMBER ?? 'not registered (sandbox)' }
+        : { name: cfg.SELLER_LEGAL_NAME, address: cfg.SELLER_ADDRESS!, vatNumber: cfg.SELLER_VAT_NUMBER! },
       buyer: { name: row.legal_name, vatNumber: row.vat_number },
       creditCents: row.credit_cents,
       vatCents: row.vat_cents,

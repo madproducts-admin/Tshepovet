@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { CompanyDisclosure } from '@/components/brand/company';
 import { Callout } from '@/components/ui/feedback';
 import { PageHeader } from '@/components/ui/layout';
+import { getMeta } from '@/lib/server';
 
 /**
  * Legal text. Drafts until the owner's legal review (docs/PLAN.md §8): they say so at the top.
@@ -75,6 +77,8 @@ export default async function LegalPage({ params }: { params: Promise<{ doc: str
   const { doc } = await params;
   const d = DOCS[doc];
   if (!d) notFound();
+  // The terms open with who TshepoVet's operator is (ECTA s43; the owner's request, 2026-11-17).
+  const seller = doc === 'terms' ? (await getMeta()).seller : null;
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
       <PageHeader title={d.title} />
@@ -82,6 +86,17 @@ export default async function LegalPage({ params }: { params: Promise<{ doc: str
         <p>This text is waiting for legal review and may change before TshepoVet goes live.</p>
       </Callout>
       <div className="flex flex-col gap-8">
+        {seller ? (
+          <section aria-labelledby="who-we-are">
+            <h2 id="who-we-are" className="mb-2 text-2xl font-bold">
+              Who we are
+            </h2>
+            <p className="mt-2 text-lg">
+              {seller.trading_name} is run by {seller.legal_name}. These terms are between you and that company.
+            </p>
+            <CompanyDisclosure seller={seller} className="mt-3 text-lg" />
+          </section>
+        ) : null}
         {d.sections.map((s) => (
           <section key={s.heading} aria-labelledby={slug(s.heading)}>
             <h2 id={slug(s.heading)} className="mb-2 text-2xl font-bold">

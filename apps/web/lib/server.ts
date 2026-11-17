@@ -12,6 +12,8 @@ export interface Meta {
   vat_rate: number;
   check_prices: { company_cents: number; company_live_cents: number; driver_cents: number; monitoring_per_supplier_month_cents: number };
   modules: Array<{ sku: string; name: string; description: string; price_cents: number; available: boolean; unavailable_reason: string | null }>;
+  /** Who runs TshepoVet (ECTA s43); null: not configured yet. */
+  seller: { legal_name: string; trading_name: string; registration_number: string | null; vat_number: string | null; address: string | null };
 }
 
 /** The site's public address, for links that leave the page (a printed passport's QR code). */
@@ -37,19 +39,30 @@ export async function getPassport(id: string): Promise<PassportLoad> {
   }
 }
 
-/** Sandbox flag and prices. If the API cannot be reached, the page still says "sandbox". */
+/** The cautious default: what the pages show when the API cannot be reached. */
+const FALLBACK_META: Meta = {
+  sandbox: true,
+  currency: 'ZAR',
+  vat_rate: 0.15,
+  check_prices: { company_cents: 300, company_live_cents: 600, driver_cents: 250, monitoring_per_supplier_month_cents: 1500 },
+  modules: [],
+  seller: { legal_name: 'MAD Products (Pty) Ltd', trading_name: 'TshepoVet', registration_number: null, vat_number: null, address: null },
+};
+
+/**
+ * Sandbox flag and prices. If the API cannot be reached, the page still says "sandbox". An
+ * answer from an older API (or a cached one, served stale while Next refetches it) may lack a
+ * field added since, as `seller` once did: the default fills it rather than breaking the page.
+ */
 export async function getMeta(): Promise<Meta> {
   try {
     const r = await fetch(`${origin}/api/meta`, { next: { revalidate: 300 }, signal: AbortSignal.timeout(3000) });
-    if (r.ok) return (await r.json()) as Meta;
+    if (r.ok) {
+      const m = (await r.json()) as Partial<Meta>;
+      return { ...FALLBACK_META, ...m, seller: m.seller ?? FALLBACK_META.seller };
+    }
   } catch {
     // fall through to the cautious default below
   }
-  return {
-    sandbox: true,
-    currency: 'ZAR',
-    vat_rate: 0.15,
-    check_prices: { company_cents: 300, company_live_cents: 600, driver_cents: 250, monitoring_per_supplier_month_cents: 1500 },
-    modules: [],
-  };
+  return FALLBACK_META;
 }

@@ -23,7 +23,7 @@
         "Sandbox band (only when the API says sandbox): 'Specimen. This is the TshepoVet sandbox: checks use test data, top-ups are pretend money, and nothing here is a real verification.' with a guilloche pattern on the right",
         "Top bar: brand link to / (seal + 'TshepoVet') on the left; 'Site' nav on the right: Pricing, API documentation (/docs/), Sign in, 'Create an account' (violet button)",
         "Main: full width; each page sets its own centred column",
-        "Footer: links Words we use, Privacy notice, Terms of use, Check a supplier passport, Design system; line 'TshepoVet checks South African suppliers. Information is processed in line with POPIA.'",
+        "Footer: links Words we use, Privacy notice, Terms of use, Check a supplier passport, Design system; line 'TshepoVet checks South African suppliers. Information is processed in line with POPIA.'; then the company line (ECTA s43) 'MAD Products (Pty) Ltd t/a TshepoVet | Reg No: [CIPC Number] | VAT No: [SARS VAT Number] | [Physical Address]', each bracket replaced by its SELLER_* setting once set",
         "Print: top bar and footer hidden, sandbox band kept"
       ],
       "nav": [
@@ -57,7 +57,7 @@
         "Sandbox band (sandbox only)",
         "Header: brand link to / (seal + 'TshepoVet'), nothing else",
         "Main: one narrow column (max-w-md) holding the form",
-        "Footer 'Help' nav: Words we use, Privacy notice, API documentation"
+        "Footer 'Help' nav: Words we use, Privacy notice, API documentation; then the company line (ECTA s43) 'MAD Products (Pty) Ltd t/a TshepoVet | Reg No: [CIPC Number] | VAT No: [SARS VAT Number] | [Physical Address]', each bracket replaced by its SELLER_* setting once set"
       ],
       "nav": [
         {
@@ -118,7 +118,7 @@
         "Sandbox band (sandbox only)",
         "Header bar: brand link to / (seal + 'TshepoVet') followed by the words 'for suppliers'; no nav and no sign-out in the shell",
         "Main: column up to max-w-6xl",
-        "Footer 'Help' nav: Privacy notice, Words we use, Check a supplier passport"
+        "Footer 'Help' nav: Privacy notice, Words we use, Check a supplier passport; then the company line (ECTA s43) 'MAD Products (Pty) Ltd t/a TshepoVet | Reg No: [CIPC Number] | VAT No: [SARS VAT Number] | [Physical Address]', each bracket replaced by its SELLER_* setting once set"
       ],
       "nav": [
         {
@@ -421,6 +421,14 @@
           "span": "full",
           "contents": "'This text is waiting for legal review and may change before TshepoVet goes live.'",
           "condition": null
+        },
+        {
+          "id": "r4",
+          "name": "Who we are",
+          "kind": "card",
+          "span": "full",
+          "contents": "h2 'Who we are': 'TshepoVet is run by MAD Products (Pty) Ltd. These terms are between you and that company.' and the company line (ECTA s43) 'MAD Products (Pty) Ltd t/a TshepoVet | Reg No: [CIPC Number] | VAT No: [SARS VAT Number] | [Physical Address]', each bracket replaced by its SELLER_* setting once set",
+          "condition": "Terms of use only"
         },
         {
           "id": "r3",

@@ -59,6 +59,7 @@ const PUBLIC_PAGES: Array<[string, string]> = [
   ['/pricing', 'pricing'],
   ['/verify-passport', 'verify passport'],
   ['/supplier/sign-in', 'supplier sign-in'],
+  ['/legal/terms', 'terms of use'],
 ];
 for (const theme of ['light', 'dark'] as const) {
   test(`public pages pass axe at AAA, ${theme} theme`, async ({ page, context, baseURL }) => {
@@ -70,6 +71,19 @@ for (const theme of ['light', 'dark'] as const) {
     }
   });
 }
+
+// ECTA s43, in the owner's words: "MAD Products (Pty) Ltd t/a TshepoVet | Reg No: [CIPC Number] |
+// VAT No: [SARS VAT Number] | [Physical Address]" (the test API sets none of the three details).
+test('the footers and the terms say who runs TshepoVet (ECTA s43)', async ({ page }) => {
+  const line = /^MAD Products \(Pty\) Ltd t\/a \(trading as\) TshepoVet\s*\|\s*Reg No \(Company registration number\): \[CIPC Number\]\s*\|\s*VAT No \(Value-added tax registration number\): \[SARS VAT Number\]\s*\|\s*\[Physical Address\]$/;
+  for (const path of ['/', '/pricing', '/sign-in', '/supplier/sign-in']) {
+    await page.goto(path);
+    await expect(page.locator('footer address'), path).toHaveText(line);
+  }
+  await page.goto('/legal/terms');
+  await expect(page.getByRole('heading', { level: 2, name: 'Who we are' })).toBeVisible();
+  await expect(page.locator('main address')).toHaveText(line);
+});
 
 test('public pages reflow at 320 CSS pixels (WCAG 1.4.10)', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 640 });

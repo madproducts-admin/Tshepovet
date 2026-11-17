@@ -134,6 +134,8 @@ describe('the route table', () => {
     expect(m.sandbox).toBe(true);
     expect(m.check_prices.company_cents).toBe(300);
     expect(m.modules.find((x) => x.sku === 'MOD_COI_RADAR')?.available).toBe(false);
+    // Who runs TshepoVet (ECTA s43): the names are known; the rest waits for the owner's config.
+    expect(m.seller).toEqual({ legal_name: 'MAD Products (Pty) Ltd', trading_name: 'TshepoVet', registration_number: null, vat_number: null, address: null });
   });
 });
 

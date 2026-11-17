@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { connection } from 'next/server';
 import type { ReactNode } from 'react';
+import { CompanyDisclosure } from '@/components/brand/company';
 import { Seal } from '@/components/brand/seal';
 import { SpecimenBand } from '@/components/brand/specimen';
 import { SkipLink } from '@/components/ui/layout';
@@ -38,6 +39,7 @@ export default async function SupplierLayout({ children }: { children: ReactNode
             Check a supplier passport
           </Link>
         </nav>
+        <CompanyDisclosure seller={meta.seller} className="mt-3" />
       </footer>
     </>
   );

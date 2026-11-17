@@ -9,6 +9,14 @@ export const MetaSchema = z.strictObject({
   vat_rate: z.number(),
   check_prices: z.strictObject({ company_cents: Cents, company_live_cents: Cents, driver_cents: Cents, monitoring_per_supplier_month_cents: Cents }),
   modules: z.array(ModuleSchema.pick({ sku: true, name: true, description: true, price_cents: true, available: true, unavailable_reason: true })),
+  /** Who runs TshepoVet (ECTA s43), for the footer and the terms. null: not configured yet. */
+  seller: z.strictObject({
+    legal_name: z.string(),
+    trading_name: z.string(),
+    registration_number: z.string().nullable(),
+    vat_number: z.string().nullable(),
+    address: z.string().nullable(),
+  }),
 });
 
 export const OverviewSchema = z.strictObject({

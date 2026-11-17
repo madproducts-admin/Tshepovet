@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { connection } from 'next/server';
 import type { ReactNode } from 'react';
+import { CompanyDisclosure } from '@/components/brand/company';
 import { Seal } from '@/components/brand/seal';
 import { SpecimenBand } from '@/components/brand/specimen';
 import { SkipLink } from '@/components/ui/layout';
@@ -37,6 +38,7 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
             API documentation
           </a>
         </nav>
+        <CompanyDisclosure seller={meta.seller} className="mt-3" />
       </footer>
     </>
   );
