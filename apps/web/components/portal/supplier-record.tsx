@@ -17,6 +17,7 @@ import { rules } from '@/lib/forms';
 import { useApi, useChange, useSession } from '@/lib/queries';
 import { humanise, Loaded, SUBJECT_LABELS } from './common';
 import { INDUSTRY_OPTIONS, RISK_OPTIONS } from './suppliers';
+import { Invitations, InviteSupplier } from './supplier-invitations';
 
 type AuditList = z.infer<typeof AuditListSchema>;
 
@@ -52,6 +53,7 @@ export function SupplierRecord({ id }: { id: string }) {
                     <Link href={`/app/checks/new?registration=${encodeURIComponent(s.vendor.registration_number)}`}>Run a check</Link>
                   </Button>
                 ) : null}
+                {can('suppliers:write') ? <InviteSupplier id={id} name={s.vendor.legal_name} /> : null}
                 {can('suppliers:write') ? <StatusActions id={id} current={s.relationship.status} /> : null}
                 {can('suppliers:write') ? <EditSupplier id={id} s={s} /> : null}
               </>
@@ -69,6 +71,7 @@ export function SupplierRecord({ id }: { id: string }) {
               { value: 'people', label: 'People', content: <People s={s} /> },
               { value: 'compliance', label: 'B-BBEE and bank', content: <Compliance s={s} /> },
               { value: 'documents', label: 'Documents', content: <Documents s={s} /> },
+              { value: 'onboarding', label: 'Onboarding', content: <Invitations id={id} canWrite={can('suppliers:write')} /> },
               { value: 'monitoring', label: 'Monitoring', content: <Monitoring id={id} s={s} /> },
               { value: 'checks', label: 'Checks', content: <ChecksTab s={s} /> },
               ...(can('audit:read') ? [{ value: 'audit', label: 'Audit trail', content: <AuditTrail id={id} /> }] : []),

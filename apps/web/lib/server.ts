@@ -14,6 +14,29 @@ export interface Meta {
   modules: Array<{ sku: string; name: string; description: string; price_cents: number; available: boolean; unavailable_reason: string | null }>;
 }
 
+/** The site's public address, for links that leave the page (a printed passport's QR code). */
+export const PUBLIC_ORIGIN = process.env.TSV_PUBLIC_ORIGIN ?? 'https://tshepovet.madproducts.ai';
+
+export type PassportLoad =
+  | { kind: 'ok'; passport: import('@tshepovet/contracts').PublicPassport }
+  | { kind: 'withdrawn' }
+  | { kind: 'missing' }
+  | { kind: 'unavailable' };
+
+/** A published passport, by its public id (the API decides what it shows). */
+export async function getPassport(id: string): Promise<PassportLoad> {
+  if (!/^[0-9a-f]{24}$/i.test(id)) return { kind: 'missing' };
+  try {
+    const r = await fetch(`${origin}/api/passport/${id.toLowerCase()}`, { cache: 'no-store', signal: AbortSignal.timeout(5000) });
+    if (r.status === 404) return { kind: 'missing' };
+    if (r.status === 410) return { kind: 'withdrawn' };
+    if (!r.ok) return { kind: 'unavailable' };
+    return { kind: 'ok', passport: await r.json() };
+  } catch {
+    return { kind: 'unavailable' };
+  }
+}
+
 /** Sandbox flag and prices. If the API cannot be reached, the page still says "sandbox". */
 export async function getMeta(): Promise<Meta> {
   try {

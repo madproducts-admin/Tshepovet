@@ -14,6 +14,8 @@ export default defineConfig({
   // A shared, busy box: axe on a large page needs the CPU; more workers only make it time out.
   workers: 2,
   timeout: 120_000,
+  // Two specs share the API with argon2 sign-ups and axe runs in flight: answers can take a few seconds.
+  expect: { timeout: 15_000 },
   reporter: [['list']],
   use: { baseURL, trace: 'retain-on-failure' },
   projects: [

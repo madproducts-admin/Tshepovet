@@ -183,15 +183,17 @@ LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public, pg_temp AS $$
 $$;
 
 -- Publish or withdraw the passport, and choose what it shows. Only the supplier decides.
+-- Returns false when TshepoVet suspended the passport: only staff lift a suspension.
 CREATE FUNCTION vendor_set_passport(p_vendor uuid, p_status text, p_fields text[])
-RETURNS void
+RETURNS boolean
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 BEGIN
   IF p_status NOT IN ('active', 'revoked') THEN RAISE EXCEPTION 'invalid passport status' USING ERRCODE = 'invalid_parameter_value'; END IF;
   IF NOT (p_fields <@ ARRAY['legal_name','registration_number','cipc_status','vat_status','tcs_status','bbbee_level','directors_initials','verified_at']) THEN
     RAISE EXCEPTION 'invalid passport field' USING ERRCODE = 'invalid_parameter_value';
   END IF;
-  UPDATE vendors SET passport_status = p_status, passport_public_fields = p_fields WHERE id = p_vendor;
+  UPDATE vendors SET passport_status = p_status, passport_public_fields = p_fields WHERE id = p_vendor AND passport_status <> 'suspended';
+  RETURN FOUND;
 END $$;
 
 -- Withdraw consent purposes on one of the supplier's own consent records.

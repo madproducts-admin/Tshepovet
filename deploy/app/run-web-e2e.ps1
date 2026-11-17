@@ -8,6 +8,8 @@
 #>
 param([switch]$SkipBuild, [string[]]$Spec = @())
 $ErrorActionPreference = 'Stop'
+# -File passes "a,b" as one string: split it (e.g. -Spec portal.spec,supplier.spec).
+$Spec = @($Spec | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 Import-Module (Join-Path $PSScriptRoot 'TsvBox.psm1') -Force
 $p = Get-TsvPaths
 $S = Read-SecretsFile $p.SecretsFile
@@ -44,6 +46,8 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 $api = $null; $web = $null
 try {
   $env:NODE_ENV = 'test'
+  # NODE_ENV=test silences the logger; keep warnings and errors in tsv-e2e-api.log.
+  $env:LOG_LEVEL = 'warn'
   $env:HOST = '127.0.0.1'
   $env:PORT = "$apiPort"
   $env:DATABASE_URL = $env:TEST_APP_DATABASE_URL

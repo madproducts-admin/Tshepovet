@@ -8,6 +8,10 @@ printing gives the vocabulary, used sparingly:
   the brand, a verified passport, and the sandbox band. Nothing else is decorated.
 - **Stamps** carry verdicts and statuses: a double rule in stamp ink, an icon, and the word.
 - **Specimen**: the sandbox is marked the way reference banknotes are, in plain words, on every page.
+- **The passport sheet** (`components/supplier/passport-sheet.tsx`) is the one document that uses the
+  vocabulary in full: the seal, an engraved border, stamps and a printed verification code. The
+  landing page shows the same sheet overprinted "Specimen"; on paper only the sandbox band and
+  the sheet print, in light colours whatever the screen theme.
 - Everything else is quiet: cool security paper, petrol ink, records with their "as of" dates.
 
 ## Tokens (`app/globals.css`)

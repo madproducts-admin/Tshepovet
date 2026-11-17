@@ -12,6 +12,7 @@ import { type NextRequest, NextResponse } from 'next/server';
  */
 const SESSION_COOKIES = ['__Host-tv_session', 'tv_session'];
 const STAFF_COOKIES = ['__Host-tv_staff_session', 'tv_staff_session'];
+const VENDOR_COOKIES = ['__Host-tv_vendor_session', 'tv_vendor_session'];
 
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
@@ -23,6 +24,9 @@ export function proxy(request: NextRequest) {
   }
   if (pathname.startsWith('/staff') && !pathname.startsWith('/staff/sign-in') && !has(STAFF_COOKIES)) {
     return NextResponse.redirect(new URL('/staff/sign-in', request.url));
+  }
+  if ((pathname === '/supplier' || pathname.startsWith('/supplier/')) && !pathname.startsWith('/supplier/sign-in') && !has(VENDOR_COOKIES)) {
+    return NextResponse.redirect(new URL('/supplier/sign-in', request.url));
   }
 
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64');

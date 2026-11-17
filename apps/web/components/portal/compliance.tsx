@@ -25,7 +25,7 @@ type Activity = z.infer<typeof ProcessingActivitySchema>;
 type AuditList = z.infer<typeof AuditListSchema>;
 type Chain = z.infer<typeof ChainVerificationSchema>;
 
-const PURPOSE_LABELS: Record<string, string> = {
+export const PURPOSE_LABELS: Record<string, string> = {
   kyb_company_verification: 'Company verification',
   director_identity_verification: 'Director identity',
   tax_compliance_verification: 'Tax compliance',

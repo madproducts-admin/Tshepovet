@@ -34,9 +34,16 @@ export function PasswordInput({ autoComplete, value, onChange, ...p }: FieldCont
 export function useHashToken(): string | null | undefined {
   const [token, setToken] = useState<string | null | undefined>(undefined);
   useEffect(() => {
-    const m = /(?:^|[#&])token=([A-Za-z0-9_-]{43})/.exec(window.location.hash);
-    setToken(m?.[1] ?? null);
-    if (m) history.replaceState(null, '', window.location.pathname + window.location.search);
+    const read = (initial: boolean) => {
+      const m = /(?:^|[#&])token=([A-Za-z0-9_-]{43})/.exec(window.location.hash);
+      // A link pasted into a tab already on this page only changes the fragment: no reload.
+      if (initial || m) setToken(m?.[1] ?? null);
+      if (m) history.replaceState(null, '', window.location.pathname + window.location.search);
+    };
+    read(true);
+    const onHash = () => read(false);
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
   }, []);
   return token;
 }

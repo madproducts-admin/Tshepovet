@@ -104,7 +104,8 @@ export class VendorController {
       const ok = await this.c.pool.query<{ ok: boolean }>(`SELECT (vendor_portal_view($1)->'vendor'->>'passport_last_verified_at') IS NOT NULL AS ok`, [v.vendorId]);
       if (!ok.rows[0]?.ok) throw new ApiError(409, 'not_verified_yet', 'A passport can be published once your company has been verified.');
     }
-    await this.c.pool.query(`SELECT vendor_set_passport($1, $2, $3)`, [v.vendorId, b.status, b.fields]);
+    const set = await this.c.pool.query<{ ok: boolean }>(`SELECT vendor_set_passport($1, $2, $3) AS ok`, [v.vendorId, b.status, b.fields]);
+    if (!set.rows[0]?.ok) throw new ApiError(409, 'passport_suspended', 'TshepoVet suspended this passport. Contact TshepoVet support to have it reviewed.');
     await this.platformAudit(req, b.status === 'active' ? 'passport.published' : 'passport.withdrawn', v.vendorId, v.session.subjectId, { fields: b.fields });
   }
 

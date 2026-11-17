@@ -6,7 +6,8 @@ import { SpecimenBand } from '@/components/brand/specimen';
 import { SkipLink } from '@/components/ui/layout';
 import { getMeta } from '@/lib/server';
 
-/** Public pages: the landing page, pricing, the glossary, legal text, supplier passports. */
+/** Public pages: the landing page, pricing, the glossary, legal text, supplier passports. On paper
+ *  only the sandbox band stays (a printed sandbox passport must still say it is a specimen). */
 export default async function PublicLayout({ children }: { children: ReactNode }) {
   await connection();
   const meta = await getMeta();
@@ -15,7 +16,7 @@ export default async function PublicLayout({ children }: { children: ReactNode }
       <SkipLink />
       <header className="border-b border-rule bg-sheet">
         {meta.sandbox ? <SpecimenBand /> : null}
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6 print:hidden">
           <Link href="/" className="inline-flex min-h-11 items-center gap-3 text-ink no-underline">
             <Seal size={36} />
             <span className="text-lg font-bold">TshepoVet</span>
@@ -47,7 +48,7 @@ export default async function PublicLayout({ children }: { children: ReactNode }
         </div>
       </header>
       <main id="main">{children}</main>
-      <footer className="mt-16 border-t border-rule bg-sheet">
+      <footer className="mt-16 border-t border-rule bg-sheet print:hidden">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-8 text-sm text-ink-2 sm:px-6">
           <nav aria-label="Footer">
             <ul className="flex flex-wrap gap-x-6">

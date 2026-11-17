@@ -92,6 +92,36 @@
   color-scheme: dark;
 }
 
+/* Paper is light whatever the screen theme: the light tokens again, specific enough to win. */
+@media print {
+  :root:root:root {
+  --paper: #f3f6f4; /* security paper: the page */
+  --sheet: #ffffff; /* a record lifted off the page */
+  --sheet-2: #eaf0ed; /* table heads, hovered rows, wells */
+  --ink: #10242c; /* text */
+  --ink-2: #3a4f57; /* secondary text (7.9:1 on paper) */
+  --rule: #c6d2ce; /* separators (decorative) */
+  --edge: #687c83; /* control borders (3:1+) */
+  --violet: #4b2a8c; /* stamp ink: what you can do */
+  --violet-strong: #3a1f70;
+  --violet-tint: #ece6f7;
+  --on-violet: #ffffff;
+  --green: #084f2e; /* verified */
+  --green-tint: #e4f2e9;
+  --amber: #6b3f00; /* needs attention */
+  --amber-tint: #f8ebd3;
+  --red: #8e1b26; /* refused, failed, destructive */
+  --red-tint: #f8e1e3;
+  --petrol: #18506a; /* pending, information */
+  --petrol-tint: #e0eef4;
+  --specimen: #fbf3de; /* the sandbox band */
+  --seal-1: #4b2a8c;
+  --seal-2: #0f6b5a;
+  --shadow: 0 1px 0 rgb(16 36 44 / 0.06), 0 8px 24px -12px rgb(16 36 44 / 0.18);
+  color-scheme: light;
+}
+}
+
 @theme inline {
   --color-paper: var(--paper);
   --color-sheet: var(--sheet);
@@ -113,6 +143,7 @@
   --color-petrol: var(--petrol);
   --color-petrol-tint: var(--petrol-tint);
   --color-specimen: var(--specimen);
+  --color-seal-1: var(--seal-1);
 
   --font-sans: var(--font-atkinson), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-atkinson-mono), ui-monospace, monospace;
@@ -208,6 +239,15 @@
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
       scroll-behavior: auto !important;
+    }
+  }
+  /* Paper copies (the passport): light colours whatever the screen theme, no page chrome. */
+  @media print {
+    body {
+      background: #fff;
+    }
+    @page {
+      margin: 14mm;
     }
   }
 }

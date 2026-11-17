@@ -262,6 +262,15 @@ describe('supplier self-service', () => {
     expect(p).toMatchObject({ legal_name: 'ACME TRADING (PTY) LTD', registration_number: null, tcs: null, directors: null, bbbee: { level: 1 } });
   });
 
+  it('cannot lift a suspension by TshepoVet staff', async () => {
+    const post = (body: unknown) => s.agent.post('/api/vendor/passport').set('x-csrf-token', s.csrf).send(body as object);
+    await owner.query(`UPDATE vendors SET passport_status = 'suspended' WHERE passport_public_id = $1`, [publicId]);
+    expect((await post({ status: 'active', fields: ['legal_name'] })).body.code).toBe('passport_suspended');
+    expect((await post({ status: 'revoked', fields: ['legal_name'] })).body.code).toBe('passport_suspended');
+    expect((await request(t.app).get(`/api/passport/${publicId}`)).status).toBe(410);
+    await owner.query(`UPDATE vendors SET passport_status = 'active' WHERE passport_public_id = $1`, [publicId]);
+  });
+
   it('withdraws consent to monitoring, which ends the buyer’s monitoring', async () => {
     expect((await buyer.b.post(`/api/monitoring/${supplierId}`, {})).status).toBe(201);
     const me = await s.agent.get('/api/vendor/me');
@@ -279,7 +288,7 @@ describe('supplier self-service', () => {
     expect(r.status).toBe(201);
     const q = await buyer.b.get('/api/compliance/requests');
     expect(q.body.items[0]).toMatchObject({ request_type: 'access', status: 'received', days_left: 30, supplier_name: 'ACME TRADING (PTY) LTD' });
-    const bad = await s.agent.post('/api/vendor/requests').set('x-csrf-token', s.csrf).send({ relationship_id: supplierId.replace(/.$/, '0'), request_type: 'access' });
+    const bad = await s.agent.post('/api/vendor/requests').set('x-csrf-token', s.csrf).send({ relationship_id: supplierId.replace(/.$/, (c) => (c === '0' ? '1' : '0')), request_type: 'access' });
     expect(bad.status).toBe(404);
   });
 });

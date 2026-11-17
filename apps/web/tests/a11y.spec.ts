@@ -53,6 +53,34 @@ for (const theme of ['light', 'dark'] as const) {
   });
 }
 
+// The public pages a visitor meets first, in both themes (the API may be absent: they fall back).
+const PUBLIC_PAGES: Array<[string, string]> = [
+  ['/', 'landing'],
+  ['/pricing', 'pricing'],
+  ['/verify-passport', 'verify passport'],
+  ['/supplier/sign-in', 'supplier sign-in'],
+];
+for (const theme of ['light', 'dark'] as const) {
+  test(`public pages pass axe at AAA, ${theme} theme`, async ({ page, context, baseURL }) => {
+    await context.addCookies([{ name: 'tv_theme', value: theme, url: baseURL! }]);
+    for (const [path, label] of PUBLIC_PAGES) {
+      await page.goto(path);
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      await axe(page, `${label} (${theme})`);
+    }
+  });
+}
+
+test('public pages reflow at 320 CSS pixels (WCAG 1.4.10)', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  for (const [path, label] of PUBLIC_PAGES) {
+    await page.goto(path);
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    const wide = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+    expect(wide, `${label} scrolls sideways at 320px`).toBe(false);
+  }
+});
+
 test('every target is at least 44 by 44 pixels (WCAG 2.5.5)', async ({ page }) => {
   await page.goto('/design-system');
   const small = await page.evaluate(() => {
