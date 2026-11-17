@@ -7,13 +7,22 @@ One host, two parts:
 | `/docs*`, `/robots.txt` | Cloudflare Worker `tshepovet-site`: the five design pages from `docs/pages/`, static, on Worker **routes** | `npm run deploy` (tools/deploy.mjs) |
 | everything else | IIS site `tshepovet` on the MADPRODUCTS box. Before the M10 switch: the first release's Express API (`tshepovet-api`, `127.0.0.1:9131`), with `/` redirecting to `/docs/`. After it: `/api`, `/v1`, `/webhooks`, `/healthz`, `/readyz` go to the API (NestJS, `127.0.0.1:9131`) and every other path, `/` included, to the web app (`tshepovet-web`, Next.js, `127.0.0.1:9132`). | `deploy\app\deploy-app.ps1` |
 
-**The API is a sandbox.** The owner chose this on 2026-11-16, for three reasons:
+**The app is a sandbox.** The owner chose this on 2026-11-16, for three reasons:
 
 - This box is outside South Africa, and TshepoVet's own design keeps personal information in af-south-1.
 - The bureau adapters are placeholders.
 - There is no SARS TCS channel yet.
 
-So the services run with `NODE_ENV=production` and `ENABLED_PROVIDERS=mock`. In that mode live (`tv_live_`) keys get no provider at all, and only sandbox (`tv_test_`) keys work, against the deterministic mock bureau. WhatsApp and OCR are off: no WhatsApp secrets are set, and there is no AI key; under the fleet rule, apps reach AI through the Cloud gateway. **Do not send real personal information to it.**
+So the services run with `NODE_ENV=production`, `ENABLED_PROVIDERS=mock` and `SANDBOX=true`. Live (`tv_live_`) keys get no provider at all, and only sandbox (`tv_test_`) keys work, against the deterministic mock bureau. Portal checks are answered by the mock but priced against the wallet; top-ups are pretend money; mail is held for the staff console, never sent. Real WhatsApp and document reading are off: no WhatsApp secrets are set and there is no AI key (under the fleet rule, apps reach AI through the Cloud gateway); the staff console's WhatsApp simulator uses a sandbox client. Every page carries the "Specimen" band. **Do not send real personal information to it.**
+
+**Staff accounts** are made on the box by an administrator: [`scripts/create-staff.ts`](../scripts/create-staff.ts) generates a random password and writes it only to the file named by `--out` (never printed); the first sign-in must set up two-step verification. From the repository, in an elevated Windows PowerShell 5.1 (the owner login's password is read from the secrets file and never shown):
+
+```powershell
+Import-Module .\deploy\app\TsvBox.psm1; $S = Read-SecretsFile C:\ProgramData\MADProducts\tshepovet\secrets.env
+$env:MIGRATION_DATABASE_URL = "postgres://tshepovet_owner:$($S['TSV_DB_OWNER_PASSWORD'])@127.0.0.1:5432/tshepovet"
+npx tsx scripts/create-staff.ts --email <you@example.com> --name "<Your Name>" --role admin --out C:\ProgramData\MADProducts\tshepovet\staff-<you>.txt
+Remove-Item Env:\MIGRATION_DATABASE_URL
+```
 
 Search engines are kept out of both parts:
 
@@ -163,6 +172,9 @@ Until then the docs Worker held the host as a **custom domain**, which takes the
 | 2026-11-16 16:59 | cutover | | | The Worker's custom domain was detached, so the host fell back to the `*.madproducts.ai` wildcard and reached IIS. |
 | 2026-11-16 17:01 | docs | `c491448` | `2c8ec653-48b4-4e85-b542-d9515a5d48fc` | Docs on the `/docs*` and `/robots.txt` routes. `/docs` was unreachable for under 2 minutes. The gate passed: 10 tests at once, 2 only on retry. Their first attempts, both on `/docs/database-schema` just after the switch, saw a policy blocking the page's own scripts. A re-run with no retries passed 24/24, and 12 fetches all carried the right CSP. |
 | 2026-11-16 17:06 | API (IIS) | | | `web.config` blanks ARR's `X-Powered-By: ARR/3.0`. The API smoke suite passed 5/5 through Cloudflare, including the sandbox company check. The purge task ran once by hand and exited 0. |
+| 2026-11-17 10:13 | box (M10) | `8e20c9f` | | `install-box.ps1`: `tshepovet-redis` switched to an append-only file and `noeviction` (the live first release kept answering 200); folders for the new services, documents and backups. |
+| 2026-11-17 10:51 | rehearsal | `1eaed6a` | release `20261117-124707-1eaed6a` | `-StageOnly`: the full suite 191 passed (1 opt-in skipped), then the staged API, worker and web app ran from the release folder against the test database and passed every check. Nothing live changed. |
+| 2026-11-17 10:57 | **the full app** (M10, owner-approved) | `1eaed6a` | release `20261117-124707-1eaed6a` | `-Release`: `pg_dump` (270 KB) to `backups\tshepovet-20261117-124707-1eaed6a.dump`, migrations 0003 to 0007, then `tshepovet-worker`, `tshepovet-api` and `tshepovet-web` up and the release's `web.config` on the site; `tshepovet-webhooks` and the purge task disabled. Through Cloudflare: `/healthz` with `X-TshepoVet-Release`, `/` 200 with `X-TshepoVet-Build`, smoke 30/30 (API 4 including the sandbox company check with the first release's key, web 14, docs 12). Certificates: edge Google Trust Services WE1 to 2027-01-05, origin Let's Encrypt wildcard to 2027-01-13, TLS 1.3. Axe AAA suite against the live site 20/20. In Chrome: no console errors; the landing page's LCP 3.7 s on the first, cold hit and 0.94 s after (TTFB 243 ms, CLS 0, 222 KB of script). Rollback: `deploy-app.ps1 -Rollback` (to `20261116-185605-f25f659`). |
 
 ## What the docs build does (tools/build-site.mjs)
 

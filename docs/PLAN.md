@@ -230,6 +230,8 @@ db/migrations/ 0001, 0002 unchanged; 0003+ add what the new features need (§5)
 - **The first release stays reachable:** its `tshepovet-webhooks` service and hourly purge task are disabled, not removed (the worker does both), and `-Rollback` follows `history.txt`, so it can return to either layout with that release's routing. `run-purge.ps1` left the repository; the box keeps its copy for that rollback.
 - **Redis** now keeps an append-only file (fsync each second) with `noeviction` (done 2026-11-17 by `install-box.ps1`; the live first release kept answering).
 - **Rehearsed** release `20261117-124707-1eaed6a` (commit 1eaed6a): the full suite (191), the design check, the build, then the staged API, worker and web app on the test database.
+- **Live** since 2026-11-17 10:57 UTC (the owner said "Yes, go live"): release `20261117-124707-1eaed6a` at https://tshepovet.madproducts.ai, the live database migrated from 0002 to 0007 after a `pg_dump`. Smoke 30/30 through Cloudflare (API 4, web 14, docs 12), the axe AAA suite 20/20 against the live site, no console errors in Chrome; deploy/README.md's history has the details and the rollback.
+- **Still open for M10's "done when":** a Lighthouse run (not done: the agreed browser for checks, Claude in Chrome, cannot run it; the Performance API there measured the landing page at LCP 0.94 s warm, 3.7 s on the first cold hit, CLS 0) and the owner's own look at the app. The owner's staff account is made with `scripts/create-staff.ts` (deploy/README.md).
 
 ## 8. Blocked on the owner (none of it stops the build)
 
