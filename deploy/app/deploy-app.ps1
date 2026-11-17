@@ -456,9 +456,19 @@ try {
         $page = Test-Native 'curl.exe' @('-s', '-D', '-', '-o', 'NUL', '--max-time', '20', "https://$($p.Host)/?$cb")
         if ($page.Out -notmatch 'HTTP/\S+ 200' -or $page.Out -notmatch "x-tshepovet-build: $stamp") { throw "https://$($p.Host)/ answered: $($page.Out)" }
         Ok "/: 200, build $stamp"
-        $tls = Test-Native 'curl.exe' @('-sv', '-o', 'NUL', '--max-time', '20', "https://$($p.Host)/healthz?$cb")
-        $certLines = ($tls.Out -split '; ') | Where-Object { $_ -match 'subject:|expire date:|issuer:|SSL certificate verify ok' }
-        Ok "certificate: $($certLines -join ' | ')"
+        # The certificate Cloudflare serves, by a .NET handshake that verifies the chain and the name
+        # (throws if either fails). curl.exe uses Schannel here, whose -v prints no certificate details.
+        $tcp = New-Object Net.Sockets.TcpClient($p.Host, 443)
+        try {
+            $ssl = New-Object Net.Security.SslStream($tcp.GetStream(), $false)
+            $ssl.AuthenticateAsClient($p.Host)
+            $cert = New-Object Security.Cryptography.X509Certificates.X509Certificate2 $ssl.RemoteCertificate
+            $tlsVersion = $ssl.SslProtocol
+            $ssl.Dispose()
+        } finally { $tcp.Close() }
+        $days = [int]($cert.NotAfter - (Get-Date)).TotalDays
+        Ok "certificate: $($cert.Subject), issuer $($cert.GetNameInfo('SimpleName', $true)), $tlsVersion, chain and name verified, valid until $($cert.NotAfter.ToString('yyyy-MM-dd')) ($days days)"
+        if ($days -lt 14) { Note "the edge certificate expires in $days days: check Cloudflare's certificate renewal" }
 
         Step 'smoke suites through Cloudflare (API, web, docs)'
         if (Test-Path -LiteralPath $p.SandboxFile) {
