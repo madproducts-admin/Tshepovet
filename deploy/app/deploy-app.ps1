@@ -172,12 +172,14 @@ function Wait-Until([int]$Seconds, [scriptblock]$Check) {
 function Switch-To([string]$Rel) {
     $layout = Get-Layout $Rel
     if ($layout -eq 'full') {
-        Grant-Folder $p.DocumentsDir $acct.api 'M'
-        Grant-Folder $p.DocumentsDir $acct.worker 'M'
         $webDir = Join-Path $Rel 'web\apps\web'
         Install-NodeService $p.WorkerService 'TshepoVet worker' (Join-Path $Rel 'apps\api\dist\worker.js') $Rel (Get-ServiceEnv $S 'worker' $Rel) 'TshepoVet jobs: verifications, webhooks, mail, monitoring, purge'
         Install-NodeService $p.ApiService 'TshepoVet API' (Join-Path $Rel 'apps\api\dist\main.js') $Rel (Get-ServiceEnv $S 'api' $Rel) "TshepoVet API (NestJS) on 127.0.0.1:$($p.ApiPort)"
         Install-NodeService $p.WebService 'TshepoVet web' (Join-Path $webDir 'server.js') $webDir (Get-ServiceEnv $S 'web' $Rel) "TshepoVet web app (Next.js) on 127.0.0.1:$($p.WebPort)" -NoDepends
+        # The services' virtual accounts exist now: the encrypted documents are theirs.
+        Lock-Folder $p.DocumentsDir @($acct.api, $acct.worker)
+        Grant-Folder $p.DocumentsDir $acct.api 'M'
+        Grant-Folder $p.DocumentsDir $acct.worker 'M'
         # Next writes its fetch and image cache under .next\cache; nothing else in the release.
         $cache = Join-Path $webDir '.next\cache'
         New-Item -ItemType Directory $cache -Force | Out-Null

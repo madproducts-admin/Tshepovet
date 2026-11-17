@@ -290,16 +290,19 @@ Ok 'running; answers PING with the password and refuses without it; append-only,
 
 # -- 4. Folders ----------------------------------------------------------------------------
 Step 'folders: logs, documents, backups'
+# A service's virtual account (NT SERVICE\name) exists only once the service is installed, so
+# grants wait for it: deploy-app.ps1 grants them when it installs the service.
+$installed = { param($name) [bool](Get-Service -Name $name -ErrorAction SilentlyContinue) }
 foreach ($svc in @(@($p.ApiService, $apiAcct), @($p.WorkerService, $workerAcct), @($p.WebService, $webAcct))) {
     $logRoot = Join-Path $p.DataRoot ($svc[0] -replace '^tshepovet-', '')
     Lock-Folder $logRoot @($svc[1])
     New-Item -ItemType Directory (Join-Path $logRoot 'logs') -Force | Out-Null
-    Grant-Folder $logRoot $svc[1] 'M'
+    if (& $installed $svc[0]) { Grant-Folder $logRoot $svc[1] 'M' }
 }
 # The encrypted documents: written by the API (uploads) and the worker (WhatsApp media).
 Lock-Folder $p.DocumentsDir @($apiAcct, $workerAcct)
-Grant-Folder $p.DocumentsDir $apiAcct 'M'
-Grant-Folder $p.DocumentsDir $workerAcct 'M'
+if (& $installed $p.ApiService) { Grant-Folder $p.DocumentsDir $apiAcct 'M' }
+if (& $installed $p.WorkerService) { Grant-Folder $p.DocumentsDir $workerAcct 'M' }
 # Database backups before each migration (deploy-app.ps1): Administrators and SYSTEM only.
 Lock-Folder $p.BackupDir
 Ok "$($p.DocumentsDir) (API and worker), $($p.BackupDir) (Administrators only), a log folder per service"
