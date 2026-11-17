@@ -111,8 +111,18 @@ export interface FinalizeArgs {
  * Single transaction: results + provider-call ledger + capture/release +
  * webhook outbox + audit. Either all of it happens or none of it does.
  */
-export async function finalizeVerification(pool: Pool, crypto: Crypto, f: FinalizeArgs): Promise<{ charged: boolean; balanceCents: number | null }> {
+export async function finalizeVerification(
+  pool: Pool,
+  crypto: Crypto,
+  f: FinalizeArgs,
+): Promise<{ charged: boolean; balanceCents: number | null; alreadyFinal?: boolean }> {
   return withTenantTx(pool, f.tenantId, async (client) => {
+    // Once only: the API and a worker resuming after a restart may both get here. Whoever
+    // locks the row second finds it final and leaves the result, the money and the webhook
+    // to the first.
+    const cur = await client.query<{ status: string }>(`SELECT status FROM verifications WHERE id = $1 FOR UPDATE`, [f.verificationId]);
+    if (cur.rows[0]?.status !== 'processing') return { charged: false, balanceCents: null, alreadyFinal: true };
+
     if (f.persist) await f.persist(client);
 
     for (const c of f.checks) {
@@ -150,7 +160,7 @@ export async function finalizeVerification(pool: Pool, crypto: Crypto, f: Finali
     const result = Object.fromEntries(f.checks.map((c) => [c.checkType, { status: c.status, source: c.source, data_as_of: c.dataAsOf, stale: c.stale, warnings: c.warnings ?? [], error_code: c.errorCode ?? null, result: c.result }]));
     await client.query(
       `UPDATE verifications SET status = $2, outcome = $3, result = $4, risk_flags = $5, bureau_cost_cents = $6,
-                                charged = $7, completed_at = now()
+                                charged = $7, completed_at = now(), resume_enc = NULL, claimed_until = NULL
         WHERE id = $1`,
       [f.verificationId, f.status, f.outcome, JSON.stringify(result), f.riskFlags, bureauCost, charged],
     );
@@ -188,6 +198,98 @@ export async function finalizeVerification(pool: Pool, crypto: Crypto, f: Finali
     });
     return { charged, balanceCents };
   });
+}
+
+// --- Durable verifications (docs/PLAN.md M7) -----------------------------------------------
+/**
+ * A verification survives a restart of whoever runs it. When it is created, what is needed to
+ * run its checks again (the input, including any tax PIN) is stored with it, encrypted, until
+ * it is final. The API runs it within its sync deadline holding a claim; a worker resumes it
+ * when the claim lapses (VerificationJobs, the watchdog).
+ */
+export interface VerificationJobs {
+  /** Run (or resume) the verification in a worker after `delayMs`. */
+  schedule(verificationId: string, tenantId: string, delayMs: number): Promise<void>;
+}
+
+export interface ResumeEnvelope {
+  kind: 'company' | 'driver_licence';
+  payload: unknown;
+}
+
+const resumeAad = (verificationId: string) => `verification_resume:${verificationId}`;
+
+/** Inside the creating transaction: keep the resume data; claim it when the caller runs it now. */
+export async function storeResume(client: PoolClient, crypto: Crypto, verificationId: string, envelope: ResumeEnvelope, claimMs: number | null): Promise<void> {
+  const enc = await crypto.encrypt(JSON.stringify(envelope), resumeAad(verificationId));
+  await client.query(
+    `UPDATE verifications SET resume_enc = $2,
+            claimed_until = CASE WHEN $3::integer IS NULL THEN NULL ELSE now() + make_interval(secs => $3::integer / 1000.0) END
+      WHERE id = $1`,
+    [verificationId, enc, claimMs],
+  );
+}
+
+export type Claim =
+  | { state: 'claimed'; tenantId: string; envelope: ResumeEnvelope | null; runs: number }
+  | { state: 'busy'; until: Date }
+  | { state: 'final' };
+
+/** A worker takes over a verification whose claim lapsed (or never was). Workers only (BYPASSRLS). */
+export async function claimVerification(pool: Pool, crypto: Crypto, verificationId: string, claimMs: number): Promise<Claim> {
+  const r = await pool.query<{ tenant_id: string; resume_enc: Buffer | null; run_attempts: number }>(
+    `UPDATE verifications SET claimed_until = now() + make_interval(secs => $2::integer / 1000.0), run_attempts = run_attempts + 1
+      WHERE id = $1 AND status = 'processing' AND (claimed_until IS NULL OR claimed_until < now())
+      RETURNING tenant_id, resume_enc, run_attempts`,
+    [verificationId, claimMs],
+  );
+  const row = r.rows[0];
+  if (row) {
+    const envelope = row.resume_enc ? (JSON.parse((await crypto.decrypt(row.resume_enc, resumeAad(verificationId))).toString('utf8')) as ResumeEnvelope) : null;
+    return { state: 'claimed', tenantId: row.tenant_id, envelope, runs: row.run_attempts };
+  }
+  const cur = await pool.query<{ status: string; claimed_until: Date | null }>(`SELECT status, claimed_until FROM verifications WHERE id = $1`, [verificationId]);
+  const c = cur.rows[0];
+  return c?.status === 'processing' && c.claimed_until ? { state: 'busy', until: c.claimed_until } : { state: 'final' };
+}
+
+/** After a failed run: let the next attempt claim it at once. */
+export async function releaseClaim(pool: Pool, verificationId: string): Promise<void> {
+  await pool.query(`UPDATE verifications SET claimed_until = NULL WHERE id = $1 AND status = 'processing'`, [verificationId]);
+}
+
+/** Ends a verification that cannot be run (no resume data, or too many failed runs): no charge. */
+export async function failVerification(pool: Pool, crypto: Crypto, verificationId: string, reason: string): Promise<boolean> {
+  const r = await pool.query<{
+    tenant_id: string;
+    wallet_hold_id: string | null;
+    request_id: string | null;
+    subject_fingerprint: Buffer;
+    vendor_id: string | null;
+    verification_type: string;
+    external_ref: string | null;
+  }>(
+    `SELECT v.tenant_id, v.wallet_hold_id, v.request_id, v.subject_fingerprint, v.vendor_id, v.verification_type, tv.external_ref
+       FROM verifications v LEFT JOIN tenant_vendors tv ON tv.id = v.tenant_vendor_id WHERE v.id = $1`,
+    [verificationId],
+  );
+  const v = r.rows[0];
+  if (!v) return false;
+  const done = await finalizeVerification(pool, crypto, {
+    tenantId: v.tenant_id,
+    verificationId,
+    holdId: v.wallet_hold_id,
+    requestId: v.request_id ?? 'worker',
+    billable: false,
+    outcome: 'unable_to_verify',
+    status: 'failed',
+    checks: [],
+    riskFlags: ['internal_error', reason],
+    attempts: [],
+    subjectFingerprint: v.subject_fingerprint,
+    webhookData: { type: v.verification_type === 'company' ? 'company' : 'driver_licence', vendor_id: v.vendor_id, external_ref: v.external_ref },
+  });
+  return !done.alreadyFinal;
 }
 
 export function deriveOutcome(checks: CheckRecord[], primary: CheckRecord['checkType']): Outcome {

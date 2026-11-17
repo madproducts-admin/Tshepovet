@@ -1,4 +1,4 @@
-import type { ExpectedKind } from './extractor';
+import type { ExpectedKind, ExtractionResult } from './extractor';
 import type { Extraction } from './schemas';
 
 /**
@@ -75,5 +75,25 @@ export function sandboxExtraction(sample: SandboxSample, now: Date = new Date())
         },
       };
     }
+  }
+}
+
+// --- Sample documents as media (the WhatsApp sandbox) -------------------------------------
+const MARKER = 'tv-sandbox-sample:';
+
+/** A stand-in "photo" of a sample: JPEG magic bytes and the sample's name. */
+export function sandboxMediaBytes(sample: SandboxSample): Buffer {
+  return Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.from(`${MARKER}${sample}`, 'latin1')]);
+}
+
+/**
+ * The sandbox's document reader: it recognises only the sample markers above and returns
+ * the sample's fixed reading, which then goes through postValidate like any extraction.
+ */
+export class SandboxDocumentExtractor {
+  async extract(bytes: Buffer, _expected: ExpectedKind): Promise<ExtractionResult> {
+    const m = new RegExp(`${MARKER}([a-z_]+)`).exec(bytes.toString('latin1'));
+    if (!m || !(m[1]! in SANDBOX_SAMPLES)) return { status: 'rejected_input', reason: 'not_a_sandbox_sample' };
+    return { status: 'ok', extraction: sandboxExtraction(m[1] as SandboxSample), model: 'sandbox', inputTokens: 0, outputTokens: 0 };
   }
 }

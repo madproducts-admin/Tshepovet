@@ -44,6 +44,12 @@ export class WebhookDispatcher {
     private readonly fetchImpl: WebhookFetch = guardedWebhookFetch(),
   ) {}
 
+  /** When the next delivery (or retry) falls due; null when nothing is waiting. */
+  async nextDueAt(): Promise<Date | null> {
+    const r = await this.pool.query<{ at: Date | null }>(`SELECT min(next_attempt_at) AS at FROM webhook_deliveries WHERE status IN ('pending','failed')`);
+    return r.rows[0]?.at ?? null;
+  }
+
   async runOnce(batchSize = 50): Promise<number> {
     const client = await this.pool.connect();
     let claimed: Claimed[];

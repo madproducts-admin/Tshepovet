@@ -1,13 +1,15 @@
-import { createPool, createRedis, loadConfig, logger } from '@tshepovet/core';
+import { createPool, createRedis, jobsConnection, loadConfig, logger, VerificationQueue } from '@tshepovet/core';
 import { buildContainer } from './container';
 import { createHttpApp } from './create-http-app';
 
-/** The API process (service tshepovet-api): HTTP only. Background work runs in worker.ts. */
+/** The API process (service tshepovet-api): HTTP only. Background work runs in worker.ts; the
+ *  API hands it verifications through the queue. */
 async function main() {
   const config = loadConfig();
   const pool = createPool(config.DATABASE_URL);
   const redis = createRedis(config.REDIS_URL);
-  const container = buildContainer(config, pool, redis, logger);
+  const jobs = new VerificationQueue(jobsConnection(config.REDIS_URL));
+  const container = buildContainer(config, pool, redis, logger, { jobs });
   const app = await createHttpApp(container);
   await app.listen(config.PORT, config.HOST);
   logger.info({ host: config.HOST, port: config.PORT }, 'tshepovet api listening');
@@ -20,7 +22,7 @@ async function main() {
     setTimeout(() => process.exit(1), 15_000).unref();
     app
       .close()
-      .then(() => Promise.allSettled([pool.end(), redis.quit()]))
+      .then(() => Promise.allSettled([pool.end(), redis.quit(), jobs.close()]))
       .finally(() => process.exit(0));
   };
   process.on('SIGTERM', () => shutdown('SIGTERM'));

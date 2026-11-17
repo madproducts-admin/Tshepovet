@@ -21,6 +21,7 @@ import {
   SessionStore,
   StaticCapabilityConfig,
   VerificationCache,
+  type VerificationJobs,
   WaterfallEngine,
 } from '@tshepovet/core';
 
@@ -51,6 +52,8 @@ export interface Container {
 export interface ContainerOverrides {
   liveAdapters?: ProviderAdapter[];
   liveCapabilityConfig?: CapabilityConfigSource;
+  /** Verification runs in the worker (BullMQ). Without it, checks finish in this process (tests). */
+  jobs?: VerificationJobs;
 }
 
 export const CONTAINER = Symbol('tshepovet.container');
@@ -94,6 +97,7 @@ export function buildContainer(config: Config, pool: Pool, redis: RedisClient, l
     log,
     syncDeadlineMs: config.SYNC_DEADLINE_MS,
     costCeilingCents: config.COMPANY_CHECK_COST_CEILING_CENTS,
+    jobs: o.jobs,
   });
   const driver = new DriverLicenceVerificationService({
     pool,
@@ -103,6 +107,7 @@ export function buildContainer(config: Config, pool: Pool, redis: RedisClient, l
     log,
     syncDeadlineMs: config.SYNC_DEADLINE_MS,
     costCeilingCents: config.DRIVER_CHECK_COST_CEILING_CENTS,
+    jobs: o.jobs,
   });
   const accounts = new AccountStore(pool);
   const sessions = new SessionStore(redis, { idleSeconds: config.SESSION_IDLE_MINUTES * 60, absoluteSeconds: config.SESSION_ABSOLUTE_HOURS * 3600 });

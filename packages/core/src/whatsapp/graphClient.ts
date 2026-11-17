@@ -70,3 +70,6 @@ export class WhatsAppGraphClient {
     return { bytes, mimeType: m.mime_type };
   }
 }
+
+/** What the conversation worker needs from a Graph client: the real one, or the sandbox's. */
+export type GraphClient = Pick<WhatsAppGraphClient, 'sendText' | 'sendButtons' | 'sendList' | 'sendTemplate' | 'downloadMedia'>;

@@ -4,6 +4,7 @@ import { sniffMime } from '../src/ocr/extractor';
 import type { Extraction } from '../src/ocr/schemas';
 import { Event, Snapshot, State, transition } from '../src/whatsapp/stateMachine';
 import { toEvent } from '../src/whatsapp/conversationWorker';
+import { SandboxDocumentExtractor, sandboxMediaBytes } from '../src/ocr/sandboxExtractor';
 
 const snap = (state: State, extra: Partial<Snapshot> = {}): Snapshot => ({
   state,
@@ -142,5 +143,27 @@ describe('OCR post-validation', () => {
     expect(sniffMime(Buffer.from([0xff, 0xd8, 0xff, 0xe0]))).toBe('image/jpeg');
     expect(sniffMime(Buffer.from('%PDF-1.7'))).toBe('application/pdf');
     expect(sniffMime(Buffer.from('<html>'))).toBeNull();
+  });
+});
+
+describe('sandbox documents as WhatsApp media', () => {
+  const extractor = new SandboxDocumentExtractor();
+
+  it('reads a sample "photo" back as that sample, through the same post-validation', async () => {
+    const bytes = sandboxMediaBytes('id_director');
+    expect(sniffMime(bytes)).toBe('image/jpeg');
+    const r = await extractor.extract(bytes, 'identity');
+    expect(r.status).toBe('ok');
+    if (r.status !== 'ok') return;
+    const v = postValidate(r.extraction, 'identity');
+    expect(v.outcome).toBe('ok');
+    expect(v.identity?.idNumber).toBe('8001015009087');
+    const blurry = await extractor.extract(sandboxMediaBytes('id_blurry'), 'identity');
+    expect(blurry.status === 'ok' && postValidate(blurry.extraction, 'identity').outcome).toBe('retake');
+  });
+
+  it('refuses anything that is not a sample (the sandbox never reads real documents)', async () => {
+    const realJpeg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(50_000, 7)]);
+    expect(await extractor.extract(realJpeg, 'identity')).toEqual({ status: 'rejected_input', reason: 'not_a_sandbox_sample' });
   });
 });

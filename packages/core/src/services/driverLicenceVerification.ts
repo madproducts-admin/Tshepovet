@@ -17,7 +17,7 @@ import type { Logger } from '../lib/logger';
 import type { Capability, LicenceRecord } from '../providers/types';
 import type { Attempt } from '../waterfall/engine';
 import type { CheckResolver, ResolvedCheck } from './checkResolver';
-import { AuthContext, CheckRecord, createVerification, deriveOutcome, finalizeVerification } from './lifecycle';
+import { AuthContext, CheckRecord, createVerification, deriveOutcome, finalizeVerification, storeResume, type VerificationJobs } from './lifecycle';
 
 export interface DriverLicenceInput {
   idNumber: string;
@@ -43,10 +43,29 @@ export interface DriverServiceDeps {
   syncDeadlineMs: number;
   costCeilingCents: number;
   prdpImplies?: Partial<Record<PrdpCategory, PrdpCategory[]>>;
+  /** Durable completion in a worker (docs/PLAN.md M7). Without it, checks finish in this process. */
+  jobs?: VerificationJobs;
+}
+
+/** What a worker needs to run a driver check again (stored encrypted until final). */
+interface DriverResume {
+  auth: AuthContext;
+  input: DriverLicenceInput;
+  idNumber: string;
+  ageYears: number;
+  subjectBidx: string;
+  subjectFingerprint: string;
+  created: { verificationId: string; holdId: string | null; tenantVendorId: string | null; graces: GracePeriod[] };
+  requestId: string;
 }
 
 export class DriverLicenceVerificationService {
   constructor(private readonly d: DriverServiceDeps) {}
+
+  /** How long a run may take past the sync answer (the bureaus' deadline). */
+  private get backgroundMs() {
+    return Math.max(this.d.syncDeadlineMs * 3, 20_000);
+  }
 
   async start(auth: AuthContext, input: DriverLicenceInput, requestId: string): Promise<{ verificationId: string; done: boolean }> {
     // Professional drivers are adults; resolves the YY century ambiguity.
@@ -102,12 +121,31 @@ export class DriverLicenceVerificationService {
         tenantVendorId,
         consentId,
       });
-      return {
+      const out = {
         ...v,
         tenantVendorId,
         graces: graces.rows.map((g) => ({ expiredFrom: g.expired_from, expiredTo: g.expired_to, validUntil: g.valid_until, gazetteReference: g.gazette_reference })),
       };
+      // A worker can finish it after a restart; this process claims it while it runs it.
+      const resume: DriverResume = {
+        auth,
+        input: { ...input, consentId, consentAttestation: null },
+        idNumber: id.normalised,
+        ageYears: id.ageYears,
+        subjectBidx: subjectBidx.toString('hex'),
+        subjectFingerprint: subjectFingerprint.toString('hex'),
+        created: out,
+        requestId,
+      };
+      const runHere = !(input.mode === 'async' && this.d.jobs);
+      await storeResume(client, this.d.crypto, v.verificationId, { kind: 'driver_licence', payload: resume }, runHere ? this.backgroundMs + 30_000 : null);
+      return out;
     });
+
+    if (input.mode === 'async' && this.d.jobs) {
+      await this.d.jobs.schedule(created.verificationId, auth.tenantId, 0);
+      return { verificationId: created.verificationId, done: false };
+    }
 
     const job = this.process(auth, input, id.normalised, id.ageYears, subjectBidx, subjectFingerprint, created, requestId).catch(async (err) => {
       this.d.log.error({ err, verificationId: created.verificationId }, 'driver verification crashed');
@@ -129,7 +167,15 @@ export class DriverLicenceVerificationService {
 
     if (input.mode === 'async') return { verificationId: created.verificationId, done: false };
     const done = await Promise.race([job.then(() => true), new Promise<boolean>((r) => setTimeout(() => r(false), this.d.syncDeadlineMs))]);
+    // Still running: if this process stops, a worker takes over when the claim lapses.
+    if (!done && this.d.jobs) await this.d.jobs.schedule(created.verificationId, auth.tenantId, this.backgroundMs + 30_000 - this.d.syncDeadlineMs);
     return { verificationId: created.verificationId, done };
+  }
+
+  /** A worker runs a verification again from its stored input (after a restart, or async). */
+  async resume(payload: unknown): Promise<void> {
+    const p = payload as DriverResume;
+    await this.process(p.auth, p.input, p.idNumber, p.ageYears, Buffer.from(p.subjectBidx, 'hex'), Buffer.from(p.subjectFingerprint, 'hex'), p.created, p.requestId);
   }
 
   private async process(
@@ -150,7 +196,7 @@ export class DriverLicenceVerificationService {
       {
         tenantId: auth.tenantId,
         freshness: input.freshness,
-        deadlineAt: Date.now() + Math.max(this.d.syncDeadlineMs * 3, 20_000),
+        deadlineAt: Date.now() + this.backgroundMs,
         costCeilingCents: this.d.costCeilingCents,
       },
     );

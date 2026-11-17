@@ -11,7 +11,7 @@ import type { Logger } from '../lib/logger';
 import type { CompanyRecord, VatRecord } from '../providers/types';
 import type { TcsResult } from '../domain/sa/tax';
 import type { CheckResolver, ResolvedCheck } from './checkResolver';
-import { AuthContext, CheckRecord, createVerification, deriveOutcome, finalizeVerification } from './lifecycle';
+import { AuthContext, CheckRecord, createVerification, deriveOutcome, finalizeVerification, storeResume, type VerificationJobs } from './lifecycle';
 import type { Attempt } from '../waterfall/engine';
 import type { Capability } from '../providers/types';
 
@@ -28,6 +28,8 @@ export interface CompanyVerificationInput {
   maxAgeSeconds: number | null;
   mode: 'sync' | 'async';
   monitor: boolean;
+  /** Price-book SKU instead of COMPANY_CHECK: MONITORING_RECHECK for monitoring's own re-checks. */
+  sku?: string;
 }
 
 export interface CompanyServiceDeps {
@@ -38,6 +40,17 @@ export interface CompanyServiceDeps {
   log: Logger;
   syncDeadlineMs: number;
   costCeilingCents: number;
+  /** Durable completion in a worker (docs/PLAN.md M7). Without it, checks finish in this process. */
+  jobs?: VerificationJobs;
+}
+
+/** What a worker needs to run a company verification again (stored encrypted until final). */
+interface CompanyResume {
+  auth: AuthContext;
+  input: CompanyVerificationInput;
+  created: { verificationId: string; holdId: string | null; vendorId: string; tenantVendorId: string; priceCents: number };
+  subjectFingerprint: string;
+  requestId: string;
 }
 
 const LEGAL_SUFFIXES = /\b(PROPRIETARY|PTY|LIMITED|LTD|CC|CLOSE CORPORATION|INCORPORATED|INC|NPC|SOC|RF|THE)\b/g;
@@ -64,6 +77,11 @@ export function namesMatch(a: string, b: string): boolean {
 
 export class CompanyVerificationService {
   constructor(private readonly d: CompanyServiceDeps) {}
+
+  /** How long a run may take past the sync answer (the bureaus' deadline). */
+  private get backgroundMs() {
+    return Math.max(this.d.syncDeadlineMs * 3, 20_000);
+  }
 
   /**
    * Validates, links the vendor, records consent, reserves funds, then runs
@@ -123,7 +141,7 @@ export class CompanyVerificationService {
         auth,
         requestId,
         type: 'company',
-        sku,
+        sku: input.sku ?? sku,
         subjectFingerprint,
         subjectDisplay: parsed.normalised,
         checksRequested: checks,
@@ -131,8 +149,23 @@ export class CompanyVerificationService {
         tenantVendorId,
         consentId,
       });
+      // A worker can finish it after a restart; this process claims it while it runs it.
+      const resume: CompanyResume = {
+        auth,
+        input: { ...input, consentId, consentAttestation: null },
+        created: { ...v, vendorId, tenantVendorId },
+        subjectFingerprint: subjectFingerprint.toString('hex'),
+        requestId,
+      };
+      const runHere = !(input.mode === 'async' && this.d.jobs);
+      await storeResume(client, this.d.crypto, v.verificationId, { kind: 'company', payload: resume }, runHere ? this.backgroundMs + 30_000 : null);
       return { ...v, vendorId, tenantVendorId };
     });
+
+    if (input.mode === 'async' && this.d.jobs) {
+      await this.d.jobs.schedule(created.verificationId, auth.tenantId, 0);
+      return { verificationId: created.verificationId, done: false };
+    }
 
     const job = this.process(auth, input, parsed, checks, created, subjectFingerprint, requestId).catch(async (err) => {
       this.d.log.error({ err, verificationId: created.verificationId }, 'company verification crashed');
@@ -154,7 +187,16 @@ export class CompanyVerificationService {
 
     if (input.mode === 'async') return { verificationId: created.verificationId, done: false };
     const done = await Promise.race([job.then(() => true), new Promise<boolean>((r) => setTimeout(() => r(false), this.d.syncDeadlineMs))]);
+    // Still running: if this process stops, a worker takes over when the claim lapses.
+    if (!done && this.d.jobs) await this.d.jobs.schedule(created.verificationId, auth.tenantId, this.backgroundMs + 30_000 - this.d.syncDeadlineMs);
     return { verificationId: created.verificationId, done };
+  }
+
+  /** A worker runs a verification again from its stored input (after a restart, or async). */
+  async resume(payload: unknown): Promise<void> {
+    const p = payload as CompanyResume;
+    const parsed = parseEnterpriseNumber(p.input.registrationNumber);
+    await this.process(p.auth, p.input, parsed, [...new Set(p.input.checks)], p.created, Buffer.from(p.subjectFingerprint, 'hex'), p.requestId);
   }
 
   private async resolveVendor(client: PoolClient, parsed: ParsedEnterpriseNumber): Promise<string> {
@@ -177,7 +219,7 @@ export class CompanyVerificationService {
   ) {
     const resolver = this.d.resolvers[auth.environment];
     // Background completion gets a longer deadline than the sync response.
-    const deadlineAt = Date.now() + Math.max(this.d.syncDeadlineMs * 3, 20_000);
+    const deadlineAt = Date.now() + this.backgroundMs;
     const ceiling = input.freshness === 'live' ? this.d.costCeilingCents * 2 : this.d.costCeilingCents;
     const base = { tenantId: auth.tenantId, freshness: input.freshness, maxAgeSeconds: input.maxAgeSeconds ?? undefined, deadlineAt };
     const recent = isRecentlyRegistered(parsed);
@@ -467,6 +509,12 @@ export class CompanyVerificationService {
            VALUES ($1, $2, 'tcs_pin', $3, $4, GREATEST(now(), ($4::date - 30)::timestamptz), 'remind')
            ON CONFLICT (tenant_vendor_id, subject_type, subject_id) DO UPDATE SET expires_on = EXCLUDED.expires_on, next_action_at = EXCLUDED.next_action_at`,
           [auth.tenantId, created.tenantVendorId, pin.rows[0]!.id, t.pinExpiresOn],
+        );
+        // A new PIN replaces the one monitoring was watching: its reminders stop.
+        await client.query(
+          `UPDATE expiry_schedules SET state = 'renewed', next_action_at = NULL, updated_at = now()
+            WHERE tenant_vendor_id = $1 AND subject_type = 'tcs_pin' AND subject_id <> $2 AND state IN ('scheduled', 'expired')`,
+          [created.tenantVendorId, pin.rows[0]!.id],
         );
       }
       if (keepPin) {

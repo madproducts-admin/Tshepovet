@@ -16,7 +16,12 @@ export type MailTemplate =
   | 'mfa_changed'
   | 'vendor_invite'
   | 'vendor_login'
-  | 'supplier_onboarded';
+  | 'supplier_onboarded'
+  | 'expiry_reminder'
+  | 'expired'
+  | 'compliance_changed'
+  | 'monitoring_unpaid'
+  | 'module_unpaid';
 
 export interface MailVars {
   appUrl: string;
@@ -28,6 +33,11 @@ export interface MailVars {
   minutes?: number | null;
   change?: string | null;
   supplier?: string | null;
+  /** What expires or changed, in words ("the tax compliance PIN"). */
+  what?: string | null;
+  /** A calendar day, already formatted ("16 December 2026"). */
+  day?: string | null;
+  amount?: string | null;
 }
 
 const SIGN_OFF = '\n\nTshepoVet\nThis is an automated message; replies are not read.';
@@ -102,6 +112,51 @@ The link works once and expires in 15 minutes. If you did not ask for it, ignore
 ${v.supplier ?? 'A supplier'} finished onboarding on TshepoVet and is waiting for your review.
 
 Open it here: ${v.link}${SIGN_OFF}`,
+      };
+    case 'expiry_reminder':
+      return {
+        subject: `${v.supplier ?? 'A supplier'}: ${v.what ?? 'a document'} expires on ${v.day}`,
+        text: `${hi}
+
+${v.what ?? 'A document'} for ${v.supplier ?? 'one of your suppliers'} expires on ${v.day}. Ask the supplier for a new one before then; TshepoVet checks it again as soon as you add it.
+
+See the supplier: ${v.link}${SIGN_OFF}`,
+      };
+    case 'expired':
+      return {
+        subject: `${v.supplier ?? 'A supplier'}: ${v.what ?? 'a document'} has expired`,
+        text: `${hi}
+
+${v.what ?? 'A document'} for ${v.supplier ?? 'one of your suppliers'} expired on ${v.day}.${v.change ? ` ${v.change}` : ''}
+
+See the supplier: ${v.link}${SIGN_OFF}`,
+      };
+    case 'compliance_changed':
+      return {
+        subject: `${v.supplier ?? 'A supplier'}: its compliance changed`,
+        text: `${hi}
+
+TshepoVet checked ${v.supplier ?? 'one of your suppliers'} again. ${v.change ?? 'The result changed since the last check.'}
+
+See the result: ${v.link}${SIGN_OFF}`,
+      };
+    case 'monitoring_unpaid':
+      return {
+        subject: 'Monitoring could not be paid from your TshepoVet wallet',
+        text: `${hi}
+
+Monitoring ${v.supplier ?? 'a supplier'} costs ${v.amount ?? 'a monthly fee'} this month, and your wallet does not have enough credit. TshepoVet keeps monitoring for 7 days; top up before ${v.day} or monitoring of this supplier stops.
+
+Top up: ${v.appUrl}/app/wallet${SIGN_OFF}`,
+      };
+    case 'module_unpaid':
+      return {
+        subject: `${v.what ?? 'A module'} could not be renewed`,
+        text: `${hi}
+
+${v.what ?? 'A module'} renews for ${v.amount ?? 'its monthly fee'}, and your wallet does not have enough credit, so it is paused. Top up before ${v.day} and it renews by itself; after that it is turned off.
+
+Top up: ${v.appUrl}/app/wallet${SIGN_OFF}`,
       };
     case 'mfa_changed':
       return {

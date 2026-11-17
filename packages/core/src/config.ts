@@ -61,6 +61,10 @@ const ConfigSchema = z.object({
   /** Addresses webhooks may never be sent to, on top of every private and reserved range
    * (comma-separated IPs: e.g. the box's own public address). */
   WEBHOOK_DENY_IPS: z.string().default(''),
+
+  // --- Jobs (docs/PLAN.md M7) ------------------------------------------------------------
+  /** Where documents are kept, encrypted (the stand-in for S3 + KMS, PLAN §6). */
+  DOCUMENT_STORE_DIR: z.string().default('D:/madproducts-data/tshepovet/documents'),
 });
 
 export type Config = z.infer<typeof ConfigSchema>;

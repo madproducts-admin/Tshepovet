@@ -10,7 +10,7 @@ import type { DocumentExtractor, ExpectedKind } from '../ocr/extractor';
 import { postValidate } from '../ocr/postValidate';
 import type { CheckResolver } from '../services/checkResolver';
 import type { CompanyVerificationService } from '../services/companyVerification';
-import type { WhatsAppGraphClient } from './graphClient';
+import type { GraphClient } from './graphClient';
 import { render } from './messages';
 import { Action, ConversationData, Event, Requirements, Snapshot, State, transition } from './stateMachine';
 import type { WaInboundMessage } from './inbound';
@@ -27,9 +27,9 @@ export interface WorkerDeps {
   redis: RedisClient;
   crypto: Crypto;
   log: Logger;
-  graph: WhatsAppGraphClient;
+  graph: GraphClient;
   store: ObjectStore;
-  extractor: DocumentExtractor;
+  extractor: Pick<DocumentExtractor, 'extract'>;
   resolver: CheckResolver;
   company: CompanyVerificationService;
   consent: ConsentService;
@@ -73,27 +73,43 @@ export function toEvent(m: WaInboundMessage): Event | null {
   }
 }
 
+const GROUP = 'conversation-workers';
+
 export class ConversationWorker {
   constructor(private readonly d: WorkerDeps) {}
 
-  /** Consume the inbound stream with a consumer group (at-least-once; handlers are idempotent per wamid). */
-  async run(consumer: string, signal: AbortSignal) {
-    await this.d.redis.xgroup('CREATE', WA_STREAM, 'conversation-workers', '0', 'MKSTREAM').catch(() => undefined);
+  /**
+   * Consume the inbound stream with a consumer group (at-least-once; handlers are idempotent
+   * per wamid). `redis` must be a connection of its own: XREADGROUP BLOCK holds it.
+   */
+  async run(consumer: string, signal: AbortSignal, redis = this.d.redis) {
+    await redis.xgroup('CREATE', WA_STREAM, GROUP, '0', 'MKSTREAM').catch(() => undefined);
     while (!signal.aborted) {
-      const res = (await this.d.redis.xreadgroup('GROUP', 'conversation-workers', consumer, 'COUNT', 20, 'BLOCK', 5000, 'STREAMS', WA_STREAM, '>')) as
+      const res = (await redis.xreadgroup('GROUP', GROUP, consumer, 'COUNT', 20, 'BLOCK', 2000, 'STREAMS', WA_STREAM, '>')) as
         | Array<[string, Array<[string, string[]]>]>
         | null;
-      for (const [, entries] of res ?? []) {
-        for (const [id, fields] of entries) {
-          const f = Object.fromEntries(fields.reduce<[string, string][]>((acc, v, i, a) => (i % 2 === 0 ? [...acc, [v, a[i + 1]!]] : acc), []));
-          try {
-            if (f.kind === 'message') await this.handleInbound(JSON.parse(f.payload!) as WaInboundMessage);
-            await this.d.redis.xack(WA_STREAM, 'conversation-workers', id);
-          } catch (err) {
-            // Left un-acked: XAUTOCLAIM by a peer retries it after the idle timeout.
-            this.d.log.error({ err, streamId: id }, 'conversation handler failed');
-          }
-        }
+      for (const [, entries] of res ?? []) await this.handleEntries(entries);
+    }
+  }
+
+  /** Messages a worker took but never acknowledged (it crashed): the watchdog hands them on. */
+  async reclaimStale(consumer: string, minIdleMs = 5 * 60_000): Promise<number> {
+    await this.d.redis.xgroup('CREATE', WA_STREAM, GROUP, '0', 'MKSTREAM').catch(() => undefined);
+    const r = (await this.d.redis.xautoclaim(WA_STREAM, GROUP, consumer, minIdleMs, '0-0', 'COUNT', 50)) as [string, Array<[string, string[]] | null>];
+    const entries = (r?.[1] ?? []).filter((e): e is [string, string[]] => Array.isArray(e));
+    await this.handleEntries(entries);
+    return entries.length;
+  }
+
+  private async handleEntries(entries: Array<[string, string[]]>) {
+    for (const [id, fields] of entries) {
+      const f = Object.fromEntries(fields.reduce<[string, string][]>((acc, v, i, a) => (i % 2 === 0 ? [...acc, [v, a[i + 1]!]] : acc), []));
+      try {
+        if (f.kind === 'message') await this.handleInbound(JSON.parse(f.payload!) as WaInboundMessage);
+        await this.d.redis.xack(WA_STREAM, GROUP, id);
+      } catch (err) {
+        // Left un-acked: the watchdog reclaims it after the idle timeout (reclaimStale).
+        this.d.log.error({ err, streamId: id }, 'conversation handler failed');
       }
     }
   }
