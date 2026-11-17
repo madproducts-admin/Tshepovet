@@ -45,6 +45,16 @@ if (-not $SkipBuild) {
   Pop-Location
   if ($code -ne 0) { exit $code }
 }
+# The build bakes its /api and /v1 rewrites in. deploy-app.ps1 builds in this same folder against
+# the LIVE API (9131): reusing that build here would send the browser's API calls (sign-ups,
+# top-ups, checks) to the live sandbox. So -SkipBuild only reuses a build made for this test API.
+$manifest = Get-Content -LiteralPath (Join-Path $root 'apps\web\.next\routes-manifest.json') -Raw | ConvertFrom-Json
+$targets = @(@($manifest.rewrites.beforeFiles) + @($manifest.rewrites.afterFiles) + @($manifest.rewrites.fallback) | Where-Object { $_ } | ForEach-Object { $_.destination })
+$foreign = @($targets | Where-Object { $_ -notlike "http://127.0.0.1:$apiPort/*" })
+if (-not $targets.Count -or $foreign.Count) {
+  Write-Host "The web build sends /api to $($targets -join ', '), not the test API on $apiPort (a deploy build?). Run without -SkipBuild."
+  exit 1
+}
 & node tools\reset-test-db.mjs
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

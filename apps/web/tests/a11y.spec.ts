@@ -73,10 +73,20 @@ for (const theme of ['light', 'dark'] as const) {
 }
 
 // ECTA s43, in the owner's words: "MAD Products (Pty) Ltd t/a TshepoVet | Reg No: [CIPC Number] |
-// VAT No: [SARS VAT Number] | [Physical Address]". The test API sets no company details, so the
-// placeholders show, and no VAT number: not a VAT vendor ("We are not VAT registered yet").
-test('the footers and the terms say who runs TshepoVet (ECTA s43)', async ({ page }) => {
-  const line = /^MAD Products \(Pty\) Ltd t\/a \(trading as\) TshepoVet\s*\|\s*Reg No \(Company registration number\): \[CIPC Number\]\s*\|\s*Not registered for VAT \(Value-added tax\)\s*\|\s*\[Physical Address\]$/;
+// VAT No: [SARS VAT Number] | [Physical Address]". The expected line comes from /api/meta, so the
+// test holds on the test API (no details: the placeholders) and on the live site (the real ones);
+// with no VAT number the operator is not a VAT vendor ("We are not VAT registered yet").
+test('the footers and the terms say who runs TshepoVet (ECTA s43)', async ({ page, request }) => {
+  const meta = (await (await request.get('/api/meta')).json()) as {
+    vat_registered: boolean;
+    seller: { legal_name: string; trading_name: string; registration_number: string | null; vat_number: string | null; address: string | null; directors: string[] };
+  };
+  const s = meta.seller;
+  const lit = (v: string) => v.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+  const vatPart = s.vat_number ? `VAT No \\(Value-added tax registration number\\): ${lit(s.vat_number)}` : 'Not registered for VAT \\(Value-added tax\\)';
+  const line = new RegExp(
+    `^${lit(s.legal_name)} t\\/a \\(trading as\\) ${lit(s.trading_name)}\\s*\\|\\s*Reg No \\(Company registration number\\): ${lit(s.registration_number ?? '[CIPC Number]')}\\s*\\|\\s*${vatPart}\\s*\\|\\s*${lit(s.address ?? '[Physical Address]')}$`,
+  );
   for (const path of ['/', '/pricing', '/sign-in', '/supplier/sign-in']) {
     await page.goto(path);
     await expect(page.locator('footer address'), path).toHaveText(line);
@@ -86,13 +96,16 @@ test('the footers and the terms say who runs TshepoVet (ECTA s43)', async ({ pag
   await expect(page.locator('main address')).toHaveText(line);
   // The rest of s43: legal status, the address for legal notices, directors, contact, website.
   const details = page.locator('main dl');
-  for (const term of ['Registered name', 'Registration number', 'Registered office, also for legal notices', 'Directors', 'Value-added tax', 'Email', 'Telephone', 'Website']) {
+  const director = s.directors.length === 1 ? 'Director' : 'Directors';
+  for (const term of ['Registered name', 'Registration number', 'Registered office, also for legal notices', director, 'Value-added tax', 'Email', 'Telephone', 'Website']) {
     await expect(details.getByRole('term').filter({ hasText: new RegExp(`^${term}$`) }), term).toHaveCount(1);
   }
-  await expect(details).toContainText('Not registered, so none is charged');
-  await expect(page.getByText(/not registered for VAT, so no VAT is added/)).toBeVisible();
-  await page.goto('/pricing');
-  await expect(page.getByText(/not registered for VAT, so you pay the prices shown/)).toBeVisible();
+  if (!meta.vat_registered) {
+    await expect(details).toContainText('Not registered, so none is charged');
+    await expect(page.getByText(/not registered for VAT, so no VAT is added/)).toBeVisible();
+    await page.goto('/pricing');
+    await expect(page.getByText(/not registered for VAT, so you pay the prices shown/)).toBeVisible();
+  }
 });
 
 test('public pages reflow at 320 CSS pixels (WCAG 1.4.10)', async ({ page }) => {
