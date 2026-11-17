@@ -1,4 +1,4 @@
-import type { Pool } from 'pg';
+import { Pool } from 'pg';
 import {
   AccountStore,
   bureauSpecsFromEnv,
@@ -47,6 +47,12 @@ export interface Container {
   mfa: MfaChallengeStore;
   /** Secure, __Host- cookies (HTTPS); off only for plain-http tests and local runs. */
   cookieSecure: boolean;
+  /**
+   * The staff console's connection (docs/PLAN.md M8): staff work across tenants, so their reads
+   * and changes go through a BYPASSRLS login, never the tenant-scoped API role. Null when none is
+   * configured: the console's endpoints then answer 503.
+   */
+  staffPool: Pool | null;
 }
 
 export interface ContainerOverrides {
@@ -113,5 +119,7 @@ export function buildContainer(config: Config, pool: Pool, redis: RedisClient, l
   const sessions = new SessionStore(redis, { idleSeconds: config.SESSION_IDLE_MINUTES * 60, absoluteSeconds: config.SESSION_ABSOLUTE_HOURS * 3600 });
   const mfa = new MfaChallengeStore(redis);
   const cookieSecure = config.COOKIE_SECURE ? config.COOKIE_SECURE === 'true' : config.NODE_ENV === 'production';
-  return { config, pool, redis, crypto, log, cache, resolvers, consent, company, driver, accounts, sessions, mfa, cookieSecure };
+  const staffUrl = config.STAFF_DATABASE_URL ?? config.WORKER_DATABASE_URL;
+  const staffPool = staffUrl ? new Pool({ connectionString: staffUrl, max: 4, application_name: 'tshepovet-staff', statement_timeout: 15_000 }) : null;
+  return { config, pool, redis, crypto, log, cache, resolvers, consent, company, driver, accounts, sessions, mfa, cookieSecure, staffPool };
 }

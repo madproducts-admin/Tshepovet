@@ -55,6 +55,8 @@ export async function buildTestApp(overrides: ContainerOverrides = {}) {
     ENABLED_PROVIDERS: 'mock',
     SYNC_DEADLINE_MS: '5000',
     SANDBOX: 'true',
+    // The staff console's BYPASSRLS connection: the owner login in tests.
+    STAFF_DATABASE_URL: process.env.TEST_OWNER_DATABASE_URL,
     ...KEYS,
   });
   const pool = new Pool({ connectionString: config.DATABASE_URL, max: 10 });
@@ -68,6 +70,7 @@ export async function buildTestApp(overrides: ContainerOverrides = {}) {
     close: async () => {
       await nest.close();
       await pool.end();
+      await container.staffPool?.end();
       await redis.quit();
     },
   };

@@ -296,6 +296,8 @@ export class ConversationWorker {
     let isListedDirector: boolean | undefined;
     let bbbeeDecision: 'accept' | 'reject' | 'manual_review' | undefined;
     let extractedEnc: Buffer | null = null;
+    // Why a person should look at it (the staff review queue shows these).
+    let reviewFlags: string[] = [];
 
     if (extraction.status === 'rejected_input') {
       outcome = 'retake';
@@ -312,6 +314,7 @@ export class ConversationWorker {
       });
       outcome = v.outcome;
       detail = v.detail;
+      reviewFlags = v.flags;
       if (v.identity) {
         idLast4 = v.identity.idNumber.slice(-4);
         if (!c.vendor_id && c.state_data.entityKind === 'sole_proprietor') {
@@ -338,8 +341,8 @@ export class ConversationWorker {
       if (!c.vendor_id) return null;
       const r = await cl.query<{ id: string }>(
         `INSERT INTO vendor_documents (vendor_id, tenant_id, document_type, storage_key, sha256, mime_type, size_bytes, source_channel,
-                                       extracted_fields_enc, extraction_model, review_status, image_purge_after)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, 'whatsapp', $8, $9, $10,
+                                       extracted_fields_enc, extraction_model, review_status, review_flags, image_purge_after)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'whatsapp', $8, $9, $10, $11,
                  now() + make_interval(days => (SELECT image_retention_days FROM ref_document_types WHERE code = $3)))
          RETURNING id`,
         [
@@ -353,6 +356,7 @@ export class ConversationWorker {
           extractedEnc,
           extraction.status === 'ok' ? extraction.model : null,
           outcome === 'ok' ? 'auto_accepted' : outcome === 'needs_review' ? 'needs_review' : 'rejected',
+          reviewFlags,
         ],
       );
       return r.rows[0]!.id;

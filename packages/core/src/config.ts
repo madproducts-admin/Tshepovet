@@ -11,6 +11,8 @@ const ConfigSchema = z.object({
   HOST: z.string().default('0.0.0.0'),
   DATABASE_URL: z.string().url(),
   WORKER_DATABASE_URL: z.string().url().optional(),
+  /** The staff console's connection (BYPASSRLS: staff work across tenants). Default: WORKER_DATABASE_URL. */
+  STAFF_DATABASE_URL: z.string().url().optional(),
   REDIS_URL: z.string().default('redis://localhost:6379/0'),
 
   KEK_KEYS: z.string().min(1),

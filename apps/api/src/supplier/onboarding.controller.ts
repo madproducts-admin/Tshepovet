@@ -314,8 +314,8 @@ export class OnboardingController {
       const doc = await client.query<{ id: string }>(
         `INSERT INTO vendor_documents (vendor_id, tenant_id, document_type, sha256, mime_type, size_bytes, source_channel, issued_on, expires_on,
                                        extracted_fields, extracted_fields_enc, extraction_confidence, extraction_model, review_status,
-                                       image_purge_after, record_purge_after)
-         VALUES ($1, $9, $2, $3, 'application/x-sandbox-sample', 1, 'portal', $4, $5, $6, $7, 1, 'sandbox', $8,
+                                       review_flags, image_purge_after, record_purge_after)
+         VALUES ($1, $9, $2, $3, 'application/x-sandbox-sample', 1, 'portal', $4, $5, $6, $7, 1, 'sandbox', $8, $10,
                  now() + make_interval(days => (SELECT image_retention_days FROM ref_document_types WHERE code = $2)), now() + interval '5 years')
          RETURNING id`,
         [
@@ -328,6 +328,7 @@ export class OnboardingController {
           enc,
           v.outcome === 'ok' && (b.kind === 'identity' || v.bbbee?.decision === 'accept') ? 'auto_accepted' : v.bbbee?.decision === 'reject' ? 'rejected' : 'needs_review',
           inv.tenant_id,
+          v.flags,
         ],
       );
       const documentId = doc.rows[0]!.id;

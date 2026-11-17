@@ -58,6 +58,7 @@ export function portalOpenApi(version = '0.3.0'): Json {
     };
     if (r.permission) op['x-permission'] = r.permission;
     if (r.mfaSetupAllowed) op['x-mfa-setup-allowed'] = true;
+    if (r.staffRoles) op['x-staff-roles'] = r.staffRoles;
     if (r.body) op.requestBody = { required: true, content: { 'application/json': { schema: schemaOf(r.body, 'input') } } };
     (paths[r.path] ??= {})[r.method.toLowerCase()] = op;
   }

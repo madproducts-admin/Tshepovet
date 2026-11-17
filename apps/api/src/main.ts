@@ -22,7 +22,7 @@ async function main() {
     setTimeout(() => process.exit(1), 15_000).unref();
     app
       .close()
-      .then(() => Promise.allSettled([pool.end(), redis.quit(), jobs.close()]))
+      .then(() => Promise.allSettled([pool.end(), redis.quit(), jobs.close(), container.staffPool?.end()]))
       .finally(() => process.exit(0));
   };
   process.on('SIGTERM', () => shutdown('SIGTERM'));

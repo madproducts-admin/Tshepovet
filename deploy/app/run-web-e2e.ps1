@@ -1,7 +1,8 @@
 <#
   The web app's end-to-end flows on this box: a fresh test database, this branch's API in
-  sandbox mode on 127.0.0.1:9195, the web app built against it on 127.0.0.1:3195, then
-  Playwright (apps/web/tests). Everything it starts it stops. Secrets are never printed.
+  sandbox mode on 127.0.0.1:9195 with its worker, the web app built against it on
+  127.0.0.1:3195, then Playwright (apps/web/tests). Everything it starts it stops. Secrets are
+  never printed.
 
     powershell -NoProfile -ExecutionPolicy Bypass -File deploy\app\run-web-e2e.ps1
     powershell -NoProfile -ExecutionPolicy Bypass -File deploy\app\run-web-e2e.ps1 -SkipBuild
@@ -43,7 +44,7 @@ if (-not $SkipBuild) {
 & node tools\reset-test-db.mjs
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-$api = $null; $web = $null
+$api = $null; $web = $null; $worker = $null
 try {
   $env:NODE_ENV = 'test'
   # NODE_ENV=test silences the logger; keep warnings and errors in tsv-e2e-api.log.
@@ -59,7 +60,13 @@ try {
   $env:KEK_KEYS = "1:$(& $rand)"
   $env:BLIND_INDEX_ROOT_KEY = & $rand
   $env:API_KEY_PEPPER = & $rand
+  # The staff console and the worker work across tenants: the BYPASSRLS test owner login.
+  $env:STAFF_DATABASE_URL = $env:TEST_OWNER_DATABASE_URL
+  $env:WORKER_DATABASE_URL = $env:TEST_OWNER_DATABASE_URL
+  $env:DOCUMENT_STORE_DIR = Join-Path $env:TEMP 'tsv-e2e-documents'
   $api = Start-Process node -ArgumentList 'apps\api\dist\main.js' -PassThru -WindowStyle Hidden -RedirectStandardOutput "$env:TEMP\tsv-e2e-api.log" -RedirectStandardError "$env:TEMP\tsv-e2e-api.err"
+  # The worker shares the API's keys (the same process environment).
+  $worker = Start-Process node -ArgumentList 'apps\api\dist\worker.js' -PassThru -WindowStyle Hidden -RedirectStandardOutput "$env:TEMP\tsv-e2e-worker.log" -RedirectStandardError "$env:TEMP\tsv-e2e-worker.err"
   $env:TSV_API_ORIGIN = "http://127.0.0.1:$apiPort"
   $env:NODE_ENV = 'production'
   $web = Start-Process node -ArgumentList "$root\node_modules\next\dist\bin\next", 'start', '--port', "$webPort", '--hostname', '127.0.0.1' -WorkingDirectory "$root\apps\web" -PassThru -WindowStyle Hidden -RedirectStandardOutput "$env:TEMP\tsv-e2e-web.log" -RedirectStandardError "$env:TEMP\tsv-e2e-web.err"
@@ -76,7 +83,7 @@ try {
   & npx.cmd playwright test -c apps/web/playwright.config.ts @Spec
   $code = $LASTEXITCODE
 } finally {
-  foreach ($proc in $web, $api) { if ($proc -and -not $proc.HasExited) { Stop-Process -Id $proc.Id -Force } }
+  foreach ($proc in $web, $api, $worker) { if ($proc -and -not $proc.HasExited) { Stop-Process -Id $proc.Id -Force } }
   # next start runs its server in a child process: stop whatever still holds our ports.
   foreach ($port in $apiPort, $webPort) {
     Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue | ForEach-Object {

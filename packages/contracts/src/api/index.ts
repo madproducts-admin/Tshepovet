@@ -7,6 +7,7 @@ export * from './monitoring';
 export * from './openapi';
 export * from './organisation';
 export * from './routes';
+export * from './staff';
 export * from './supplier-side';
 export * from './suppliers';
 export * from './wallet';

@@ -88,7 +88,7 @@ afterAll(async () => {
 describe('the route table', () => {
   it('matches the routes the controllers register, with the same permissions, both ways', () => {
     const controllers = AppModule.register({} as never).controllers!;
-    const actual: Array<{ key: string; permission?: string; mfa: boolean }> = [];
+    const actual: Array<{ key: string; permission?: string; mfa: boolean; staffRoles?: string[] }> = [];
     for (const C of controllers) {
       const base = Reflect.getMetadata('path', C) as string;
       for (const name of Object.getOwnPropertyNames(C.prototype)) {
@@ -105,15 +105,16 @@ describe('the route table', () => {
             key: `${RequestMethod[m]} ${full.replace(/:(\w+)/g, '{$1}')}`,
             permission: Reflect.getMetadata('tv:permission', fn),
             mfa: Boolean(Reflect.getMetadata('tv:allow-mfa-setup', fn)),
+            staffRoles: Reflect.getMetadata('tv:staff-roles', fn),
           });
         }
       }
     }
-    const declared = API_ROUTES.map((r) => ({ key: `${r.method} ${r.path}`, permission: r.permission, mfa: Boolean(r.mfaSetupAllowed) }));
+    const declared = API_ROUTES.map((r) => ({ key: `${r.method} ${r.path}`, permission: r.permission, mfa: Boolean(r.mfaSetupAllowed), staffRoles: r.staffRoles }));
     expect(actual.map((a) => a.key).sort()).toEqual(declared.map((d) => d.key).sort());
     for (const d of declared) {
       const a = actual.find((x) => x.key === d.key)!;
-      expect({ key: d.key, permission: a.permission, mfa: a.mfa }).toEqual({ key: d.key, permission: d.permission, mfa: d.mfa });
+      expect({ key: d.key, permission: a.permission, mfa: a.mfa, staffRoles: a.staffRoles }).toEqual({ key: d.key, permission: d.permission, mfa: d.mfa, staffRoles: d.staffRoles });
     }
   });
 

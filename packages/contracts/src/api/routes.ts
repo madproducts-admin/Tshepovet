@@ -15,6 +15,30 @@ import {
 } from '../auth';
 import type { Permission } from '../rbac';
 import { ROLES } from '../rbac';
+import {
+  CapabilityUpdateSchema,
+  NewPriceSchema,
+  PriceSchema,
+  PurgeRunSchema,
+  ReviewDecisionSchema,
+  ReviewQueueSchema,
+  type StaffRole,
+  StaffMailPageSchema,
+  StaffMailQuerySchema,
+  StaffMailSchema,
+  StaffOverviewSchema,
+  StaffProviderSchema,
+  StaffRequestSchema,
+  StaffTenantPageSchema,
+  StaffTenantQuerySchema,
+  StaffTenantSchema,
+  TenantStatusSchema,
+  WaConversationSchema,
+  WaMessageSchema,
+  WaSendSchema,
+  WaStartSchema,
+  WaTenantSchema,
+} from './staff';
 import { CheckListQuerySchema, CheckPageSchema, CheckPricesSchema, PortalCompanyCheckSchema, PortalDriverCheckSchema, PortalVerificationSchema } from './checks';
 import {
   AuditQuerySchema,
@@ -96,6 +120,8 @@ export interface ApiRoute {
   permission?: Permission;
   /** Reachable while the session must still enrol in two-step verification. */
   mfaSetupAllowed?: boolean;
+  /** Staff routes limited to some staff roles (none: every staff member). */
+  staffRoles?: StaffRole[];
   query?: z.ZodType;
   body?: z.ZodType;
   response?: z.ZodType;
@@ -270,4 +296,27 @@ export const API_ROUTES: ApiRoute[] = [
   r({ method: 'POST', path: '/api/staff/auth/mfa/setup', tag: 'Staff', summary: 'Start staff MFA enrolment', access: 'staff', mfaSetupAllowed: true, status: 200 }),
   r({ method: 'POST', path: '/api/staff/auth/mfa/enable', tag: 'Staff', summary: 'Confirm staff MFA enrolment', access: 'staff', mfaSetupAllowed: true, body: MfaCodeSchema, status: 200 }),
   r({ method: 'POST', path: '/api/staff/auth/mfa/recovery-codes', tag: 'Staff', summary: 'Replace staff recovery codes', access: 'staff', body: PasswordConfirmSchema, status: 200 }),
+
+  // --- The staff console (M8) -------------------------------------------------------------
+  r({ method: 'GET', path: '/api/staff/overview', tag: 'Staff console', summary: 'What needs attention', access: 'staff', response: StaffOverviewSchema, status: 200 }),
+  r({ method: 'GET', path: '/api/staff/review', tag: 'Staff console', summary: 'Documents and conversations waiting for a person', access: 'staff', staffRoles: ['reviewer', 'admin'], response: ReviewQueueSchema, status: 200 }),
+  r({ method: 'POST', path: '/api/staff/review/documents/{id}', tag: 'Staff console', summary: 'Accept or reject a document', access: 'staff', staffRoles: ['reviewer', 'admin'], body: ReviewDecisionSchema, status: 204 }),
+  r({ method: 'GET', path: '/api/staff/tenants', tag: 'Staff console', summary: 'Tenants', access: 'staff', staffRoles: ['support', 'admin'], query: StaffTenantQuerySchema, response: StaffTenantPageSchema, status: 200 }),
+  r({ method: 'GET', path: '/api/staff/tenants/{id}', tag: 'Staff console', summary: 'A tenant (a support view, audited)', access: 'staff', staffRoles: ['support', 'admin'], response: StaffTenantSchema, status: 200 }),
+  r({ method: 'POST', path: '/api/staff/tenants/{id}/status', tag: 'Staff console', summary: 'Suspend or reinstate a tenant', access: 'staff', staffRoles: ['admin'], body: TenantStatusSchema, status: 204 }),
+  r({ method: 'POST', path: '/api/staff/tenants/{id}/verify-chain', tag: 'Staff console', summary: 'Verify the audit chain of a tenant', access: 'staff', staffRoles: ['support', 'admin'], status: 200 }),
+  r({ method: 'POST', path: '/api/staff/users/{id}/unlock', tag: 'Staff console', summary: 'Unlock a user after failed sign-ins', access: 'staff', staffRoles: ['support', 'admin'], status: 204 }),
+  r({ method: 'GET', path: '/api/staff/requests', tag: 'Staff console', summary: 'Open data-subject requests across tenants', access: 'staff', staffRoles: ['support', 'admin'], response: z.array(StaffRequestSchema), status: 200 }),
+  r({ method: 'GET', path: '/api/staff/purge-runs', tag: 'Staff console', summary: 'Recent retention purges', access: 'staff', staffRoles: ['admin'], response: z.array(PurgeRunSchema), status: 200 }),
+  r({ method: 'GET', path: '/api/staff/providers', tag: 'Staff console', summary: 'Bureaus, their capabilities and health', access: 'staff', staffRoles: ['admin'], response: z.array(StaffProviderSchema), status: 200 }),
+  r({ method: 'PATCH', path: '/api/staff/providers/{code}/{capability}', tag: 'Staff console', summary: 'Turn a bureau capability on or off', access: 'staff', staffRoles: ['admin'], body: CapabilityUpdateSchema, status: 204 }),
+  r({ method: 'GET', path: '/api/staff/prices', tag: 'Staff console', summary: 'The price book', access: 'staff', staffRoles: ['admin'], response: z.array(PriceSchema), status: 200 }),
+  r({ method: 'POST', path: '/api/staff/prices', tag: 'Staff console', summary: 'Set a new price from a date', access: 'staff', staffRoles: ['admin'], body: NewPriceSchema, status: 201 }),
+  r({ method: 'GET', path: '/api/staff/whatsapp', tag: 'Staff console', summary: 'Sandbox WhatsApp conversations', access: 'staff', response: z.array(WaConversationSchema), status: 200 }),
+  r({ method: 'GET', path: '/api/staff/whatsapp/tenants', tag: 'Staff console', summary: 'Tenants a sandbox onboarding can start for', access: 'staff', response: z.array(WaTenantSchema), status: 200 }),
+  r({ method: 'POST', path: '/api/staff/whatsapp', tag: 'Staff console', summary: 'Start a sandbox WhatsApp onboarding', access: 'staff', body: WaStartSchema, response: WaConversationSchema, status: 201 }),
+  r({ method: 'GET', path: '/api/staff/whatsapp/{id}/messages', tag: 'Staff console', summary: 'The messages of a sandbox conversation', access: 'staff', response: z.array(WaMessageSchema), status: 200 }),
+  r({ method: 'POST', path: '/api/staff/whatsapp/{id}/messages', tag: 'Staff console', summary: 'Send a message as the supplier', access: 'staff', body: WaSendSchema, status: 202 }),
+  r({ method: 'GET', path: '/api/staff/mail', tag: 'Staff console', summary: 'The sandbox mail outbox', access: 'staff', staffRoles: ['support', 'admin'], query: StaffMailQuerySchema, response: StaffMailPageSchema, status: 200 }),
+  r({ method: 'GET', path: '/api/staff/mail/{id}', tag: 'Staff console', summary: 'One message (audited)', access: 'staff', staffRoles: ['support', 'admin'], response: StaffMailSchema, status: 200 }),
 ];

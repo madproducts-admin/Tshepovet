@@ -21,8 +21,9 @@ export class ApiProblem extends Error {
 }
 
 /**
- * Two realms share the client: buyers (the portal, /api) and suppliers (self-service,
- * /api/vendor), each with its own session cookie, CSRF token and sign-in page.
+ * Three realms share the client: buyers (the portal, /api), suppliers (self-service,
+ * /api/vendor) and TshepoVet staff (/api/staff), each with its own session cookie, CSRF token
+ * and sign-in page.
  */
 interface Realm {
   csrfPath: string;
@@ -33,12 +34,16 @@ interface Realm {
 }
 const buyer: Realm = { csrfPath: '/api/auth/csrf', signIn: '/sign-in', authPrefix: '/api/auth/', token: null };
 const supplier: Realm = { csrfPath: '/api/vendor/auth/csrf', signIn: '/supplier/sign-in', authPrefix: '/api/vendor/auth/', token: null };
+const staff: Realm = { csrfPath: '/api/staff/auth/csrf', signIn: '/staff/sign-in', authPrefix: '/api/staff/auth/', token: null };
 
 export const setCsrfToken = (t: string | null) => {
   buyer.token = t;
 };
 export const setVendorCsrfToken = (t: string | null) => {
   supplier.token = t;
+};
+export const setStaffCsrfToken = (t: string | null) => {
+  staff.token = t;
 };
 
 async function csrf(realm: Realm): Promise<string> {
@@ -90,3 +95,5 @@ async function call<T>(realm: Realm, path: string, init: Init = {}): Promise<T> 
 export const api = <T,>(path: string, init: Init = {}) => call<T>(buyer, path, init);
 /** The supplier self-service API (/api/vendor). */
 export const vendorApi = <T,>(path: string, init: Init = {}) => call<T>(supplier, path, init);
+/** The staff console's API (/api/staff). */
+export const staffApi = <T,>(path: string, init: Init = {}) => call<T>(staff, path, init);

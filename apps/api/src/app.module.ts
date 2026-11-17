@@ -19,6 +19,8 @@ import { WalletController } from './portal/wallet.controller';
 import { OnboardingController } from './supplier/onboarding.controller';
 import { PassportController } from './supplier/passport.controller';
 import { VendorController, VendorGuard } from './supplier/vendor.controller';
+import { StaffConsoleController } from './staff/console.controller';
+import { StaffSimulatorController } from './staff/simulator.controller';
 
 /**
  * The HTTP application. The domain services come in pre-built (CONTAINER) instead of being
@@ -57,6 +59,8 @@ export class AppModule {
         OnboardingController,
         VendorController,
         PassportController,
+        StaffConsoleController,
+        StaffSimulatorController,
       ],
     };
   }
