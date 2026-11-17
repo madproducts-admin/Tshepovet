@@ -112,6 +112,53 @@ describe('seeding the users file', () => {
     expect(await verifyPassword(h.rows[0]!.password_hash, 'cobalt river saddle 4')).toBe(true);
   });
 
+  it('never confirms an address someone else pre-registered, nor adds anyone to their organisation', async () => {
+    // A stranger signs up with the owner's address, their own password and organisation; the
+    // account stays unconfirmed (the link goes to the real owner).
+    const stranger = await new Browser(t.app).init();
+    const signup = await stranger.post('/api/auth/signup', { organisation_name: 'Squatter (Pty) Ltd', full_name: 'Not The Owner', email: 'chief@seed2.example', password: 'stranger chose this 1', accept_terms: true });
+    expect(signup.status).toBe(202);
+    const file = parseUsers(
+      JSON.stringify([
+        { email: 'chief@seed2.example', password: 'real owner phrase 22', superAdmin: true, admin: true },
+        { email: 'deputy@seed2.example', password: 'real assistant phrase 33', admin: true },
+      ]),
+    );
+    const report = await run(file);
+    expect(report[0]!.portal).toMatch(/^left unconfirmed/);
+    expect(report[1]!.portal).toMatch(/^not added: the owner's account/);
+    const rows = await owner.query<{ email: string; verified: boolean; members: string }>(
+      `SELECT u.email, u.email_verified_at IS NOT NULL AS verified, (SELECT count(*) FROM tenant_users m WHERE m.tenant_id = u.tenant_id)::text AS members
+         FROM tenant_users u WHERE u.email IN ('chief@seed2.example', 'deputy@seed2.example')`,
+    );
+    expect(rows.rows).toEqual([{ email: 'chief@seed2.example', verified: false, members: '1' }]);
+    // Staff accounts are separate identities and still made.
+    expect(report.map((r) => r.staff)).toEqual(['created (admin)', 'created (admin)']);
+
+    // --reset-passwords is the operator's explicit take-over: the file's password replaces the
+    // stranger's, the address is confirmed, and the others join.
+    const taken = await run(file, true);
+    expect(taken[0]!.portal).toBe('updated (email confirmed, password reset)');
+    expect(taken[1]!.portal).toBe('created (admin)');
+    const h = await owner.query<{ password_hash: string }>(`SELECT password_hash FROM tenant_users WHERE email = 'chief@seed2.example'`);
+    expect(await verifyPassword(h.rows[0]!.password_hash, 'real owner phrase 22')).toBe(true);
+    expect(await verifyPassword(h.rows[0]!.password_hash, 'stranger chose this 1')).toBe(false);
+  });
+
+  it('uses the account the person pre-registered themselves (same password as the file)', async () => {
+    const self = await new Browser(t.app).init();
+    expect((await self.post('/api/auth/signup', { organisation_name: 'Own Org (Pty) Ltd', full_name: 'Real Owner', email: 'lead@seed3.example', password: 'my own phrase 4455', accept_terms: true })).status).toBe(202);
+    const report = await run(parseUsers(JSON.stringify([
+      { email: 'lead@seed3.example', password: 'my own phrase 4455', superAdmin: true, admin: true },
+      { email: 'second@seed3.example', password: 'another own phrase 6677', admin: true },
+    ])));
+    expect(report.map((r) => r.portal)).toEqual(['updated (email confirmed)', 'created (admin)']);
+    const org = await owner.query<{ legal_name: string; n: string }>(
+      `SELECT t.legal_name, (SELECT count(*) FROM tenant_users m WHERE m.tenant_id = t.id)::text AS n FROM tenant_users u JOIN tenants t ON t.id = u.tenant_id WHERE u.email = 'lead@seed3.example'`,
+    );
+    expect(org.rows[0]).toEqual({ legal_name: 'Own Org (Pty) Ltd', n: '2' });
+  });
+
   it('refuses a password the app would refuse, and a person listed twice', () => {
     expect(() => parseUsers(JSON.stringify([{ email: 'weak@seed.example', password: 'short' }]))).toThrow(/would refuse this password/);
     expect(() => parseUsers(JSON.stringify([{ email: 'weak@seed.example', password: 'password1234' }]))).toThrow(/too common/);

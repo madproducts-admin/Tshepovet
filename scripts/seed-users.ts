@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { Client, type ClientBase } from 'pg';
-import { hashPassword, passwordProblems } from '../packages/core/src/auth/password';
+import { hashPassword, passwordProblems, verifyPassword } from '../packages/core/src/auth/password';
 
 /**
  * Makes sure the people in a users file can sign in to TshepoVet (owner's request, 2026-11-17).
@@ -18,6 +18,12 @@ import { hashPassword, passwordProblems } from '../packages/core/src/auth/passwo
  * for accounts that are already right. An existing account keeps its password unless
  * --reset-passwords is given. A password the app's own rules would refuse stops the run, and no
  * password is ever printed. Every change is written to the audit log as a system action.
+ *
+ * Pre-registration: anyone can sign up with an address they do not control (the account stays
+ * unconfirmed, with their password and their organisation). So an existing *unconfirmed* portal
+ * account counts as this person's only when its password matches the file (or
+ * --reset-passwords replaces it); otherwise the seed leaves it unconfirmed, says so, and puts
+ * nobody into its organisation.
  */
 export interface SeedUser {
   email: string;
@@ -107,14 +113,26 @@ export async function seedUsers(db: ClientBase, users: SeedUser[], opts: SeedOpt
   }
 
   // -- The buyer portal: one sandbox organisation -------------------------------------------
+  type PortalRow = { id: string; tenant_id: string; role: string; email_verified_at: Date | null; password_hash: string | null };
+  const portalRow = async (email: string) =>
+    (await db.query<PortalRow>(`SELECT id, tenant_id, role, email_verified_at, password_hash FROM tenant_users WHERE email = $1 AND disabled_at IS NULL`, [email])).rows[0];
+  // Whether an existing portal account is this person's: confirmed already, or its password is
+  // the one in the file (someone pre-registering the address would not know it), or the run
+  // replaces the password anyway.
+  const isTheirs = async (row: PortalRow, u: SeedUser) =>
+    Boolean(row.email_verified_at) || Boolean(opts.resetPasswords) || (await verifyPassword(row.password_hash, u.password));
+  const UNPROVEN = 'left unconfirmed: an existing unconfirmed account with another password (it may not be this person\'s); run with --reset-passwords to take it over';
+
   const ownerUser = users.find((u) => u.superAdmin) ?? users.find((u) => u.admin) ?? users[0]!;
-  const existingOwner = await db.query<{ id: string; tenant_id: string; role: string }>(
-    `SELECT id, tenant_id, role FROM tenant_users WHERE email = $1 AND disabled_at IS NULL`,
-    [ownerUser.email],
-  );
+  const existingOwner = await portalRow(ownerUser.email);
   let tenantId: string;
-  if (existingOwner.rows[0]) {
-    tenantId = existingOwner.rows[0].tenant_id;
+  if (existingOwner) {
+    if (!(await isTheirs(existingOwner, ownerUser))) {
+      // Never confirm it, and never add anyone to an organisation a stranger may have made.
+      for (const u of users) row(u.email).portal = u === ownerUser ? UNPROVEN : `not added: the owner's account (${ownerUser.email}) is unconfirmed and may not be theirs`;
+      return report;
+    }
+    tenantId = existingOwner.tenant_id;
   } else {
     const created = await db.query<{ tenant_id: string; user_id: string }>(`SELECT * FROM auth_signup($1, $2, $3, $4)`, [
       opts.org,
@@ -135,14 +153,14 @@ export async function seedUsers(db: ClientBase, users: SeedUser[], opts: SeedOpt
     if (r.portal) continue;
     const isOwner = u === ownerUser;
     const want = portalRole(u, isOwner);
-    const found = await db.query<{ id: string; tenant_id: string; role: string; email_verified_at: Date | null }>(
-      `SELECT id, tenant_id, role, email_verified_at FROM tenant_users WHERE email = $1 AND disabled_at IS NULL`,
-      [u.email],
-    );
-    const t = found.rows[0];
+    const t = await portalRow(u.email);
     if (t && t.tenant_id !== tenantId) {
       // One sign-in identity per email across the platform: never move someone's account.
       r.portal = 'left as it is: already a member of another organisation';
+      continue;
+    }
+    if (t && !(await isTheirs(t, u))) {
+      r.portal = UNPROVEN;
       continue;
     }
     if (!t) {
