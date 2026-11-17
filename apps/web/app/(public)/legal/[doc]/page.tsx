@@ -1,15 +1,17 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { CompanyDisclosure } from '@/components/brand/company';
+import { CompanyDetails, CompanyDisclosure } from '@/components/brand/company';
 import { Callout } from '@/components/ui/feedback';
 import { PageHeader } from '@/components/ui/layout';
-import { getMeta } from '@/lib/server';
+import { getMeta, type Meta } from '@/lib/server';
 
 /**
  * Legal text. Drafts until the owner's legal review (docs/PLAN.md §8): they say so at the top.
  * Written to be read: short sentences, what happens and what you can do.
  */
-const DOCS: Record<string, { title: string; sections: Array<{ heading: string; body: string[] }> }> = {
+/** A paragraph, or one that depends on the operator's details (null: left out). */
+type Para = string | ((m: Meta) => string | null);
+const DOCS: Record<string, { title: string; sections: Array<{ heading: string; body: Para[] }> }> = {
   privacy: {
     title: 'Privacy notice',
     sections: [
@@ -17,6 +19,11 @@ const DOCS: Record<string, { title: string; sections: Array<{ heading: string; b
         heading: 'Who we are',
         body: [
           'TshepoVet checks South African suppliers for the organisations that buy from them. For the checks a buyer runs, the buyer is the responsible party and TshepoVet is its operator, as POPIA uses those words. For your own TshepoVet account, TshepoVet is the responsible party.',
+          (m) => `TshepoVet is run by ${m.seller.legal_name}${m.seller.registration_number ? ` (registration number ${m.seller.registration_number})` : ''}.`,
+          (m) =>
+            m.seller.information_officer
+              ? `Our Information Officer is ${m.seller.information_officer}${m.seller.information_regulator_number ? `, registered with the Information Regulator under number ${m.seller.information_regulator_number}` : ''}. Write to them at ${m.seller.email ?? '[Email address]'} about anything in this notice.`
+              : null,
         ],
       },
       {
@@ -61,7 +68,15 @@ const DOCS: Record<string, { title: string; sections: Array<{ heading: string; b
           'Run checks only on suppliers and drivers you have a lawful reason to check, and only with consent where consent is needed. A check reports what the sources said at the time; it is not a guarantee.',
         ],
       },
-      { heading: 'Charges', body: ['Checks and modules are paid from your prepaid wallet at the published prices, plus VAT. A check is charged only when TshepoVet gets an answer.'] },
+      {
+        heading: 'Charges',
+        body: [
+          (m) =>
+            m.vat_registered
+              ? 'Checks and modules are paid from your prepaid wallet at the published prices, plus VAT. A check is charged only when TshepoVet gets an answer.'
+              : 'Checks and modules are paid from your prepaid wallet at the published prices. TshepoVet is not registered for VAT, so no VAT is added. A check is charged only when TshepoVet gets an answer.',
+        ],
+      },
     ],
   },
 };
@@ -77,8 +92,9 @@ export default async function LegalPage({ params }: { params: Promise<{ doc: str
   const { doc } = await params;
   const d = DOCS[doc];
   if (!d) notFound();
+  const meta = await getMeta();
   // The terms open with who TshepoVet's operator is (ECTA s43; the owner's request, 2026-11-17).
-  const seller = doc === 'terms' ? (await getMeta()).seller : null;
+  const seller = doc === 'terms' ? meta.seller : null;
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
       <PageHeader title={d.title} />
@@ -95,6 +111,7 @@ export default async function LegalPage({ params }: { params: Promise<{ doc: str
               {seller.trading_name} is run by {seller.legal_name}. These terms are between you and that company.
             </p>
             <CompanyDisclosure seller={seller} className="mt-3 text-lg" />
+            <CompanyDetails seller={seller} />
           </section>
         ) : null}
         {d.sections.map((s) => (
@@ -102,11 +119,14 @@ export default async function LegalPage({ params }: { params: Promise<{ doc: str
             <h2 id={slug(s.heading)} className="mb-2 text-2xl font-bold">
               {s.heading}
             </h2>
-            {s.body.map((p, i) => (
-              <p key={i} className="mt-2 text-lg">
-                {p}
-              </p>
-            ))}
+            {s.body
+              .map((p) => (typeof p === 'function' ? p(meta) : p))
+              .filter((p): p is string => Boolean(p))
+              .map((p, i) => (
+                <p key={i} className="mt-2 text-lg">
+                  {p}
+                </p>
+              ))}
           </section>
         ))}
       </div>

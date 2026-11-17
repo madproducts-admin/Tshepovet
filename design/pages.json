@@ -301,7 +301,7 @@
           "name": "Header",
           "kind": "header",
           "span": "full",
-          "contents": "h1 'Pricing', paragraph on topping up a wallet in rand, no subscription, VAT rate",
+          "contents": "h1 'Pricing', paragraph on topping up a wallet in rand, no subscription; then either 'Prices exclude VAT, which is added to each top-up at 15%' or 'TshepoVet is not registered for VAT, so you pay the prices shown, with no VAT added' (while TshepoVet is not a VAT vendor, i.e. no SELLER_VAT_NUMBER: no VAT is added and the text says so)",
           "condition": null
         },
         {
@@ -427,7 +427,7 @@
           "name": "Who we are",
           "kind": "card",
           "span": "full",
-          "contents": "h2 'Who we are': 'TshepoVet is run by MAD Products (Pty) Ltd. These terms are between you and that company.' and the company line (ECTA s43) 'MAD Products (Pty) Ltd t/a TshepoVet | Reg No: [CIPC Number] | VAT No: [SARS VAT Number] | [Physical Address]', each bracket replaced by its SELLER_* setting once set",
+          "contents": "h2 'Who we are': 'TshepoVet is run by MAD Products (Pty) Ltd. These terms are between you and that company.', the company line (ECTA s43) 'MAD Products (Pty) Ltd t/a TshepoVet | Reg No: … | Not registered for VAT (or VAT No: …) | address', then a definition list: Registered name (a private company registered in South Africa with CIPC), Registration number, Registered office, also for legal notices, Director(s), Value-added tax, Email, Telephone, Website; any detail not configured shows a bracketed placeholder",
           "condition": "Terms of use only"
         },
         {
@@ -435,7 +435,7 @@
           "name": "Sections, each an h2 with paragraphs. Privacy",
           "kind": "card",
           "span": "full",
-          "contents": "Who we are; What we process, and why; How long we keep it; Where it is kept; Your rights. Terms: The sandbox; Your account; Checks; Charges",
+          "contents": "Who we are; What we process, and why; How long we keep it; Where it is kept; Your rights. The privacy notice's 'Who we are' also names the operator with its registration number and the Information Officer with their Information Regulator registration number and email. Terms: The sandbox; Your account; Checks; Charges ('plus VAT' only for a VAT vendor; otherwise 'not registered for VAT, so no VAT is added')",
           "condition": null
         }
       ],
@@ -1336,7 +1336,7 @@
           "name": "Billing line",
           "kind": "stats",
           "span": "full",
-          "contents": "'Charged R... (excluding VAT) from the wallet.' or 'Not charged.'",
+          "contents": "'Charged R... from the wallet.' (with '(excluding VAT)' for a VAT vendor) or 'Not charged.'",
           "condition": null
         }
       ],
@@ -1430,7 +1430,7 @@
           "name": "Grid of module sheets (2 columns)",
           "kind": "card",
           "span": "full",
-          "contents": "name, stamp On / 'Ends {date}' / Off, description, '{price} a month, excluding VAT', 'Not available yet' callout",
+          "contents": "name, stamp On / 'Ends {date}' / Off, description, '{price} a month' (', excluding VAT' for a VAT vendor), 'Not available yet' callout",
           "condition": null
         },
         {
@@ -1538,7 +1538,7 @@
       "shell": "portal",
       "inShell": true,
       "title": "Wallet",
-      "purpose": "A buyer checks the prepaid balance, tops it up and downloads tax invoices.",
+      "purpose": "A buyer checks the prepaid balance, tops it up and downloads invoices (tax invoices once TshepoVet is a VAT vendor).",
       "access": "Signed-in buyer with wallet:read (top-up and warning level need wallet:topup)",
       "layout": "Buyer portal",
       "states": "Sandbox top-up moves no money; Low-balance callout; Frozen wallet status",
@@ -1572,7 +1572,7 @@
           "name": "Sheet 'Top-ups and tax invoices'",
           "kind": "card",
           "span": "full",
-          "contents": "each top-up with invoice number, time, provider, 'Download the tax invoice (PDF)', paid amount with credit + VAT",
+          "contents": "Sheet 'Top-ups and invoices' ('… and tax invoices' for a VAT vendor): each top-up with its invoice number ('Tax invoice' when it carried VAT), time, provider, 'Download the invoice (PDF)', paid amount with 'credit, no VAT' or 'credit + VAT'",
           "condition": null
         },
         {
@@ -1580,7 +1580,7 @@
           "name": "Dialog 'Top up the wallet'",
           "kind": "dialog",
           "span": "full",
-          "contents": "amount radios R500, R1 000, R2 500, R10 000, Another amount; VAT breakdown; 'Pay R...'; then 'Wallet topped up' with credit, VAT, paid, invoice number, new balance",
+          "contents": "Dialog 'Top up the wallet': amount radios R500, R1 000, R2 500, R10 000, Another amount; 'You pay R..., with no VAT added: TshepoVet is not registered for VAT' (or the VAT breakdown for a VAT vendor); 'Pay R...'; then 'Wallet topped up' with credit, VAT (only when charged), paid, invoice number, new balance",
           "condition": null
         },
         {

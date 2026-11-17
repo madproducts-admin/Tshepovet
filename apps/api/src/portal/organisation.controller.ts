@@ -2,7 +2,7 @@ import { Controller, Get, Inject, Patch, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import type { PoolClient } from 'pg';
 import { can, MODULES, portalOpenApi, UpdateSettingsSchema } from '@tshepovet/contracts';
-import { VAT_RATE } from '@tshepovet/core';
+import { vatRateFor, vatRegistered } from '@tshepovet/core';
 import { CONTAINER, type Container } from '../container';
 import { PortalGuard, RequirePermission } from './guards';
 import { AUDIT_ACTOR_NAME, auditBy, inTenant, me } from './tenant';
@@ -30,7 +30,8 @@ export class PlatformController {
     return {
       sandbox: this.c.config.SANDBOX === 'true',
       currency: 'ZAR' as const,
-      vat_rate: VAT_RATE,
+      vat_rate: vatRateFor(this.c.config),
+      vat_registered: vatRegistered(this.c.config),
       check_prices: {
         company_cents: price('COMPANY_CHECK'),
         company_live_cents: price('COMPANY_CHECK_LIVE'),
@@ -47,6 +48,12 @@ export class PlatformController {
         registration_number: this.c.config.SELLER_REGISTRATION_NUMBER ?? null,
         vat_number: this.c.config.SELLER_VAT_NUMBER ?? null,
         address: this.c.config.SELLER_ADDRESS ?? null,
+        directors: (this.c.config.SELLER_DIRECTORS ?? '').split(',').map((d) => d.trim()).filter(Boolean),
+        email: this.c.config.SELLER_EMAIL ?? null,
+        phone: this.c.config.SELLER_PHONE ?? null,
+        website: this.c.config.APP_URL,
+        information_officer: this.c.config.SELLER_INFORMATION_OFFICER ?? null,
+        information_regulator_number: this.c.config.SELLER_INFORMATION_REGULATOR_NUMBER ?? null,
       },
     };
   }

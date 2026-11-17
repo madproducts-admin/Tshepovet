@@ -12,7 +12,7 @@ import { PageHeader, RecordList, Sheet, Stat } from '@/components/ui/layout';
 import { ConfirmDialog } from '@/components/ui/overlay';
 import { api, ApiProblem } from '@/lib/api';
 import { formatDay, formatMoney, formatPercent } from '@/lib/format';
-import { useApi, useChange, useSession } from '@/lib/queries';
+import { useApi, useChange, useSession, useVatRegistered } from '@/lib/queries';
 import { Loaded } from './common';
 
 type Module = z.infer<typeof ModuleSchema>;
@@ -23,6 +23,7 @@ type SupplierPage = z.infer<typeof SupplierPageSchema>;
 
 export function ModulesPage() {
   const { can } = useSession();
+  const vat = useVatRegistered();
   const q = useApi<Module[]>('/api/modules');
   return (
     <>
@@ -46,7 +47,7 @@ export function ModulesPage() {
                   }
                 >
                   <p>{m.description}</p>
-                  <p className="mt-3 font-semibold tabular">{formatMoney(m.price_cents)} a month, excluding VAT</p>
+                  <p className="mt-3 font-semibold tabular">{formatMoney(m.price_cents)} a month{vat ? ', excluding VAT' : ''}</p>
                   {!m.available ? (
                     <Callout tone="info" title="Not available yet" className="mt-4" announce={false}>
                       <p>{m.unavailable_reason}</p>

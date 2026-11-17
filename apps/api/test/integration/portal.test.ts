@@ -135,7 +135,20 @@ describe('the route table', () => {
     expect(m.check_prices.company_cents).toBe(300);
     expect(m.modules.find((x) => x.sku === 'MOD_COI_RADAR')?.available).toBe(false);
     // Who runs TshepoVet (ECTA s43): the names are known; the rest waits for the owner's config.
-    expect(m.seller).toEqual({ legal_name: 'MAD Products (Pty) Ltd', trading_name: 'TshepoVet', registration_number: null, vat_number: null, address: null });
+    expect([m.vat_registered, m.vat_rate]).toEqual([false, 0]);
+    expect(m.seller).toEqual({
+      legal_name: 'MAD Products (Pty) Ltd',
+      trading_name: 'TshepoVet',
+      registration_number: null,
+      vat_number: null,
+      address: null,
+      directors: [],
+      email: null,
+      phone: null,
+      website: 'https://tshepovet.madproducts.ai',
+      information_officer: null,
+      information_regulator_number: null,
+    });
   });
 });
 
@@ -169,7 +182,7 @@ let supplierId = '';
 let checkId = '';
 
 describe('wallet and checks', () => {
-  it('refuses a priced check on an empty wallet, then tops up in the sandbox with a tax invoice', async () => {
+  it('refuses a priced check on an empty wallet, then tops up in the sandbox with an invoice and no VAT (not a VAT vendor)', async () => {
     const w = parse(WalletSchema, await A.b.get('/api/wallet'));
     expect(w).toMatchObject({ balance_cents: 0, available_cents: 0, sandbox: true, low_balance: true });
     const poor = await A.b.post('/api/checks/company', { registration_number: '2019/123456/07' });
@@ -178,13 +191,14 @@ describe('wallet and checks', () => {
 
     expect((await A.b.post('/api/wallet/topups', { credit_cents: 500 })).status).toBe(400); // below R100
     const top = parse(TopupResultSchema, await clerk.post('/api/wallet/topups', { credit_cents: 100_000 }), 201); // the AP clerk may top up
-    expect(top.topup).toMatchObject({ credit_cents: 100_000, vat_cents: 15_000, gross_cents: 115_000, status: 'succeeded', payment_provider: 'sandbox' });
+    // No VAT number configured: TshepoVet is not a VAT vendor, so no VAT (vat.test.ts has the other case).
+    expect(top.topup).toMatchObject({ credit_cents: 100_000, vat_cents: 0, gross_cents: 100_000, status: 'succeeded', payment_provider: 'sandbox' });
     expect(top.topup.tax_invoice_number).toMatch(/^TV-\d{6}$/);
     expect(top.balance_cents).toBe(100_000);
     const list = parse(TopupPageSchema, await viewer.get('/api/wallet/topups'));
     expect(list.total).toBe(1);
 
-    // Its tax invoice, as a PDF: in the sandbox a marked specimen with the right amounts.
+    // Its invoice, as a PDF: in the sandbox a marked specimen; a plain invoice, not a tax invoice.
     const pdf = await viewer.agent.get(`/api/wallet/topups/${top.topup.id}/invoice.pdf`).buffer(true).parse((res, cb) => {
       const chunks: Buffer[] = [];
       res.on('data', (c: Buffer) => chunks.push(c));
@@ -194,7 +208,7 @@ describe('wallet and checks', () => {
     expect(pdf.headers['content-type']).toBe('application/pdf');
     expect(pdf.headers['content-disposition']).toContain(`tshepovet-${top.topup.tax_invoice_number}.pdf`);
     const doc = await PDFDocument.load(pdf.body as Buffer);
-    expect(doc.getTitle()).toBe(`Specimen tax invoice ${top.topup.tax_invoice_number}`);
+    expect(doc.getTitle()).toBe(`Specimen invoice ${top.topup.tax_invoice_number}`);
     expect(String(doc.catalog.get(PDFName.of('Lang')))).toContain('en-ZA');
     // Another tenant's top-up is not found.
     expect((await B.b.get(`/api/wallet/topups/${top.topup.id}/invoice.pdf`)).status).toBe(404);

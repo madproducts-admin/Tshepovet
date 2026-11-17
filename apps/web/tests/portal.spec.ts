@@ -84,14 +84,15 @@ test('signs in and sets up two-step verification before anything else', async ()
   await expectAxe(page, 'overview');
 });
 
-test('tops up the wallet in the sandbox and gets a tax invoice', async () => {
+test('tops up the wallet in the sandbox and gets an invoice, with no VAT (not a VAT vendor)', async () => {
   await page.getByRole('navigation', { name: 'Portal' }).getByRole('link', { name: 'Wallet' }).click();
   await expect(page.getByRole('heading', { name: 'Wallet', level: 1 })).toBeVisible();
   await page.getByRole('button', { name: 'Top up' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await expectAxe(page, 'top-up dialog');
   await page.getByRole('radio', { name: /^R\s?1\s000$/ }).check();
-  await page.getByRole('button', { name: /^Pay R1\s150,00$/ }).click();
+  await expect(page.getByText(/with no VAT added/)).toBeVisible();
+  await page.getByRole('button', { name: /^Pay R1\s000,00$/ }).click();
   await expect(page.getByRole('heading', { name: 'Wallet topped up' })).toBeVisible();
   await expect(page.getByRole('dialog')).toContainText(/TV-\d{6}/);
   await page.getByRole('button', { name: 'Done' }).click();

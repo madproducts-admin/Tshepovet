@@ -3,11 +3,11 @@ import { Controller, Get, HttpCode, Inject, Param, Patch, Post, Req, Res, UseGua
 import type { Request, Response } from 'express';
 import type { PoolClient } from 'pg';
 import { z } from 'zod';
-import { ApiError, settleSandboxTopup, VAT_RATE } from '@tshepovet/core';
+import { ApiError, settleSandboxTopup, vatRateFor } from '@tshepovet/core';
 import { LedgerQuerySchema, TopupRequestSchema, UpdateWalletSchema } from '@tshepovet/contracts';
 import { CONTAINER, type Container } from '../container';
 import { PortalGuard, RequirePermission } from './guards';
-import { renderTaxInvoice } from './invoice';
+import { renderInvoice } from './invoice';
 import { auditBy, inTenant, me, notFound, pageOf, sendCsv, uuidParam, Where } from './tenant';
 
 const TOPUP_COLUMNS = `id, credit_cents, vat_cents, gross_cents, status, payment_provider, tax_invoice_number, created_at`;
@@ -26,7 +26,8 @@ function ledger(q: z.infer<typeof LedgerQuerySchema>) {
 
 /**
  * The prepaid wallet over the double-entry ledger (packages/core billing/wallet.ts). Money is
- * VAT-exclusive credit; a top-up's tax invoice carries the VAT on top.
+ * VAT-exclusive credit; once TshepoVet is a VAT vendor a top-up's tax invoice carries the VAT on
+ * top (until then there is none: vatRateFor).
  */
 @Controller('api/wallet')
 @UseGuards(PortalGuard)
@@ -96,9 +97,10 @@ export class WalletController {
   }
 
   /**
-   * A top-up's tax invoice as a PDF. In the sandbox it is a marked specimen (nothing was paid);
-   * outside it, it needs TshepoVet's own registered details in the configuration, and is never
-   * issued with made-up ones.
+   * A top-up's invoice as a PDF: a tax invoice when the top-up carried VAT (TshepoVet was a VAT
+   * vendor), otherwise a plain invoice. In the sandbox it is a marked specimen (nothing was paid);
+   * outside it, it needs TshepoVet's registered details in the configuration (and its VAT number
+   * for a tax invoice), and is never issued with made-up ones.
    */
   @Get('topups/:id/invoice.pdf')
   @RequirePermission('wallet:read')
@@ -106,8 +108,8 @@ export class WalletController {
     const id = uuidParam(raw, 'That top-up');
     const cfg = this.c.config;
     const specimen = cfg.SANDBOX === 'true';
-    if (!specimen && !(cfg.SELLER_ADDRESS && cfg.SELLER_VAT_NUMBER)) {
-      throw new ApiError(409, 'invoice_unavailable', 'Tax invoices cannot be downloaded yet. Ask TshepoVet for a copy.');
+    if (!specimen && !(cfg.SELLER_ADDRESS && cfg.SELLER_REGISTRATION_NUMBER)) {
+      throw new ApiError(409, 'invoice_unavailable', 'Invoices cannot be downloaded yet. Ask TshepoVet for a copy.');
     }
     const row = await inTenant(this.c, req, async (client) =>
       (
@@ -119,18 +121,26 @@ export class WalletController {
       ).rows[0],
     );
     if (!row) throw notFound('That top-up');
-    if (row.status !== 'succeeded' || !row.tax_invoice_number) throw new ApiError(409, 'no_invoice', 'This top-up was not paid, so it has no tax invoice.');
-    const pdf = await renderTaxInvoice({
+    if (row.status !== 'succeeded' || !row.tax_invoice_number) throw new ApiError(409, 'no_invoice', 'This top-up was not paid, so it has no invoice.');
+    if (!specimen && row.vat_cents > 0 && !cfg.SELLER_VAT_NUMBER) {
+      throw new ApiError(409, 'invoice_unavailable', 'This tax invoice cannot be downloaded yet. Ask TshepoVet for a copy.');
+    }
+    // A tax invoice only for a top-up that carried VAT, i.e. made while TshepoVet was a VAT vendor.
+    const pdf = await renderInvoice({
       number: row.tax_invoice_number,
       issuedAt: row.created_at,
-      seller: specimen
-        ? { name: cfg.SELLER_LEGAL_NAME, address: cfg.SELLER_ADDRESS ?? 'Sandbox: no seller address', vatNumber: cfg.SELLER_VAT_NUMBER ?? 'not registered (sandbox)' }
-        : { name: cfg.SELLER_LEGAL_NAME, address: cfg.SELLER_ADDRESS!, vatNumber: cfg.SELLER_VAT_NUMBER! },
+      taxInvoice: row.vat_cents > 0,
+      seller: {
+        name: cfg.SELLER_LEGAL_NAME,
+        registrationNumber: cfg.SELLER_REGISTRATION_NUMBER ?? (specimen ? 'not set (sandbox)' : null),
+        address: cfg.SELLER_ADDRESS ?? 'Sandbox: no seller address',
+        vatNumber: cfg.SELLER_VAT_NUMBER ?? null,
+      },
       buyer: { name: row.legal_name, vatNumber: row.vat_number },
       creditCents: row.credit_cents,
       vatCents: row.vat_cents,
       grossCents: row.gross_cents,
-      vatRate: VAT_RATE,
+      vatRate: row.credit_cents ? row.vat_cents / row.credit_cents : 0,
       specimen,
     });
     res.setHeader('content-type', 'application/pdf');
@@ -181,7 +191,7 @@ export class WalletController {
     }
     const u = me(req);
     return inTenant(this.c, req, async (client) => {
-      const t = await settleSandboxTopup(client, { tenantId: u.tenantId, creditCents: b.credit_cents, requestedBy: u.userId, reference: `sandbox-${randomUUID()}` });
+      const t = await settleSandboxTopup(client, { tenantId: u.tenantId, creditCents: b.credit_cents, requestedBy: u.userId, reference: `sandbox-${randomUUID()}`, vatRate: vatRateFor(this.c.config) });
       await auditBy(client, req, { action: 'wallet.topped_up', entityType: 'wallet_topup', entityId: t.id, details: { credit_cents: t.credit_cents, provider: 'sandbox', invoice: t.tax_invoice_number } });
       const { balance_cents, ...topup } = t;
       return { topup, balance_cents };

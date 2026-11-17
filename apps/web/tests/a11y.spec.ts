@@ -73,9 +73,10 @@ for (const theme of ['light', 'dark'] as const) {
 }
 
 // ECTA s43, in the owner's words: "MAD Products (Pty) Ltd t/a TshepoVet | Reg No: [CIPC Number] |
-// VAT No: [SARS VAT Number] | [Physical Address]" (the test API sets none of the three details).
+// VAT No: [SARS VAT Number] | [Physical Address]". The test API sets no company details, so the
+// placeholders show, and no VAT number: not a VAT vendor ("We are not VAT registered yet").
 test('the footers and the terms say who runs TshepoVet (ECTA s43)', async ({ page }) => {
-  const line = /^MAD Products \(Pty\) Ltd t\/a \(trading as\) TshepoVet\s*\|\s*Reg No \(Company registration number\): \[CIPC Number\]\s*\|\s*VAT No \(Value-added tax registration number\): \[SARS VAT Number\]\s*\|\s*\[Physical Address\]$/;
+  const line = /^MAD Products \(Pty\) Ltd t\/a \(trading as\) TshepoVet\s*\|\s*Reg No \(Company registration number\): \[CIPC Number\]\s*\|\s*Not registered for VAT \(Value-added tax\)\s*\|\s*\[Physical Address\]$/;
   for (const path of ['/', '/pricing', '/sign-in', '/supplier/sign-in']) {
     await page.goto(path);
     await expect(page.locator('footer address'), path).toHaveText(line);
@@ -83,6 +84,15 @@ test('the footers and the terms say who runs TshepoVet (ECTA s43)', async ({ pag
   await page.goto('/legal/terms');
   await expect(page.getByRole('heading', { level: 2, name: 'Who we are' })).toBeVisible();
   await expect(page.locator('main address')).toHaveText(line);
+  // The rest of s43: legal status, the address for legal notices, directors, contact, website.
+  const details = page.locator('main dl');
+  for (const term of ['Registered name', 'Registration number', 'Registered office, also for legal notices', 'Directors', 'Value-added tax', 'Email', 'Telephone', 'Website']) {
+    await expect(details.getByRole('term').filter({ hasText: new RegExp(`^${term}$`) }), term).toHaveCount(1);
+  }
+  await expect(details).toContainText('Not registered, so none is charged');
+  await expect(page.getByText(/not registered for VAT, so no VAT is added/)).toBeVisible();
+  await page.goto('/pricing');
+  await expect(page.getByText(/not registered for VAT, so you pay the prices shown/)).toBeVisible();
 });
 
 test('public pages reflow at 320 CSS pixels (WCAG 1.4.10)', async ({ page }) => {

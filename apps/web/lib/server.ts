@@ -12,8 +12,22 @@ export interface Meta {
   vat_rate: number;
   check_prices: { company_cents: number; company_live_cents: number; driver_cents: number; monitoring_per_supplier_month_cents: number };
   modules: Array<{ sku: string; name: string; description: string; price_cents: number; available: boolean; unavailable_reason: string | null }>;
-  /** Who runs TshepoVet (ECTA s43); null: not configured yet. */
-  seller: { legal_name: string; trading_name: string; registration_number: string | null; vat_number: string | null; address: string | null };
+  /** Whether TshepoVet's operator is a VAT vendor: if not, vat_rate is 0 and no VAT is charged. */
+  vat_registered: boolean;
+  /** Who runs TshepoVet (ECTA s43, POPIA); null: not configured yet. */
+  seller: {
+    legal_name: string;
+    trading_name: string;
+    registration_number: string | null;
+    vat_number: string | null;
+    address: string | null;
+    directors: string[];
+    email: string | null;
+    phone: string | null;
+    website: string;
+    information_officer: string | null;
+    information_regulator_number: string | null;
+  };
 }
 
 /** The site's public address, for links that leave the page (a printed passport's QR code). */
@@ -43,10 +57,23 @@ export async function getPassport(id: string): Promise<PassportLoad> {
 const FALLBACK_META: Meta = {
   sandbox: true,
   currency: 'ZAR',
-  vat_rate: 0.15,
+  vat_rate: 0,
+  vat_registered: false,
   check_prices: { company_cents: 300, company_live_cents: 600, driver_cents: 250, monitoring_per_supplier_month_cents: 1500 },
   modules: [],
-  seller: { legal_name: 'MAD Products (Pty) Ltd', trading_name: 'TshepoVet', registration_number: null, vat_number: null, address: null },
+  seller: {
+    legal_name: 'MAD Products (Pty) Ltd',
+    trading_name: 'TshepoVet',
+    registration_number: null,
+    vat_number: null,
+    address: null,
+    directors: [],
+    email: null,
+    phone: null,
+    website: 'https://tshepovet.madproducts.ai',
+    information_officer: null,
+    information_regulator_number: null,
+  },
 };
 
 /**
@@ -59,7 +86,13 @@ export async function getMeta(): Promise<Meta> {
     const r = await fetch(`${origin}/api/meta`, { next: { revalidate: 300 }, signal: AbortSignal.timeout(3000) });
     if (r.ok) {
       const m = (await r.json()) as Partial<Meta>;
-      return { ...FALLBACK_META, ...m, seller: m.seller ?? FALLBACK_META.seller };
+      return {
+        ...FALLBACK_META,
+        ...m,
+        // An older answer has only the rate: VAT charged means registered.
+        vat_registered: m.vat_registered ?? (m.vat_rate ?? 0) > 0,
+        seller: { ...FALLBACK_META.seller, ...m.seller },
+      };
     }
   } catch {
     // fall through to the cautious default below

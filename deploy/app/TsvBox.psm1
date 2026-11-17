@@ -241,7 +241,8 @@ function Get-ServiceEnv([hashtable]$S, [string]$Role, [string]$Release) {
     # Who runs TshepoVet (the ECTA s43 footer and terms, tax invoices): public facts kept with the
     # box settings in secrets.env, passed on only when filled in (an empty value would fail the
     # API's configuration check; unset, the site shows the owner's bracketed placeholders).
-    foreach ($k in 'SELLER_LEGAL_NAME', 'SELLER_TRADING_NAME', 'SELLER_REGISTRATION_NUMBER', 'SELLER_VAT_NUMBER', 'SELLER_ADDRESS') {
+    foreach ($k in 'SELLER_LEGAL_NAME', 'SELLER_TRADING_NAME', 'SELLER_REGISTRATION_NUMBER', 'SELLER_VAT_NUMBER', 'SELLER_ADDRESS',
+        'SELLER_DIRECTORS', 'SELLER_EMAIL', 'SELLER_PHONE', 'SELLER_INFORMATION_OFFICER', 'SELLER_INFORMATION_REGULATOR_NUMBER') {
         if ($S.ContainsKey($k) -and "$($S[$k])".Trim()) { $e[$k] = "$($S[$k])".Trim() }
     }
     $e

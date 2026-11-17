@@ -33,6 +33,19 @@ export function useApi<T>(path: string | null, query?: Query, opts: { refetchInt
 }
 
 /**
+ * Whether TshepoVet adds VAT (its operator is a VAT vendor), from the public /api/meta. False
+ * until known: then prices say nothing about VAT rather than wrongly "excluding VAT".
+ */
+export function useVatRegistered(): boolean {
+  const q = useQuery<{ vat_registered?: boolean; vat_rate?: number }, ApiProblem>({
+    queryKey: ['/api/meta', {}],
+    queryFn: () => api('/api/meta'),
+    staleTime: 5 * 60_000,
+  });
+  return Boolean(q.data?.vat_registered ?? (q.data?.vat_rate ?? 0) > 0);
+}
+
+/**
  * A change: on success it refreshes the listed queries (by path prefix) and confirms in the
  * same words as the button; on failure the caller shows the problem next to the form.
  */

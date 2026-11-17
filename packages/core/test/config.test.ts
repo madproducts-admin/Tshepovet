@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { VAT_RATE, vatRateFor, vatRegistered } from '../src/billing/topups';
 import { loadConfig } from '../src/config';
 
 /** The smallest valid environment: two 32-byte keys and a database. */
@@ -22,5 +23,18 @@ describe('who runs TshepoVet (ECTA s43 and tax invoices)', () => {
     expect(() => loadConfig({ ...BASE, SELLER_REGISTRATION_NUMBER: '[CIPC Number]' })).toThrow(/CIPC registration number/);
     expect(() => loadConfig({ ...BASE, SELLER_VAT_NUMBER: '123' })).toThrow(/VAT number/);
     expect(() => loadConfig({ ...BASE, SELLER_LEGAL_NAME: '' })).toThrow(/SELLER_LEGAL_NAME/);
+    expect(() => loadConfig({ ...BASE, SELLER_EMAIL: 'not an address' })).toThrow(/SELLER_EMAIL/);
+    expect(() => loadConfig({ ...BASE, SELLER_PHONE: 'call us' })).toThrow(/telephone number/);
+    expect(() => loadConfig({ ...BASE, SELLER_INFORMATION_REGULATOR_NUMBER: '66743' })).toThrow(/Information Regulator/);
+    expect(loadConfig({ ...BASE, SELLER_PHONE: '+27 11 123 4567', SELLER_INFORMATION_REGULATOR_NUMBER: '2026-066743' }).SELLER_PHONE).toBe('+27 11 123 4567');
+  });
+});
+
+describe('VAT follows registration (VAT Act s7: only a vendor may charge it)', () => {
+  it('charges none until a VAT number is set, then 15%', () => {
+    expect([vatRegistered(loadConfig(BASE)), vatRateFor(loadConfig(BASE))]).toEqual([false, 0]);
+    const vendor = loadConfig({ ...BASE, SELLER_VAT_NUMBER: '4123456789' });
+    expect([vatRegistered(vendor), vatRateFor(vendor)]).toEqual([true, VAT_RATE]);
+    expect(VAT_RATE).toBe(0.15);
   });
 });

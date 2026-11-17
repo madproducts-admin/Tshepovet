@@ -31,7 +31,9 @@ const KIND_LABEL: Record<string, string> = {
   promo_credit: 'Free credit',
 };
 
-export function WalletPage() {
+/** vatRate: VAT added to a top-up, 0 while TshepoVet's operator is not a VAT vendor. */
+export function WalletPage({ vatRate }: { vatRate: number }) {
+  const vat = vatRate > 0;
   const { can } = useSession();
   const wallet = useApi<Wallet>('/api/wallet');
   const holds = useApi<Hold[]>('/api/wallet/holds');
@@ -50,8 +52,12 @@ export function WalletPage() {
     <>
       <PageHeader
         title="Wallet"
-        description="Checks and modules are paid from this prepaid balance. Amounts exclude VAT; each top-up has a tax invoice."
-        actions={can('wallet:topup') ? <TopUp /> : null}
+        description={
+          vat
+            ? 'Checks and modules are paid from this prepaid balance. Amounts exclude VAT; each top-up has a tax invoice.'
+            : 'Checks and modules are paid from this prepaid balance. TshepoVet is not registered for VAT, so none is added; each top-up has an invoice.'
+        }
+        actions={can('wallet:topup') ? <TopUp vatRate={vatRate} /> : null}
       />
       <div className="flex flex-col gap-8">
         <Loaded q={wallet} label="The wallet">
@@ -133,7 +139,7 @@ export function WalletPage() {
           </div>
         </Sheet>
 
-        <Sheet title="Top-ups and tax invoices">
+        <Sheet title={vat ? 'Top-ups and tax invoices' : 'Top-ups and invoices'}>
           <Loaded q={topups} label="Top-ups">
             {(t) =>
               t.items.length ? (
@@ -142,21 +148,21 @@ export function WalletPage() {
                     <li key={x.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                       <div>
                         <p className="font-semibold">
-                          Tax invoice <span className="font-mono">{x.tax_invoice_number ?? 'pending'}</span>
+                          {x.vat_cents > 0 ? 'Tax invoice' : 'Invoice'} <span className="font-mono">{x.tax_invoice_number ?? 'pending'}</span>
                         </p>
                         <p className="text-sm text-ink-2">
                           <When value={x.created_at} showExact />, {x.payment_provider === 'sandbox' ? 'sandbox payment' : humanise(x.payment_provider)}
                         </p>
                         {x.status === 'succeeded' && x.tax_invoice_number ? (
                           <a href={`/api/wallet/topups/${x.id}/invoice.pdf`} download className="inline-flex min-h-11 items-center font-semibold">
-                            Download the tax invoice (PDF)<span className="sr-only"> {x.tax_invoice_number}</span>
+                            Download the {x.vat_cents > 0 ? 'tax invoice' : 'invoice'} (PDF)<span className="sr-only"> {x.tax_invoice_number}</span>
                           </a>
                         ) : null}
                       </div>
                       <div className="text-right">
                         <p className="font-semibold tabular">{formatMoney(x.gross_cents)} paid</p>
                         <p className="text-sm text-ink-2 tabular">
-                          {formatMoney(x.credit_cents)} credit + {formatMoney(x.vat_cents)} VAT
+                          {x.vat_cents > 0 ? `${formatMoney(x.credit_cents)} credit + ${formatMoney(x.vat_cents)} VAT` : `${formatMoney(x.credit_cents)} credit, no VAT`}
                         </p>
                       </div>
                     </li>
@@ -219,7 +225,7 @@ function ThresholdEdit({ current }: { current: number }) {
 
 const AMOUNTS = [50_000, 100_000, 250_000, 1_000_000];
 
-function TopUp() {
+function TopUp({ vatRate }: { vatRate: number }) {
   const [open, setOpen] = useState(false);
   const [choice, setChoice] = useState(String(AMOUNTS[1]));
   const [custom, setCustom] = useState('');
@@ -228,6 +234,8 @@ function TopUp() {
   const top = useChange((b: unknown) => api<TopupResult>('/api/wallet/topups', { method: 'POST', body: b }), { invalidate: ['/api/wallet', '/api/overview', '/api/checks/prices'] });
   const credit = choice === 'other' ? Math.round(Number(custom.replace(/\s/g, '').replace(',', '.')) * 100) : Number(choice);
   const valid = Number.isFinite(credit) && credit >= 10_000 && credit <= 10_000_000;
+  const vatCents = Math.round(credit * vatRate);
+  const invoiceWord = vatRate > 0 ? 'a tax invoice' : 'an invoice';
   return (
     <Dialog
       open={open}
@@ -236,7 +244,7 @@ function TopUp() {
         if (!v) setDone(null);
       }}
       title={done ? 'Wallet topped up' : 'Top up the wallet'}
-      description={done ? undefined : 'Sandbox: no money moves. The credit lands at once, with a tax invoice, exactly as a real payment will.'}
+      description={done ? undefined : `Sandbox: no money moves. The credit lands at once, with ${invoiceWord}, exactly as a real payment will.`}
       trigger={<Button>Top up</Button>}
       footer={
         done ? (
@@ -263,7 +271,7 @@ function TopUp() {
                 }
               }}
             >
-              {valid ? `Pay ${formatMoney(Math.round(credit * 1.15))}` : 'Pay'}
+              {valid ? `Pay ${formatMoney(credit + vatCents)}` : 'Pay'}
             </Button>
           </>
         )
@@ -276,9 +284,9 @@ function TopUp() {
             columns={1}
             items={[
               { label: 'Credit added', value: <Money cents={done.topup.credit_cents} /> },
-              { label: 'VAT', value: <Money cents={done.topup.vat_cents} /> },
+              ...(done.topup.vat_cents > 0 ? [{ label: 'VAT', value: <Money cents={done.topup.vat_cents} /> }] : []),
               { label: 'Paid', value: <Money cents={done.topup.gross_cents} /> },
-              { label: 'Tax invoice', value: <span className="font-mono">{done.topup.tax_invoice_number}</span> },
+              { label: done.topup.vat_cents > 0 ? 'Tax invoice' : 'Invoice', value: <span className="font-mono">{done.topup.tax_invoice_number}</span> },
               { label: 'New balance', value: <Money cents={done.balance_cents} /> },
             ]}
           />
@@ -287,7 +295,7 @@ function TopUp() {
         <div className="flex flex-col gap-5">
           {error ? <Callout tone="refused" title={error} /> : null}
           <RadioGroup
-            legend="Credit to add (excluding VAT)"
+            legend={vatRate > 0 ? 'Credit to add (excluding VAT)' : 'Credit to add'}
             value={choice}
             onValueChange={setChoice}
             options={[
@@ -302,7 +310,15 @@ function TopUp() {
           ) : null}
           {valid ? (
             <p className="text-ink-2">
-              You pay <strong className="text-ink tabular">{formatMoney(Math.round(credit * 1.15))}</strong>: {formatMoney(credit)} credit and {formatMoney(Math.round(credit * 0.15))} VAT.
+              {vatRate > 0 ? (
+                <>
+                  You pay <strong className="text-ink tabular">{formatMoney(credit + vatCents)}</strong>: {formatMoney(credit)} credit and {formatMoney(vatCents)} VAT.
+                </>
+              ) : (
+                <>
+                  You pay <strong className="text-ink tabular">{formatMoney(credit)}</strong>, with no VAT added: TshepoVet is not registered for VAT.
+                </>
+              )}
             </p>
           ) : null}
         </div>

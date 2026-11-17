@@ -1,18 +1,22 @@
 import { degrees, PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 /**
- * A tax invoice for a wallet top-up, as a PDF (docs/PLAN.md M9). It carries what a full tax
- * invoice under the VAT Act s20(4) needs: the words "Tax Invoice", the seller's name, address
- * and VAT number, the buyer's name (and VAT number when it has one), a serial number, the date,
- * a description, the value, the VAT and the total. In the sandbox it is overprinted as a
- * specimen: nothing was paid and it is not a valid tax invoice.
+ * The invoice for a wallet top-up, as a PDF (docs/PLAN.md M9). While TshepoVet's operator is
+ * not a VAT vendor (no VAT was charged) it is a plain invoice that says so; a top-up that carried
+ * VAT gets a full tax invoice under the VAT Act s20(4): the words "Tax Invoice", the seller's
+ * name, address and VAT number, the buyer's name (and VAT number when it has one), a serial
+ * number, the date, a description, the value, the VAT and the total. Either way it names the
+ * company's registration number (Companies Act s32(4)). In the sandbox it is overprinted as a
+ * specimen: nothing was paid and it is not a valid invoice.
  *
  * Money is written the South African way (R1 250,00), by hand, as on the web pages.
  */
 export interface InvoiceData {
   number: string;
   issuedAt: Date;
-  seller: { name: string; address: string; vatNumber: string };
+  /** A tax invoice (the top-up carried VAT) or a plain invoice. */
+  taxInvoice: boolean;
+  seller: { name: string; registrationNumber: string | null; address: string; vatNumber: string | null };
   buyer: { name: string; vatNumber: string | null };
   creditCents: number;
   vatCents: number;
@@ -31,9 +35,10 @@ function rands(cents: number): string {
 }
 const day = new Intl.DateTimeFormat('en-ZA', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Johannesburg' });
 
-export async function renderTaxInvoice(d: InvoiceData): Promise<Uint8Array> {
+export async function renderInvoice(d: InvoiceData): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
-  const title = d.specimen ? `Specimen tax invoice ${d.number}` : `Tax Invoice ${d.number}`;
+  const kind = d.taxInvoice ? (d.specimen ? 'Specimen tax invoice' : 'Tax Invoice') : d.specimen ? 'Specimen invoice' : 'Invoice';
+  const title = `${kind} ${d.number}`;
   pdf.setTitle(title, { showInWindowTitleBar: true });
   pdf.setAuthor(d.seller.name);
   pdf.setSubject(`TshepoVet wallet top-up for ${d.buyer.name}`);
@@ -59,10 +64,10 @@ export async function renderTaxInvoice(d: InvoiceData): Promise<Uint8Array> {
     page.drawText('SPECIMEN', { x: 120, y: 330, size: 96, font: bold, color: rgb(0.42, 0.247, 0), opacity: 0.12, rotate: degrees(30) });
   }
 
-  text(d.specimen ? 'Specimen tax invoice' : 'Tax Invoice', left, 24, bold);
+  text(kind, left, 24, bold);
   y -= 22;
   if (d.specimen) {
-    text('Sandbox: nothing was paid. This is not a valid tax invoice.', left, 11, bold, rgb(0.42, 0.247, 0));
+    text(`Sandbox: nothing was paid. This is not a valid ${d.taxInvoice ? 'tax invoice' : 'invoice'}.`, left, 11, bold, rgb(0.42, 0.247, 0));
     y -= 16;
   }
   y -= 14;
@@ -71,11 +76,15 @@ export async function renderTaxInvoice(d: InvoiceData): Promise<Uint8Array> {
   const top = y;
   text(d.seller.name, left, 12, bold);
   y -= 16;
+  if (d.seller.registrationNumber) {
+    text(`Registration number ${d.seller.registrationNumber}`, left, 10, regular, ink2);
+    y -= 13;
+  }
   for (const l of d.seller.address.split(/\s*\n\s*|,\s*/).filter(Boolean)) {
     text(l, left, 10, regular, ink2);
     y -= 13;
   }
-  text(`VAT number ${d.seller.vatNumber}`, left, 10, regular, ink2);
+  text(d.taxInvoice ? `VAT number ${d.seller.vatNumber ?? 'not set'}` : 'Not registered for VAT: no VAT is charged', left, 10, regular, ink2);
   const sellerEnd = y;
   y = top;
   rightText(`Invoice ${d.number}`, 12, bold);
@@ -95,7 +104,7 @@ export async function renderTaxInvoice(d: InvoiceData): Promise<Uint8Array> {
 
   // The line, then the totals.
   text('Description', left, 10, bold, ink2);
-  rightText('Amount (excl. VAT)', 10, bold);
+  rightText(d.taxInvoice ? 'Amount (excl. VAT)' : 'Amount', 10, bold);
   y -= 8;
   line();
   y -= 18;
@@ -104,11 +113,13 @@ export async function renderTaxInvoice(d: InvoiceData): Promise<Uint8Array> {
   y -= 14;
   line();
   y -= 22;
-  const totals: Array<[string, number, boolean]> = [
-    ['Total excluding VAT', d.creditCents, false],
-    [`VAT at ${Math.round(d.vatRate * 100)}%`, d.vatCents, false],
-    ['Total including VAT', d.grossCents, true],
-  ];
+  const totals: Array<[string, number, boolean]> = d.taxInvoice
+    ? [
+        ['Total excluding VAT', d.creditCents, false],
+        [`VAT at ${Math.round(d.vatRate * 100)}%`, d.vatCents, false],
+        ['Total including VAT', d.grossCents, true],
+      ]
+    : [['Total', d.grossCents, true]];
   for (const [label, cents, strong] of totals) {
     page.drawText(label, { x: right - 260, y, size: strong ? 12 : 11, font: strong ? bold : regular, color: ink });
     rightText(rands(cents), strong ? 12 : 11, strong ? bold : regular);

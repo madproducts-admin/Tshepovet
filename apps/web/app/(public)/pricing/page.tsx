@@ -54,8 +54,12 @@ export default async function Pricing() {
     <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
       <h1 className="text-4xl font-bold">Pricing</h1>
       <p className="mt-4 max-w-[60ch] text-xl text-ink-2">
-        Top up a wallet in rand and pay for each check you run. There is no subscription and no minimum. Prices exclude VAT, which is added to each top-up at{' '}
-        {formatPercent(meta.vat_rate)}.
+        Top up a wallet in rand and pay for each check you run. There is no subscription and no minimum.{' '}
+        {meta.vat_registered ? (
+          <>Prices exclude VAT, which is added to each top-up at {formatPercent(meta.vat_rate)}.</>
+        ) : (
+          <>TshepoVet is not registered for VAT, so you pay the prices shown, with no VAT added.</>
+        )}
       </p>
       {meta.sandbox ? (
         <Callout tone="info" title="This is the sandbox" className="mt-6" announce={false}>

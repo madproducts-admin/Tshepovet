@@ -14,7 +14,7 @@ import { api, ApiProblem } from '@/lib/api';
 import { explainFlag, explainWarning } from '@/lib/explain';
 import { formatDay, formatMoney } from '@/lib/format';
 import { check, type Errors, fromProblem, rules, summary } from '@/lib/forms';
-import { useApi, useSession } from '@/lib/queries';
+import { useApi, useSession, useVatRegistered } from '@/lib/queries';
 import { CHECK_LABELS, FilterBar, humanise, Loaded, useListParams } from './common';
 
 type CheckPage = z.infer<typeof CheckPageSchema>;
@@ -227,6 +227,7 @@ function ConsentBlock({ ids, agreed, setAgreed, evidence, setEvidence, errors, d
 }
 
 function PriceLine({ cents, available }: { cents: number; available: number }) {
+  const vat = useVatRegistered();
   const short = available < cents;
   return short ? (
     <Callout tone="caution" title="Your wallet does not have enough for this check">
@@ -236,7 +237,8 @@ function PriceLine({ cents, available }: { cents: number; available: number }) {
     </Callout>
   ) : (
     <p className="text-ink-2">
-      This check costs <strong className="text-ink tabular">{formatMoney(cents)}</strong> (excluding VAT) from your wallet.
+      This check costs <strong className="text-ink tabular">{formatMoney(cents)}</strong>
+      {vat ? ' (excluding VAT)' : ''} from your wallet.
     </p>
   );
 }
@@ -500,6 +502,7 @@ function resultFacts(type: string, r: Record<string, unknown>): Array<{ label: s
 }
 
 export function CheckResult({ id }: { id: string }) {
+  const vat = useVatRegistered();
   const [poll, setPoll] = useState<number | false>(2000);
   const q = useApi<PortalVerification>(`/api/checks/${id}`, undefined, { refetchInterval: poll });
   useEffect(() => {
@@ -600,7 +603,8 @@ export function CheckResult({ id }: { id: string }) {
               <p className="text-sm text-ink-2">
                 {v.billing.charged ? (
                   <>
-                    Charged <Money cents={v.billing.price_cents} /> (excluding VAT) from the wallet.
+                    Charged <Money cents={v.billing.price_cents} />
+                    {vat ? ' (excluding VAT)' : ''} from the wallet.
                   </>
                 ) : (
                   'Not charged.'

@@ -77,7 +77,15 @@ const ConfigSchema = z.object({
   SELLER_TRADING_NAME: z.string().min(1).default('TshepoVet'),
   SELLER_REGISTRATION_NUMBER: z.string().regex(/^\d{4}\/\d{6}\/\d{2}$/, 'a CIPC registration number such as 2015/123456/07').optional(),
   SELLER_ADDRESS: z.string().optional(),
+  /** Set only once registered as a VAT vendor: until then no VAT is charged (vatRateFor). */
   SELLER_VAT_NUMBER: z.string().regex(/^4\d{9}$/, 'a 10-digit VAT number starting with 4').optional(),
+  /** The rest of ECTA s43 for the terms: directors (comma-separated), contact details. */
+  SELLER_DIRECTORS: z.string().optional(),
+  SELLER_EMAIL: z.email().optional(),
+  SELLER_PHONE: z.string().regex(/^\+?[0-9 ()-]{7,20}$/, 'a telephone number such as 011 123 4567').optional(),
+  /** POPIA s55 / PAIA: the Information Officer, and their registration with the Information Regulator. */
+  SELLER_INFORMATION_OFFICER: z.string().optional(),
+  SELLER_INFORMATION_REGULATOR_NUMBER: z.string().regex(/^\d{4}-\d{6}$/, 'an Information Regulator registration number such as 2026-066743').optional(),
   /** /api requests a minute per anonymous visitor address. */
   API_ANON_RATE_PER_MINUTE: z.coerce.number().int().min(10).default(120),
 
