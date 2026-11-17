@@ -63,7 +63,7 @@
         "Skip link",
         "Sandbox band (sandbox only), above everything",
         "Phones/tablets only: top bar with brand (seal, 'TshepoVet', organisation legal name) and a 'Menu' button",
-        "Desktop (lg and up): sticky left sidebar 17rem wide: brand at top (seal, 'TshepoVet', organisation legal name, links to /app); 'Portal' nav list with icons; account button at the bottom (initials avatar, full name, email, chevron) opening a menu: organisation name label, 'Your account', separator, 'Sign out'",
+        "Desktop (lg and up): sticky left sidebar, collapsible (Q1). Expanded, 17rem: brand at top (seal, 'TshepoVet', organisation legal name, links to /app); 'Portal' nav list with icons; at the bottom, under a rule, 'Collapse menu' and the account button (initials avatar, full name, email, chevron) opening a menu: organisation name label, 'Your account', separator, 'Sign out'. Collapsed, a 6rem rail: the seal; each section's icon with its name under it; 'Expand menu'; 'Account'. The choice is remembered per browser",
         "Main: content column up to 90rem wide, no page footer",
         "Nav items are filtered by the user's permissions: Overview, Suppliers, Checks, Monitoring need suppliers:read; Wallet wallet:read; Developers developers:manage; Team team:read; Compliance compliance:read; Modules and Settings always shown",
         "While loading the session: full-screen spinner 'Opening TshepoVet'; signed-out visitors go to /sign-in?next=...",
@@ -124,7 +124,7 @@
         "Skip link",
         "Sandbox band (sandbox only)",
         "Phones/tablets only: top bar with brand (seal, 'TshepoVet', 'Staff console' in petrol) and a 'Menu' button",
-        "Desktop: sticky left sidebar 17rem: brand (links to /staff, always labelled 'Staff console'); 'Staff console' nav list with icons (active item tinted petrol, not violet); bottom block with the staff member's name, 'email, role' and a 'Sign out' button",
+        "Desktop: sticky left sidebar, collapsible (Q1). Expanded, 17rem: brand (links to /staff, always labelled 'Staff console'); 'Staff console' nav list with icons (active item tinted petrol, not violet); at the bottom, under a rule, 'Collapse menu', the staff member's name, 'email, role' and a 'Sign out' button. Collapsed, a 6rem rail: the seal; each section's icon with its name under it; 'Expand menu'; 'Sign out'. Remembered per browser",
         "Main: content column up to 90rem, no footer",
         "Nav items filtered by staff role (support, reviewer, admin): Overview all; Review queue reviewer+admin; Tenants, Data requests, Mail outbox support+admin; WhatsApp simulator all; Bureaus and prices, Purge runs admin only",
         "While loading: full-screen spinner 'Opening the staff console'; 401 or MFA not enrolled sends the browser to /staff/sign-in"

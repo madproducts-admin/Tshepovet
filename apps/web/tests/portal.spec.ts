@@ -208,6 +208,32 @@ test('verifies the audit chain', async () => {
   await expectAxe(page, 'audit log');
 });
 
+test('collapses the sidebar to a rail, remembers it, and expands it again (Q1)', async () => {
+  await page.goto('/app/suppliers');
+  const aside = page.locator('aside:has(#portal-nav)');
+  const collapse = aside.getByRole('button', { name: 'Collapse menu' });
+  await expect(collapse).toHaveAttribute('aria-expanded', 'true');
+  await expect(collapse).toHaveAttribute('aria-controls', 'portal-nav');
+  await collapse.click();
+  const expand = aside.getByRole('button', { name: 'Expand menu' });
+  await expect(expand).toHaveAttribute('aria-expanded', 'false');
+  await expect.poll(async () => (await aside.boundingBox())!.width).toBeLessThan(120);
+  // Every section keeps its name, visibly, under its icon, and stays a 44-pixel target.
+  const checks = aside.getByRole('link', { name: 'Checks' });
+  await expect(checks).toBeVisible();
+  expect((await checks.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  await expect(aside.getByRole('button', { name: /^Account menu for / })).toBeVisible();
+  await expectAxe(page, 'collapsed sidebar');
+  // Remembered across a reload; still a working menu.
+  await page.reload();
+  await expect(page.locator('aside:has(#portal-nav)').getByRole('button', { name: 'Expand menu' })).toBeVisible();
+  await page.locator('aside:has(#portal-nav)').getByRole('link', { name: 'Checks' }).click();
+  await expect(page.getByRole('heading', { name: 'Checks', level: 1 })).toBeVisible();
+  await page.locator('aside:has(#portal-nav)').getByRole('button', { name: 'Expand menu' }).click();
+  await expect(page.locator('aside:has(#portal-nav)').getByRole('button', { name: 'Collapse menu' })).toBeVisible();
+  await expect.poll(async () => (await page.locator('aside:has(#portal-nav)').boundingBox())!.width).toBeGreaterThan(250);
+});
+
 test('works on a phone: the menu opens as a dialog', async ({ browser }) => {
   const phone = await browser.newContext({ ...devices['Pixel 7'], storageState: await context.storageState() });
   const p = await phone.newPage();

@@ -66,3 +66,13 @@ never look alike) for everything; its Mono cut only for identifiers people copy 
 Lessons: menus are non-modal and not portalled (a modal menu hides the page with aria-hidden while
 it stays focusable; a portal leaves the landmarks). Scroll regions are `position: relative`, or
 visually hidden text inside them escapes and widens the page.
+
+## Navigation (the owner's answer to Q1: a collapsible left sidebar)
+
+The buyer portal and the staff console share `components/ui/sidebar.tsx`. On large screens the
+sidebar collapses to a 6rem rail ("Collapse menu", `aria-expanded`, remembered per browser):
+each section keeps its icon with its name set small under it, so nothing depends on hover (no
+tooltips to dismiss, 1.4.13), every target stays 44 pixels tall, and the account and sign-out
+controls keep a visible word that starts their accessible names (2.5.3). The server renders it
+expanded and the stored choice applies on the client, so hydration never disagrees. Phones keep
+the Menu dialog.

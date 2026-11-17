@@ -10,6 +10,7 @@ import { Seal } from '@/components/brand/seal';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/feedback';
 import { Dialog } from '@/components/ui/overlay';
+import { railItem, SidebarToggle, sidebarAside, sidebarGrid, useSidebarCollapsed } from '@/components/ui/sidebar';
 import { type ApiProblem, setStaffCsrfToken, staffApi } from '@/lib/api';
 import { cn } from '@/lib/cn';
 
@@ -50,7 +51,7 @@ export const STAFF_NAV: NavItem[] = [
   { href: '/staff/purge', label: 'Purge runs', icon: Trash2, roles: ['admin'] },
 ];
 
-function Nav({ onNavigate }: { onNavigate?: () => void }) {
+function Nav({ onNavigate, compact = false }: { onNavigate?: () => void; compact?: boolean }) {
   const s = useStaffSession();
   const pathname = usePathname();
   return (
@@ -65,7 +66,8 @@ function Nav({ onNavigate }: { onNavigate?: () => void }) {
               onClick={onNavigate}
               aria-current={active ? 'page' : undefined}
               className={cn(
-                'flex min-h-11 items-center gap-3 rounded-control px-3 font-semibold no-underline',
+                'flex min-h-11 items-center rounded-control font-semibold no-underline',
+                compact ? railItem : 'gap-3 px-3',
                 active ? 'bg-petrol-tint text-ink shadow-[inset_3px_0_0_var(--petrol)]' : 'text-ink-2 hover:bg-sheet-2 hover:text-ink',
               )}
             >
@@ -79,27 +81,43 @@ function Nav({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-function Who() {
+function Who({ compact = false }: { compact?: boolean }) {
   const s = useStaffSession();
   const [busy, setBusy] = useState(false);
+  const signOut = async () => {
+    setBusy(true);
+    await staffApi('/api/staff/auth/logout', { method: 'POST' }).catch(() => undefined);
+    setStaffCsrfToken(null);
+    window.location.assign('/staff/sign-in');
+  };
+  if (compact) {
+    // The rail: who is signed in stays available to screen readers; the button keeps its name.
+    return (
+      <>
+        <p className="sr-only">
+          Signed in as {s.staff.full_name}, {s.staff.email}, {s.staff.role}
+        </p>
+        <button
+          type="button"
+          onClick={signOut}
+          disabled={busy}
+          className={cn('flex min-h-11 w-full items-center rounded-control font-semibold text-ink-2 hover:bg-sheet-2 hover:text-ink disabled:opacity-60', railItem)}
+        >
+          <LogOut className="size-5 shrink-0" aria-hidden="true" />
+          Sign out
+        </button>
+      </>
+    );
+  }
   return (
-    <div className="flex flex-col gap-2 border-t border-rule pt-4">
+    <div className="flex flex-col gap-2">
       <p className="min-w-0">
         <span className="block truncate font-semibold">{s.staff.full_name}</span>
         <span className="block truncate text-sm text-ink-2">
           {s.staff.email}, {s.staff.role}
         </span>
       </p>
-      <Button
-        intent="secondary"
-        loading={busy}
-        onClick={async () => {
-          setBusy(true);
-          await staffApi('/api/staff/auth/logout', { method: 'POST' }).catch(() => undefined);
-          setStaffCsrfToken(null);
-          window.location.assign('/staff/sign-in');
-        }}
-      >
+      <Button intent="secondary" loading={busy} onClick={signOut}>
         <LogOut aria-hidden="true" />
         Sign out
       </Button>
@@ -107,11 +125,11 @@ function Who() {
   );
 }
 
-function Brand() {
+function Brand({ compact = false }: { compact?: boolean }) {
   return (
-    <Link href="/staff" className="flex min-h-11 items-center gap-3 rounded-control px-1 text-ink no-underline">
+    <Link href="/staff" className={cn('flex min-h-11 items-center gap-3 rounded-control px-1 text-ink no-underline', compact && 'justify-center')}>
       <Seal size={40} />
-      <span>
+      <span className={compact ? 'sr-only' : undefined}>
         <span className="block text-lg leading-tight font-bold">TshepoVet</span>
         <span className="block text-sm font-semibold text-petrol">Staff console</span>
       </span>
@@ -122,6 +140,7 @@ function Brand() {
 export function StaffShell({ band, children }: { band: ReactNode; children: ReactNode }) {
   const q = useQuery<StaffSession, ApiProblem>({ queryKey: ['staff-session'], queryFn: () => staffApi<StaffSession>('/api/staff/auth/session'), retry: false, staleTime: 60_000 });
   const [menuOpen, setMenuOpen] = useState(false);
+  const [collapsed, setCollapsed] = useSidebarCollapsed('tv.sidebar.staff');
   useEffect(() => {
     if (q.data) setStaffCsrfToken(q.data.csrf_token);
     // Two-step verification is mandatory for staff: enrolment happens on the sign-in page.
@@ -161,19 +180,22 @@ export function StaffShell({ band, children }: { band: ReactNode; children: Reac
               <nav aria-label="Staff console">
                 <Nav onNavigate={() => setMenuOpen(false)} />
               </nav>
-              <div className="mt-4">
+              <div className="mt-4 border-t border-rule pt-4">
                 <Who />
               </div>
             </Dialog>
           </div>
         </header>
-        <div className="lg:grid lg:grid-cols-[17rem_minmax(0,1fr)]">
-          <aside className="sticky top-0 hidden h-dvh flex-col gap-6 border-r border-rule bg-sheet px-3 py-5 lg:flex">
-            <Brand />
-            <nav aria-label="Staff console" className="min-h-0 flex-1 overflow-y-auto">
-              <Nav />
+        <div className={sidebarGrid(collapsed)}>
+          <aside className={sidebarAside(collapsed)}>
+            <Brand compact={collapsed} />
+            <nav id="staff-nav" aria-label="Staff console" className="min-h-0 flex-1 overflow-y-auto">
+              <Nav compact={collapsed} />
             </nav>
-            <Who />
+            <div className="flex flex-col gap-2 border-t border-rule pt-3">
+              <SidebarToggle collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} controls="staff-nav" />
+              <Who compact={collapsed} />
+            </div>
           </aside>
           <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[90rem] px-4 py-8 outline-none sm:px-8 lg:px-10">
             {children}

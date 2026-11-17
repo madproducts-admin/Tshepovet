@@ -24,6 +24,7 @@ import { Seal } from '@/components/brand/seal';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/feedback';
 import { Dialog, Menu, MenuContent, MenuItem, MenuLabel, MenuSeparator, MenuTrigger } from '@/components/ui/overlay';
+import { railItem, SidebarToggle, sidebarAside, sidebarGrid, useSidebarCollapsed } from '@/components/ui/sidebar';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/cn';
 import { SessionProvider, useSession } from '@/lib/queries';
@@ -50,7 +51,7 @@ const NAV: NavItem[] = [
   { href: '/app/settings', label: 'Settings', icon: Settings },
 ];
 
-function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+function NavLinks({ onNavigate, compact = false }: { onNavigate?: () => void; compact?: boolean }) {
   const pathname = usePathname();
   const { can } = useSession();
   return (
@@ -65,7 +66,8 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
               onClick={onNavigate}
               aria-current={active ? 'page' : undefined}
               className={cn(
-                'flex min-h-11 items-center gap-3 rounded-control px-3 font-semibold no-underline transition-colors',
+                'flex min-h-11 items-center rounded-control font-semibold no-underline transition-colors',
+                compact ? railItem : 'gap-3 px-3',
                 active ? 'bg-violet-tint text-ink shadow-[inset_3px_0_0_var(--violet)]' : 'text-ink-2 hover:bg-sheet-2 hover:text-ink',
               )}
             >
@@ -79,7 +81,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-function UserMenu() {
+function UserMenu({ compact = false }: { compact?: boolean }) {
   const { session } = useSession();
   const signOut = async () => {
     await api('/api/auth/logout', { method: 'POST' }).catch(() => undefined);
@@ -88,25 +90,37 @@ function UserMenu() {
   return (
     <Menu>
       <MenuTrigger asChild>
-        <button
-          type="button"
-          className="flex min-h-11 w-full items-center gap-3 rounded-control px-3 py-2 text-left hover:bg-sheet-2"
-        >
-          {/* The visible name and email are the accessible name too (WCAG 2.5.3), after a hidden prefix. */}
-          <span className="sr-only">Account menu for </span>
-          <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-full bg-violet-tint font-bold text-violet">
-            {session.user.full_name
-              .split(/\s+/)
-              .slice(0, 2)
-              .map((w) => w[0])
-              .join('')}
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate font-semibold">{session.user.full_name}</span>
-            <span className="block truncate text-sm text-ink-2">{session.user.email}</span>
-          </span>
-          <ChevronDown className="size-4 shrink-0 text-ink-2" aria-hidden="true" />
-        </button>
+        {compact ? (
+          // The rail: the visible word "Account" starts the accessible name (WCAG 2.5.3).
+          <button type="button" className={cn('flex min-h-11 w-full items-center rounded-control font-semibold text-ink-2 hover:bg-sheet-2 hover:text-ink', railItem)}>
+            <UserRound className="size-5 shrink-0" aria-hidden="true" />
+            <span>Account</span>
+            <span className="sr-only">
+              {' '}
+              menu for {session.user.full_name}, {session.user.email}
+            </span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="flex min-h-11 w-full items-center gap-3 rounded-control px-3 py-2 text-left hover:bg-sheet-2"
+          >
+            {/* The visible name and email are the accessible name too (WCAG 2.5.3), after a hidden prefix. */}
+            <span className="sr-only">Account menu for </span>
+            <span aria-hidden="true" className="grid size-9 shrink-0 place-items-center rounded-full bg-violet-tint font-bold text-violet">
+              {session.user.full_name
+                .split(/\s+/)
+                .slice(0, 2)
+                .map((w) => w[0])
+                .join('')}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-semibold">{session.user.full_name}</span>
+              <span className="block truncate text-sm text-ink-2">{session.user.email}</span>
+            </span>
+            <ChevronDown className="size-4 shrink-0 text-ink-2" aria-hidden="true" />
+          </button>
+        )}
       </MenuTrigger>
       <MenuContent align="start" side="top">
         <MenuLabel>{session.organisation.legal_name}</MenuLabel>
@@ -126,12 +140,12 @@ function UserMenu() {
   );
 }
 
-function Brand() {
+function Brand({ compact = false }: { compact?: boolean }) {
   const { session } = useSession();
   return (
-    <Link href="/app" className="flex min-h-11 items-center gap-3 rounded-control px-1 text-ink no-underline">
+    <Link href="/app" className={cn('flex min-h-11 items-center gap-3 rounded-control px-1 text-ink no-underline', compact && 'justify-center')}>
       <Seal size={40} />
-      <span className="min-w-0">
+      <span className={compact ? 'sr-only' : 'min-w-0'}>
         <span className="block text-lg leading-tight font-bold">TshepoVet</span>
         <span className="block truncate text-sm text-ink-2">{session.organisation.legal_name}</span>
       </span>
@@ -144,6 +158,7 @@ function Frame({ band, children }: { band: ReactNode; children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [collapsed, setCollapsed] = useSidebarCollapsed('tv.sidebar.portal');
   const mustEnrol = session.stage === 'mfa_setup' && pathname !== '/app/mfa-setup';
   useEffect(() => {
     if (mustEnrol) router.replace('/app/mfa-setup');
@@ -176,13 +191,16 @@ function Frame({ band, children }: { band: ReactNode; children: ReactNode }) {
           </Dialog>
         </div>
       </header>
-      <div className="lg:grid lg:grid-cols-[17rem_minmax(0,1fr)]">
-        <aside className="sticky top-0 hidden h-dvh flex-col gap-6 border-r border-rule bg-sheet px-3 py-5 lg:flex">
-          <Brand />
-          <nav aria-label="Portal" className="min-h-0 flex-1 overflow-y-auto">
-            {session.stage === 'full' ? <NavLinks /> : null}
+      <div className={sidebarGrid(collapsed)}>
+        <aside className={sidebarAside(collapsed)}>
+          <Brand compact={collapsed} />
+          <nav id="portal-nav" aria-label="Portal" className="min-h-0 flex-1 overflow-y-auto">
+            {session.stage === 'full' ? <NavLinks compact={collapsed} /> : null}
           </nav>
-          <UserMenu />
+          <div className="flex flex-col gap-1 border-t border-rule pt-3">
+            <SidebarToggle collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} controls="portal-nav" />
+            <UserMenu compact={collapsed} />
+          </div>
         </aside>
         <main id="main" tabIndex={-1} className="mx-auto w-full max-w-[90rem] px-4 py-8 outline-none sm:px-8 lg:px-10">
           {mustEnrol ? <Spinner label="Opening two-step verification setup" /> : children}

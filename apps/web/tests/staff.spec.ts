@@ -127,6 +127,20 @@ test('plays the supplier in the WhatsApp simulator, and the real bot answers', a
   await expectAxe(page, 'whatsapp simulator with replies');
 });
 
+test('collapses the sidebar to a rail and back (Q1)', async () => {
+  await page.goto('/staff');
+  const aside = page.locator('aside:has(#staff-nav)');
+  await aside.getByRole('button', { name: 'Collapse menu' }).click();
+  await expect(aside.getByRole('button', { name: 'Expand menu' })).toHaveAttribute('aria-expanded', 'false');
+  await expect.poll(async () => (await aside.boundingBox())!.width).toBeLessThan(120);
+  await expect(aside.getByRole('link', { name: 'Review queue' })).toBeVisible();
+  await expect(aside.getByRole('button', { name: 'Sign out' })).toBeVisible();
+  await expectAxe(page, 'collapsed staff sidebar');
+  await aside.getByRole('button', { name: 'Expand menu' }).click();
+  await expect(aside.getByRole('button', { name: 'Collapse menu' })).toBeVisible();
+  await expect(aside.getByText('Staff console')).toBeVisible();
+});
+
 test('shows bureaus, prices and purge runs to an admin', async () => {
   await page.goto('/staff/bureaus');
   await expect(page.getByRole('heading', { name: 'Price book' })).toBeVisible();
