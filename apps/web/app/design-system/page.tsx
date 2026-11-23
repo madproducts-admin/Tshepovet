@@ -5,6 +5,7 @@ import { Seal } from '@/components/brand/seal';
 import { SpecimenBand } from '@/components/brand/specimen';
 import { Callout, EmptyState, Meter, OutcomeStamp, Skeleton, Spinner, Stamp, SupplierStatusStamp } from '@/components/ui/feedback';
 import { PageHeader, RecordList, Sheet, SkipLink, Stat, Steps, Timeline } from '@/components/ui/layout';
+import { Toaster } from '@/components/ui/toast';
 import { THEME_COOKIE, type ThemeChoice } from '@/lib/theme';
 import { InteractiveCatalogue } from './catalogue';
 
@@ -200,6 +201,8 @@ export default async function DesignSystemPage() {
 
         <InteractiveCatalogue theme={theme} />
       </main>
+      {/* The catalogue demonstrates toasts; the root layout no longer mounts a toaster. */}
+      <Toaster />
     </>
   );
 }
