@@ -3,6 +3,7 @@ import { connection } from 'next/server';
 import type { ReactNode } from 'react';
 import { SpecimenBand } from '@/components/brand/specimen';
 import { PortalShell } from '@/components/portal/shell';
+import { AreaProviders } from '@/lib/queries';
 import { getMeta } from '@/lib/server';
 
 export const metadata: Metadata = { title: { default: 'Overview', template: '%s | TshepoVet' } };
@@ -11,5 +12,9 @@ export const metadata: Metadata = { title: { default: 'Overview', template: '%s 
 export default async function PortalLayout({ children }: { children: ReactNode }) {
   await connection();
   const meta = await getMeta();
-  return <PortalShell band={meta.sandbox ? <SpecimenBand /> : null}>{children}</PortalShell>;
+  return (
+    <AreaProviders>
+      <PortalShell band={meta.sandbox ? <SpecimenBand /> : null}>{children}</PortalShell>
+    </AreaProviders>
+  );
 }

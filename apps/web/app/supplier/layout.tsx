@@ -5,6 +5,7 @@ import { CompanyDisclosure } from '@/components/brand/company';
 import { Seal } from '@/components/brand/seal';
 import { SpecimenBand } from '@/components/brand/specimen';
 import { SkipLink } from '@/components/ui/layout';
+import { AreaProviders } from '@/lib/queries';
 import { getMeta } from '@/lib/server';
 
 /** Supplier self-service: its own quiet chrome, so it is never mistaken for the buyer portal. */
@@ -12,7 +13,7 @@ export default async function SupplierLayout({ children }: { children: ReactNode
   await connection();
   const meta = await getMeta();
   return (
-    <>
+    <AreaProviders>
       <SkipLink />
       <header className="border-b border-rule bg-sheet">
         {meta.sandbox ? <SpecimenBand /> : null}
@@ -41,6 +42,6 @@ export default async function SupplierLayout({ children }: { children: ReactNode
         </nav>
         <CompanyDisclosure seller={meta.seller} className="mt-3" />
       </footer>
-    </>
+    </AreaProviders>
   );
 }

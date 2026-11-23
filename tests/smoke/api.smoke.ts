@@ -32,6 +32,13 @@ test('/healthz answers, with the security headers and no server banner', async (
   expect(h['x-powered-by'] ?? '').toBe('');
 });
 
+test('/readyz answers: the live API reaches PostgreSQL and Redis', async ({ request }) => {
+  const res = await request.get(`/readyz?cb=${Date.now()}`);
+  expect(res.status()).toBe(200);
+  expect(await res.json()).toEqual({ ok: true });
+  expect(res.headers()['cache-control']).toBe('no-store');
+});
+
 test('the API refuses a call without a key', async ({ request }) => {
   const res = await request.get(`/v1/verifications/${randomUUID()}`);
   expect(res.status()).toBe(401);

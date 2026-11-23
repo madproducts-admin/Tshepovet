@@ -2,8 +2,6 @@ import type { Metadata, Viewport } from 'next';
 import { Atkinson_Hyperlegible_Mono, Atkinson_Hyperlegible_Next } from 'next/font/google';
 import { cookies } from 'next/headers';
 import type { ReactNode } from 'react';
-import { Toaster } from '@/components/ui/toast';
-import { Providers } from '@/lib/queries';
 import { THEME_COOKIE, type ThemeChoice } from '@/lib/theme';
 import './globals.css';
 
@@ -42,14 +40,16 @@ export const viewport: Viewport = {
   ],
 };
 
+/*
+ * No client providers here. The areas that need React Query and the toaster (the portal, the
+ * staff console, supplier self-service) render AreaProviders (lib/queries.tsx) in their own
+ * layouts, so the public pages ship and hydrate neither (docs/PLAN.md §9).
+ */
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const theme = ((await cookies()).get(THEME_COOKIE)?.value ?? 'system') as ThemeChoice;
   return (
     <html lang="en-ZA" data-theme={theme === 'system' ? undefined : theme} className={`${sans.variable} ${mono.variable}`}>
-      <body>
-        <Providers>{children}</Providers>
-        <Toaster />
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

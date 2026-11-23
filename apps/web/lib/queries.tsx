@@ -6,8 +6,22 @@ import type { SessionView } from '@tshepovet/contracts';
 // The zod-free entry point: this module is on every page, and the package's index would bring
 // every schema and zod itself (44 KB compressed) to pages that validate nothing.
 import { can, type Permission } from '@tshepovet/contracts/rbac';
-import { toast } from '@/components/ui/toast';
+import { toast, Toaster } from '@/components/ui/toast';
 import { api, ApiProblem, setCsrfToken } from './api';
+
+/**
+ * The client state of the signed-in areas (the portal, the staff console, supplier self-service):
+ * the query client and the toaster. Their layouts render it, not the root layout, so the public
+ * pages (landing, pricing, sign-in, passports) ship and hydrate neither (docs/PLAN.md §9).
+ */
+export function AreaProviders({ children }: { children: ReactNode }) {
+  return (
+    <Providers>
+      {children}
+      <Toaster />
+    </Providers>
+  );
+}
 
 /** One query client per browser tab; nothing is retried that the user did not ask for twice. */
 export function Providers({ children }: { children: ReactNode }) {
