@@ -31,8 +31,32 @@ describe('HTTP pipeline', () => {
     expect(res.headers['x-powered-by']).toBeUndefined();
   });
 
+  it('answers /readyz when PostgreSQL and Redis answer, and no proxy may keep it', async () => {
+    const res = await request(t.app).get('/readyz');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ ok: true });
+    expect(res.headers['cache-control']).toBe('no-store');
+  });
+
+  it('answers /readyz with 503 and nothing internal while Redis is gone; /healthz stays 200', async () => {
+    const down = await buildTestApp();
+    try {
+      down.container.redis.disconnect();
+      const res = await request(down.app).get('/readyz');
+      expect(res.status).toBe(503);
+      expect(res.body).toEqual({ ok: false });
+      expect(res.headers['cache-control']).toBe('no-store');
+      expect((await request(down.app).get('/healthz')).status).toBe(200);
+    } finally {
+      // Its Redis is already disconnected, so not down.close() (quit would fail).
+      await down.nest.close();
+      await down.container.pool.end();
+      await down.container.staffPool?.end();
+    }
+  });
+
   it('sends its own security headers, since IIS adds only HSTS and X-Robots-Tag', async () => {
-    for (const path of ['/healthz', '/v1/no-such-endpoint', '/api/no-such-route']) {
+    for (const path of ['/healthz', '/readyz', '/v1/no-such-endpoint', '/api/no-such-route']) {
       const res = await request(t.app).get(path);
       expect(res.headers['x-content-type-options']).toBe('nosniff');
       expect(res.headers['x-frame-options']).toBe('DENY');

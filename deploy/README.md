@@ -105,7 +105,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File deploy\app\deploy-app.ps1 -R
 2. **Gates.** The design check (`tools/design-sync.mjs check`), the typecheck, then the **full** API and core suite (`run-tests.ps1`) against `tshepovet_test` and Redis db 15, as the test logins.
 3. **Build.** `tsc` for core, contracts and the API; `next build` (standalone) with the release name as its build id.
 4. **Stage** `D:\releases\tshepovet\<stamp>-<sha>`: each workspace's `package.json` and `dist`, production `node_modules` for the API (`npm ci --omit=dev --workspace @tshepovet/api`), the standalone web server under `web\` with its static files, the release's `web.config` and `COMMIT`.
-5. **Rehearse.** The staged API, worker and web app run from the release folder on `127.0.0.1:9197`/`9198` against the test database: the release and build headers, the policies, `/v1` refusing an unkeyed call, the public pages, `/pricing` reading prices from the API, a redirect that keeps the visitor's host, and a `/_next/static` script. `-StageOnly` stops here and marks the release `REHEARSED`.
+5. **Rehearse.** The staged API, worker and web app run from the release folder on `127.0.0.1:9197`/`9198` against the test database: the release and build headers, the policies, `/v1` refusing an unkeyed call, `/readyz` (the staged API reaches the database and Redis), the public pages, `/pricing` reading prices from the API, a redirect that keeps the visitor's host, and a `/_next/static` script. `-StageOnly` stops here and marks the release `REHEARSED`.
 6. **Back up** the live database (`pg_dump -Fc`).
 7. **Migrate.** Forward-only migrations, as `tshepovet_owner`.
 8. **Seed (`-SeedSandbox`, once).** The sandbox tenant.
@@ -124,8 +124,16 @@ curl.exe -sI https://tshepovet.madproducts.ai/healthz                         # 
 curl.exe -sI https://tshepovet.madproducts.ai/                                # 200 and X-TshepoVet-Build: the web app
 curl.exe -s --resolve tshepovet.madproducts.ai:443:127.0.0.1 https://tshepovet.madproducts.ai/healthz   # at the origin
 curl.exe -s http://127.0.0.1:9131/healthz                                     # the API service itself
+curl.exe -s https://tshepovet.madproducts.ai/readyz                          # {"ok":true}: the API reaches PostgreSQL and Redis
 Get-Service tshepovet-api, tshepovet-worker, tshepovet-web, tshepovet-redis
 ```
+
+`/healthz` is liveness (the API process answers; the deploy's switch waits on it, because a
+release from before `/readyz` existed has only that). `/readyz` is readiness: `select 1` on the
+tenant pool and a Redis `PING`, each within 2 seconds; 200 `{"ok":true}`, else 503
+`{"ok":false}` with the failing dependency in the API's log, never in the answer. It is public and
+outside the rate limits, so one result answers every caller for 5 seconds (at most one query and
+one `PING` per 5 seconds per process); nothing polls it, so it adds nothing to the idle load.
 
 From the repo, a sandbox call:
 - **Bash:** `curl -s https://tshepovet.madproducts.ai/v1/verify/company -H "Authorization: Bearer <tv_test_ key>" -H "Idempotency-Key: <8+ chars>" -H 'Content-Type: application/json' -d @body.json`.

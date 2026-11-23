@@ -269,6 +269,8 @@ function Invoke-Rehearsal([string]$Rel) {
         if ($h -notmatch "content-security-policy: default-src 'none'") { $fails += 'API: no JSON-only Content-Security-Policy' }
         if (-not (Test-Url "$api/v1/verifications/00000000-0000-4000-8000-000000000000" '401')) { $fails += 'API: /v1 without a key is not 401' }
         if (-not (Test-Url "$api/api/auth/csrf" '200')) { $fails += 'API: /api/auth/csrf is not 200' }
+        # Readiness, not just liveness: the staged API reaches its database and Redis.
+        if (-not (Test-Url "$api/readyz" '200')) { $fails += 'API: /readyz is not 200 (the staged API cannot reach its database or Redis)' }
         $h = (Test-Native 'curl.exe' @('-s', '-D', '-', '-o', 'NUL', '--max-time', '20', "$web/")).Out
         if ($h -notmatch "x-tshepovet-build: $stamp") { $fails += 'web: no X-TshepoVet-Build header for this release' }
         if ($h -notmatch "content-security-policy: [^;]*;\s*script-src 'self' 'nonce-") { $fails += 'web: no nonce Content-Security-Policy' }

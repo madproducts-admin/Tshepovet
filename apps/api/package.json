@@ -2,7 +2,7 @@
   "name": "@tshepovet/api",
   "version": "0.2.0",
   "private": true,
-  "description": "TshepoVet API (NestJS on Express): /v1 for API keys, /webhooks, /healthz; worker entry point for background jobs.",
+  "description": "TshepoVet API (NestJS on Express): /v1 for API keys, /webhooks, /healthz and /readyz; worker entry point for background jobs.",
   "license": "UNLICENSED",
   "main": "dist/main.js",
   "dependencies": {
