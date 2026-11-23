@@ -20,6 +20,12 @@ async function axe(page: Page, label: string, only?: string) {
 
 for (const theme of ['light', 'dark'] as const) {
   test.describe(`design system, ${theme} theme`, () => {
+    // The largest page, audited whole. On the shared box under load (2026-11-23, against the live
+    // site), creating the browser context took up to 65 s, loading the page up to 59 s and each axe
+    // pass 10-25 s. Four passes in one test overran 120 s in 5 of 13 runs, without a single
+    // violation found. So each state is its own test, and this page gets 240 s per test.
+    test.describe.configure({ timeout: 240_000 });
+
     test.beforeEach(async ({ context, baseURL }) => {
       await context.addCookies([{ name: 'tv_theme', value: theme, url: baseURL! }]);
     });
@@ -30,22 +36,29 @@ for (const theme of ['light', 'dark'] as const) {
       await axe(page, 'page');
     });
 
-    test('passes axe with errors shown and overlays open', async ({ page }) => {
+    test('passes axe with the form errors shown', async ({ page }) => {
       await page.goto('/design-system');
       await page.getByRole('button', { name: 'Check the form' }).click();
       await expect(page.getByRole('alert').filter({ hasText: 'Check the form' })).toBeVisible();
       await axe(page, 'form errors');
+    });
 
+    test('passes axe with the dialog open', async ({ page }) => {
+      await page.goto('/design-system');
       await page.getByRole('button', { name: 'Open a dialog' }).click();
       await expect(page.getByRole('dialog')).toBeVisible();
       await axe(page, 'dialog');
-      await page.keyboard.press('Escape');
+    });
 
+    test('passes axe with the menu open', async ({ page }) => {
+      await page.goto('/design-system');
       await page.getByRole('button', { name: 'More actions' }).click();
       await expect(page.getByRole('menu')).toBeVisible();
       await axe(page, 'menu');
-      await page.keyboard.press('Escape');
+    });
 
+    test('passes axe with the select open', async ({ page }) => {
+      await page.goto('/design-system');
       await page.getByRole('combobox', { name: 'Entity type' }).click();
       await expect(page.getByRole('listbox')).toBeVisible();
       await axe(page, 'select', '[role="listbox"]');
