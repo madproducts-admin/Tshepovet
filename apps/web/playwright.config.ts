@@ -16,7 +16,8 @@ export default defineConfig({
   timeout: 120_000,
   // Two specs share the API with argon2 sign-ups and axe runs in flight: answers can take a few seconds.
   expect: { timeout: 15_000 },
-  reporter: [['list']],
+  // TSV_JUNIT_FILE (set by run-web-e2e.ps1 -JUnit) adds a JUnit report for the AIDOS Quality Factory.
+  reporter: process.env.TSV_JUNIT_FILE ? [['list'], ['junit', { outputFile: process.env.TSV_JUNIT_FILE }]] : [['list']],
   use: { baseURL, trace: 'retain-on-failure' },
   projects: [
     { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1366, height: 900 } } },

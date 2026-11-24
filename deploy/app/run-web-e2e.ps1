@@ -6,8 +6,14 @@
 
     powershell -NoProfile -ExecutionPolicy Bypass -File deploy\app\run-web-e2e.ps1
     powershell -NoProfile -ExecutionPolicy Bypass -File deploy\app\run-web-e2e.ps1 -SkipBuild
+
+  For the AIDOS Quality Factory (.aidos/QUALITY.json, .aidos/CHECKS.json):
+    -BuildOnly    build the API and the web app for the test API, then stop
+    -JUnit <file> Playwright also writes a JUnit report there
+    -Serve        start the fresh stack and keep it running (no Playwright) until this process is
+                  stopped; the Quality Factory stops it with its process tree
 #>
-param([switch]$SkipBuild, [string[]]$Spec = @())
+param([switch]$SkipBuild, [string[]]$Spec = @(), [switch]$BuildOnly, [switch]$Serve, [string]$JUnit)
 $ErrorActionPreference = 'Stop'
 # -File passes "a,b" as one string: split it (e.g. -Spec portal.spec,supplier.spec).
 $Spec = @($Spec | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
@@ -55,6 +61,7 @@ if (-not $targets.Count -or $foreign.Count) {
   Write-Host "The web build sends /api to $($targets -join ', '), not the test API on $apiPort (a deploy build?). Run without -SkipBuild."
   exit 1
 }
+if ($BuildOnly) { Write-Host "Built for the test API on $apiPort."; exit 0 }
 & node tools\reset-test-db.mjs
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
@@ -93,7 +100,15 @@ try {
     if (-not $ok) { throw "$url did not come up (logs in $env:TEMP\tsv-e2e-*.log)" }
   }
 
+  if ($Serve) {
+    Write-Host "Serving the test stack: web http://127.0.0.1:$webPort, API http://127.0.0.1:$apiPort. Stop this process to stop it."
+    while ($true) {
+      Start-Sleep -Seconds 5
+      foreach ($proc in $api, $worker) { if ($proc.HasExited) { throw "a server exited (logs in $env:TEMP\tsv-e2e-*.log)" } }
+    }
+  }
   $env:TSV_WEB_URL = "http://127.0.0.1:$webPort"
+  if ($JUnit) { $env:TSV_JUNIT_FILE = [IO.Path]::GetFullPath((Join-Path $root $JUnit)) }
   & npx.cmd playwright test -c apps/web/playwright.config.ts @Spec
   $code = $LASTEXITCODE
 } finally {

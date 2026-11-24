@@ -1,0 +1,8 @@
+# Gitleaks findings reviewed and judged not to be secrets (2026-11-24). Each line is one exact finding
+# (commit:file:rule:line), so a new secret in the same file is still reported.
+#
+# The design-system page's example "Your new test key": made-up specimen text whose second part decodes to
+# "Boogle-example-secret-not-real".
+af1527d186cbfeaafe24ad09a0d484e9c58984a1:apps/web/app/design-system/catalogue.tsx:generic-api-key:245
+# The offline list of common passwords that sign-up refuses ('password123456', ...).
+067bfdf957377def356d25f4b75cb775c9902810:packages/core/src/auth/password.ts:generic-api-key:36
